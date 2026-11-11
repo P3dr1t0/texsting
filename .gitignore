@@ -3,3 +3,4 @@ android/
 www/assets/
 *.apk
 .DS_Store
+__pycache__/
