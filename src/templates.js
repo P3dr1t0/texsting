@@ -37,7 +37,7 @@ Como se ve en la ecuación~\eqref{eq:euler}, \dots
   {
     id: 'informe',
     name: 'Informe de laboratorio',
-    desc: 'Carátula, circuitikz, siunitx, tablas y bibliografía',
+    desc: 'Carátula, índice, secciones típicas, tabla, figura y bibliografía',
     files: [
       { path: 'main.tex', text: String.raw`\documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
@@ -47,10 +47,6 @@ Como se ve en la ecuación~\eqref{eq:euler}, \dots
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{siunitx}
-\sisetup{output-decimal-marker={.}}
-\usepackage[european,siunitx]{circuitikz}
-\usetikzlibrary{babel} % evita conflictos de babel (español) con > y < en TikZ/circuitikz
 \usepackage{float}
 \usepackage{hyperref}
 
@@ -62,42 +58,55 @@ Como se ve en la ecuación~\eqref{eq:euler}, \dots
 
 \section{Objetivos}
 \begin{itemize}
-  \item Objetivo 1.
-  \item Objetivo 2.
+  \item Objetivo general.
+  \item Objetivo específico.
 \end{itemize}
 
-\section{Marco teórico}
-Ley de Ohm: $V = I R$. Para el divisor de tensión de la figura~\ref{fig:divisor}:
+\section{Fundamento teórico}
+Describe aquí la teoría necesaria. Por ejemplo, una ecuación numerada:
 \begin{equation}
-  V_{o} = V_{s}\,\frac{R_2}{R_1 + R_2}
-  \label{eq:divisor}
+  y = m x + b
+  \label{eq:recta}
 \end{equation}
+que luego puedes citar como la ecuación~\eqref{eq:recta}.
 
-\begin{figure}[H]
-  \centering
-  \begin{circuitikz}
-    \draw (0,0) to[V, l=$V_s$] (0,3)
-          to[R, l=$R_1$] (3,3)
-          to[R, l=$R_2$, v^>=$V_o$] (3,0) -- (0,0);
-  \end{circuitikz}
-  \caption{Divisor de tensión}
-  \label{fig:divisor}
-\end{figure}
+\section{Materiales y equipos}
+\begin{itemize}
+  \item Material 1.
+  \item Equipo 1.
+\end{itemize}
+
+\section{Procedimiento}
+\begin{enumerate}
+  \item Primer paso.
+  \item Segundo paso.
+\end{enumerate}
 
 \section{Resultados}
 \begin{table}[H]
   \centering
-  \caption{Mediciones}
-  \label{tab:mediciones}
+  \caption{Datos obtenidos}
+  \label{tab:datos}
   \begin{tabular}{ccc}
     \toprule
-    $R$ (\si{\ohm}) & $V$ (\si{\volt}) & $I$ (\si{\milli\ampere}) \\
+    Medida & Valor 1 & Valor 2 \\
     \midrule
-    1000 & 5.0 & 5.0 \\
-    2200 & 5.0 & 2.3 \\
+    1 & 0.00 & 0.00 \\
+    2 & 0.00 & 0.00 \\
     \bottomrule
   \end{tabular}
 \end{table}
+
+\begin{figure}[H]
+  \centering
+  % Sube tu imagen en Archivos y cambia "example-image" por su nombre.
+  \includegraphics[width=0.6\linewidth]{example-image}
+  \caption{Descripción de la figura}
+  \label{fig:resultado}
+\end{figure}
+
+\section{Análisis de resultados}
+Comenta los resultados de la tabla~\ref{tab:datos} y la figura~\ref{fig:resultado}.
 
 \section{Conclusiones}
 % TODO: conclusiones
@@ -127,12 +136,11 @@ Ley de Ohm: $V = I R$. Para el divisor de tensión de la figura~\ref{fig:divisor
   {\large \today\par}
 \end{titlepage}
 ` },
-      { path: 'referencias.bib', text: String.raw`@book{alexander,
-  author    = {Charles K. Alexander and Matthew N. O. Sadiku},
-  title     = {Fundamentos de circuitos eléctricos},
-  publisher = {McGraw-Hill},
-  year      = {2013},
-  edition   = {5}
+      { path: 'referencias.bib', text: String.raw`@book{ejemplo,
+  author    = {Apellido, Nombre},
+  title     = {Título del libro},
+  publisher = {Editorial},
+  year      = {2024}
 }
 ` },
     ],

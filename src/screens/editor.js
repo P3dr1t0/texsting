@@ -374,6 +374,25 @@ export async function renderEditor(root, { id }, navigate) {
     showPanel('code');
     editor.insertSnippet(r.snippet);
     for (const p of r.needs || []) ensurePackage(p);
+    if (/tikzpicture|circuitikz/.test(r.snippet)) ensureTikzBabel();
+  }
+
+  // babel en español activa > y <, lo que rompe opciones de TikZ/circuitikz.
+  function ensureTikzBabel() {
+    const main = files.find((f) => f.path === project.main);
+    if (!main || main.kind !== 'text') return;
+    const text = currentPath === project.main ? editor.getText() : main.text;
+    if (!/\\usepackage(\[[^\]]*spanish[^\]]*\])\{babel\}/.test(text) || /\\usetikzlibrary\{[^}]*babel/.test(text)) return;
+    setTimeout(() => toast('Con babel en español, TikZ necesita \\usetikzlibrary{babel}', { action: 'Agregar', ms: 8000, onAction: async () => {
+      const t = currentPath === project.main ? editor.getText() : main.text;
+      const idx = t.indexOf('\\begin{document}');
+      if (idx < 0) return;
+      const nt = t.slice(0, idx) + '\\usetikzlibrary{babel}\n' + t.slice(idx);
+      main.text = nt;
+      await putFile(project.id, { path: project.main, text: nt });
+      if (currentPath === project.main) { editor.forget(project.main); editor.open(project.main, nt); }
+      toast('Agregado \\usetikzlibrary{babel}');
+    } }), 7500);
   }
 
   // ---------- Compilación ----------
