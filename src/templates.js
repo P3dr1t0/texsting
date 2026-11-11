@@ -50,6 +50,7 @@ Como se ve en la ecuación~\eqref{eq:euler}, \dots
 \usepackage{siunitx}
 \sisetup{output-decimal-marker={.}}
 \usepackage[european,siunitx]{circuitikz}
+\usetikzlibrary{babel} % evita conflictos de babel (español) con > y < en TikZ/circuitikz
 \usepackage{float}
 \usepackage{hyperref}
 
