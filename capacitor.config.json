@@ -1,0 +1,14 @@
+{
+  "appId": "io.github.texsting",
+  "appName": "TeXsting",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "http",
+    "hostname": "localhost",
+    "cleartext": true
+  },
+  "android": {
+    "adjustMarginsForEdgeToEdge": "auto",
+    "allowMixedContent": true
+  }
+}
