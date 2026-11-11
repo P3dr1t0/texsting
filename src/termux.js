@@ -7,8 +7,16 @@ import setupSh from '../termux/setup.sh';
 export const TERMUX_FDROID = 'https://f-droid.org/packages/com.termux/';
 export const TERMUX_GITHUB = 'https://github.com/termux/termux-app/releases';
 
-/** Comando que se pega en Termux: escribe los scripts y ejecuta la instalación. */
+export const GET_URL = 'https://raw.githubusercontent.com/P3dr1t0/texsting/main/termux/get.sh';
+
+/** Comando de una línea que se pega en Termux: descarga el instalador y lo ejecuta. */
 export function bootstrapCommand(token) {
+  const safeToken = String(token).replace(/[^A-Za-z0-9]/g, '');
+  return `command -v curl >/dev/null || pkg install -y curl; curl -fsSL ${GET_URL} -o ~/texsting-get.sh && bash ~/texsting-get.sh ${safeToken}`;
+}
+
+/** Variante sin internet desde GitHub: todo el instalador embebido (muy largo). */
+export function offlineBootstrapCommand(token) {
   const safeToken = String(token).replace(/[^A-Za-z0-9]/g, '');
   return [
     'mkdir -p ~/.texsting',
