@@ -1,5 +1,7 @@
 # TeXsting
 
+[![Compilar APK](https://github.com/P3dr1t0/texsting/actions/workflows/apk.yml/badge.svg)](https://github.com/P3dr1t0/texsting/actions/workflows/apk.yml) · [Descargar el último APK](https://github.com/P3dr1t0/texsting/releases)
+
 Editor LaTeX libre para Android, inspirado en la forma de trabajar de TeXstudio.
 Compila **en tu propio teléfono** con TeX Live (dentro de Termux): gratis, sin internet tras la instalación y sin límite de tiempo.
 
