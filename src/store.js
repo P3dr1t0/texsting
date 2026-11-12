@@ -1,6 +1,6 @@
 // Almacenamiento local de proyectos y archivos (IndexedDB dentro de la app).
 const DB_NAME = 'texsting';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let dbPromise = null;
 
 function db() {
@@ -15,6 +15,7 @@ function db() {
           fs.createIndex('byProject', 'projectId');
         }
         if (!d.objectStoreNames.contains('outputs')) d.createObjectStore('outputs', { keyPath: 'projectId' });
+        if (!d.objectStoreNames.contains('templates')) d.createObjectStore('templates', { keyPath: 'id' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -146,12 +147,28 @@ export async function getOutput(projectId) {
   return tx(['outputs'], 'readonly', (t) => reqP(t.objectStore('outputs').get(projectId)));
 }
 
+// Plantillas propias del usuario.
+export async function listTemplates() {
+  const all = await tx(['templates'], 'readonly', (t) => reqP(t.objectStore('templates').getAll()));
+  return all.sort((a, b) => b.created - a.created);
+}
+
+export async function saveTemplate(tpl) {
+  await tx(['templates'], 'readwrite', (t) => t.objectStore('templates').put(tpl));
+  return tpl;
+}
+
+export async function deleteTemplate(id) {
+  await tx(['templates'], 'readwrite', (t) => t.objectStore('templates').delete(id));
+}
+
 // Ajustes globales (pequeños) en localStorage.
 const SETTINGS_KEY = 'texsting.settings';
 const DEFAULTS = {
   serverUrl: 'http://127.0.0.1:8765',
   token: '',
   theme: 'system',
+  accent: 'miel',
   fontSize: 15,
   lineWrap: true,
   lineNumbers: true,

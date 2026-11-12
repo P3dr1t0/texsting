@@ -12,6 +12,8 @@ import { tableWizard, matrixWizard, listWizard, QUICK_INSERTS } from '../wizards
 import { shareBytes } from '../share.js';
 import { createZip } from '../zip.js';
 import { debounce, readFileAsBytes, slug, extOf, IMAGE_EXT } from '../util.js';
+import { appearance } from './settings.js';
+import { saveAsTemplate } from './newproject.js';
 
 const enc = new TextEncoder();
 const WIDE = window.matchMedia('(min-width: 900px)');
@@ -495,9 +497,13 @@ export async function renderEditor(root, { id }, navigate) {
       { label: 'Buscar y reemplazar', icon: 'search', value: 'search' },
       { label: 'Archivos del proyecto', icon: 'files', value: 'files' },
       { label: 'Exportar proyecto (.zip)', icon: 'download', value: 'zip' },
+      { label: 'Guardar como plantilla', icon: 'star', value: 'template' },
       '-',
+      { label: 'Apariencia y tamaño de letra', icon: 'sun', value: 'look' },
       { label: 'Ajustes', icon: 'settings', value: 'settings' },
     ]);
+    if (choice === 'look') panel('Apariencia', appearance({ onFont: (v) => editor.configure({ fontSize: v }) }));
+    if (choice === 'template') { saveSoon.flush(); await saveCurrent(); await saveAsTemplate(project); }
     if (choice === 'pdf') sharePdf();
     if (choice === 'wizards') wizardsMenu();
     if (choice === 'search') { showPanel('code'); editor.openSearch(); }

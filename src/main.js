@@ -1,28 +1,23 @@
 // TeXsting — punto de entrada: tema, navegación y botón Atrás de Android.
 import { App } from '@capacitor/app';
-import { getSettings } from './store.js';
+import { applyTheme } from './theme.js';
 import { closeTopLayer } from './ui.js';
 import { renderHome } from './screens/home.js';
 import { renderEditor } from './screens/editor.js';
 import { renderSettings, renderTermuxSetup } from './screens/settings.js';
+import { renderNewProject } from './screens/newproject.js';
 
 const root = document.getElementById('app');
 let current = null; // { name, cleanup, onBack }
 
-export function applyTheme() {
-  const pref = getSettings().theme;
-  const dark = pref === 'dark' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = dark ? '#12141a' : '#f7f5ef';
-}
+export { applyTheme };
 
 export async function navigate(name, params = {}) {
   if (current && current.cleanup) {
     try { await current.cleanup(); } catch (e) { console.error(e); }
   }
   root.replaceChildren();
-  const screens = { home: renderHome, editor: renderEditor, settings: renderSettings, termux: renderTermuxSetup };
+  const screens = { new: renderNewProject, home: renderHome, editor: renderEditor, settings: renderSettings, termux: renderTermuxSetup };
   current = { name, ...(await screens[name](root, params, navigate)) };
   window.scrollTo(0, 0);
 }

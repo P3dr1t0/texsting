@@ -2,8 +2,9 @@
 export const TEMPLATES = [
   {
     id: 'articulo',
-    name: 'Documento básico',
-    desc: 'Artículo en español con matemática y figuras',
+    name: 'Artículo / documento',
+    desc: 'Texto con secciones, ecuaciones y figuras',
+    shape: 'page', mark: 'Aa',
     files: [{ path: 'main.tex', text: String.raw`\documentclass[12pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -37,7 +38,8 @@ Como se ve en la ecuación~\eqref{eq:euler}, \dots
   {
     id: 'informe',
     name: 'Informe de laboratorio',
-    desc: 'Carátula, índice, secciones típicas, tabla, figura y bibliografía',
+    desc: 'Carátula, índice, procedimiento, resultados y bibliografía',
+    shape: 'page', mark: 'Lab',
     files: [
       { path: 'main.tex', text: String.raw`\documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
@@ -147,8 +149,9 @@ Comenta los resultados de la tabla~\ref{tab:datos} y la figura~\ref{fig:resultad
   },
   {
     id: 'ejercicios',
-    name: 'Hoja de ejercicios',
-    desc: 'Problemas y soluciones con enumeración',
+    name: 'Práctica / ejercicios',
+    desc: 'Problemas numerados con su solución',
+    shape: 'page', mark: 'Σ',
     files: [{ path: 'main.tex', text: String.raw`\documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -185,8 +188,9 @@ Halle la transformada de Laplace de $f(t) = e^{-at}\,u(t)$.
   },
   {
     id: 'beamer',
-    name: 'Presentación (Beamer)',
-    desc: 'Diapositivas para exposiciones',
+    name: 'Presentación',
+    desc: 'Diapositivas para exposiciones (Beamer)',
+    shape: 'slide', mark: '▶',
     files: [{ path: 'main.tex', text: String.raw`\documentclass{beamer}
 \usepackage[utf8]{inputenc}
 \usepackage[spanish]{babel}
@@ -220,12 +224,124 @@ Halle la transformada de Laplace de $f(t) = e^{-at}\,u(t)$.
 ` }],
   },
   {
-    id: 'vacio',
-    name: 'Vacío',
-    desc: 'Solo lo mínimo',
-    files: [{ path: 'main.tex', text: String.raw`\documentclass{article}
+    id: 'monografia',
+    name: 'Monografía / investigación',
+    desc: 'Capítulos en archivos separados, resumen, índices y anexos',
+    shape: 'book', mark: 'Cap',
+    files: [
+      { path: 'main.tex', text: String.raw`\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{hyperref}
+
+\title{Título de la monografía}
+\author{Tu nombre}
+\date{\today}
+
+\begin{document}
+\maketitle
+\pagenumbering{roman}
+
+\begin{abstract}
+Resumen del trabajo en uno o dos párrafos.
+\end{abstract}
+
+\tableofcontents
+\listoffigures
+\listoftables
+\clearpage
+\pagenumbering{arabic}
+
+\input{capitulos/introduccion}
+\input{capitulos/desarrollo}
+\input{capitulos/conclusiones}
+
+\appendix
+\input{capitulos/anexos}
+
+\bibliographystyle{plain}
+\bibliography{referencias}
+\nocite{*}
+\end{document}
+` },
+      { path: 'capitulos/introduccion.tex', text: String.raw`\chapter{Introducción}
+\section{Planteamiento del problema}
+% TODO: describir el problema
+
+\section{Objetivos}
+\begin{itemize}
+  \item Objetivo general.
+  \item Objetivos específicos.
+\end{itemize}
+` },
+      { path: 'capitulos/desarrollo.tex', text: String.raw`\chapter{Desarrollo}
+\section{Marco teórico}
+Texto del capítulo. Puedes referenciar la figura~\ref{fig:ejemplo}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.6\linewidth]{example-image}
+  \caption{Figura de ejemplo}
+  \label{fig:ejemplo}
+\end{figure}
+
+\section{Metodología}
+% TODO
+` },
+      { path: 'capitulos/conclusiones.tex', text: String.raw`\chapter{Conclusiones}
+% TODO: conclusiones y recomendaciones
+` },
+      { path: 'capitulos/anexos.tex', text: String.raw`\chapter{Anexos}
+Material complementario.
+` },
+      { path: 'referencias.bib', text: String.raw`@book{ejemplo,
+  author    = {Apellido, Nombre},
+  title     = {Título del libro},
+  publisher = {Editorial},
+  year      = {2024}
+}
+` },
+    ],
+  },
+];
+
+export const BLANKS = [
+  {
+    id: 'blanco',
+    name: 'Documento en blanco',
+    desc: 'Solo lo mínimo para empezar a escribir',
+    shape: 'page', mark: '',
+    files: [{ path: 'main.tex', text: String.raw`\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath,amssymb}
+
 \begin{document}
 Escribe aquí.
+\end{document}
+` }],
+  },
+  {
+    id: 'blanco-presentacion',
+    name: 'Presentación en blanco',
+    desc: 'Beamer sin contenido',
+    shape: 'slide', mark: '',
+    files: [{ path: 'main.tex', text: String.raw`\documentclass{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+
+\begin{document}
+\begin{frame}{Título}
+  Contenido
+\end{frame}
 \end{document}
 ` }],
   },

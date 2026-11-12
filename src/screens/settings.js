@@ -5,7 +5,7 @@ import { el, icon, toast, esc } from '../ui.js';
 import { ping } from '../compiler.js';
 import { bootstrapCommand, openTermux, TERMUX_FDROID, TERMUX_GITHUB } from '../termux.js';
 import { ENGINES } from '../latex-data.js';
-import { applyTheme } from '../main.js';
+import { applyTheme, THEMES, ACCENTS, resolvedTheme } from '../theme.js';
 
 function header(title, navigate, back = 'home') {
   return el('header', { class: 'topbar simple' },
@@ -22,11 +22,49 @@ function toggle(key) {
   return el('input', { type: 'checkbox', class: 'switch', checked: !!s[key], onchange: (e) => { setSettings({ [key]: e.target.checked }); } });
 }
 
+/** Selector de tema, color de acento y tamaño de letra (reutilizable). */
+export function appearance({ onFont } = {}) {
+  const s = getSettings();
+  const box = el('div', { class: 'appearance' });
+  const themes = el('div', { class: 'swatch-row' });
+  const accents = el('div', { class: 'swatch-row' });
+  function paintThemes() {
+    const cur = getSettings().theme;
+    themes.replaceChildren(...THEMES.map((t) => el('button', {
+      class: 'theme-swatch' + (cur === t.id ? ' on' : ''), title: t.name, 'aria-label': 'Tema ' + t.name,
+      onclick: () => { setSettings({ theme: t.id }); applyTheme(); paintThemes(); paintAccents(); },
+    }, el('span', { class: 'theme-chip', style: `background: linear-gradient(135deg, ${t.swatch[0]} 50%, ${t.swatch[1]} 50%)` }), el('small', {}, t.name))));
+  }
+  function paintAccents() {
+    const cur = getSettings().accent;
+    const kind = THEMES.find((t) => t.id === resolvedTheme()).kind;
+    accents.replaceChildren(...ACCENTS.map((a) => el('button', {
+      class: 'accent-swatch' + (cur === a.id ? ' on' : ''), title: a.name, 'aria-label': 'Color ' + a.name,
+      onclick: () => { setSettings({ accent: a.id }); applyTheme(); paintAccents(); },
+    }, el('span', { class: 'accent-dot', style: `background:${a[kind][0]}` }), el('small', {}, a.name))));
+  }
+  const preview = el('pre', { class: 'font-preview' }, '\\section{Resultados}\n$V_o = V_s\\,\\frac{R_2}{R_1+R_2}$ % vista previa');
+  const val = el('strong', {}, s.fontSize + ' px');
+  const range = el('input', { type: 'range', min: 11, max: 26, step: 1, value: s.fontSize, class: 'range',
+    oninput: (e) => {
+      const v = +e.target.value;
+      preview.style.fontSize = v + 'px';
+      val.textContent = v + ' px';
+      setSettings({ fontSize: v });
+      onFont && onFont(v);
+    } });
+  preview.style.fontSize = s.fontSize + 'px';
+  paintThemes();
+  paintAccents();
+  box.append(
+    el('div', { class: 'field-label' }, 'Tema'), themes,
+    el('div', { class: 'field-label' }, 'Color de botones y detalles'), accents,
+    el('div', { class: 'field-label font-row' }, el('span', {}, 'Tamaño de letra del código'), val), range, preview);
+  return box;
+}
+
 export async function renderSettings(root, _p, navigate) {
   const s = getSettings();
-  const theme = el('select', { class: 'input small', onchange: (e) => { setSettings({ theme: e.target.value }); applyTheme(); } },
-    ...[['system', 'Según el sistema'], ['light', 'Claro'], ['dark', 'Oscuro']].map(([v, t]) => el('option', { value: v, selected: s.theme === v }, t)));
-  const font = el('input', { type: 'number', class: 'input small', min: 10, max: 28, value: s.fontSize, onchange: (e) => setSettings({ fontSize: Math.max(10, Math.min(28, +e.target.value || 15)) }) });
   const engine = el('select', { class: 'input small', onchange: (e) => setSettings({ defaultEngine: e.target.value }) },
     ...ENGINES.map(([v, t]) => el('option', { value: v, selected: s.defaultEngine === v }, t)));
   const url = el('input', { class: 'input', value: s.serverUrl, autocapitalize: 'off', onchange: (e) => setSettings({ serverUrl: e.target.value.trim() || 'http://127.0.0.1:8765' }) });
@@ -51,9 +89,9 @@ export async function renderSettings(root, _p, navigate) {
         } catch (e) { result.textContent = '✘ ' + e.message; }
       } }, 'Probar conexión'),
       result,
+      el('h3', { class: 'section-title' }, 'Apariencia'),
+      appearance(),
       el('h3', { class: 'section-title' }, 'Editor'),
-      row('Tema', theme),
-      row('Tamaño de letra', font),
       row('Ajuste de línea', toggle('lineWrap')),
       row('Números de línea', toggle('lineNumbers')),
       row('Autocompletado', toggle('autocomplete')),

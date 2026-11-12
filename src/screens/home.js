@@ -1,7 +1,7 @@
 // Pantalla de inicio: lista de proyectos, estado de Termux, crear e importar.
 import { listProjects, createProject, deleteProject, duplicateProject, saveProject, listFiles, getOutput, isTextPath } from '../store.js';
 import { el, icon, logoSvg, toast, sheet, promptText, confirmDialog, pickFiles, esc } from '../ui.js';
-import { TEMPLATES } from '../templates.js';
+import { saveAsTemplate } from './newproject.js';
 import { ping } from '../compiler.js';
 import { createZip, readZip } from '../zip.js';
 import { shareBytes } from '../share.js';
@@ -20,7 +20,7 @@ export async function renderHome(root, _params, navigate) {
       el('button', { class: 'icon-btn', title: 'Ajustes', 'aria-label': 'Ajustes', html: icon('settings'), onclick: () => navigate('settings') })),
     status,
     el('div', { class: 'home-actions' },
-      el('button', { class: 'btn primary big', html: icon('plus') + '<span>Nuevo proyecto</span>', onclick: newProject }),
+      el('button', { class: 'btn primary big', html: icon('plus') + '<span>Nuevo proyecto</span>', onclick: () => navigate('new') }),
       el('button', { class: 'btn big', html: icon('upload') + '<span>Importar</span>', onclick: importProject })),
     el('h3', { class: 'section-title' }, 'Tus proyectos'),
     list,
@@ -48,6 +48,7 @@ export async function renderHome(root, _params, navigate) {
       { label: 'Exportar proyecto (.zip)', icon: 'download', value: 'zip' },
       { label: 'Renombrar', icon: 'edit', value: 'rename' },
       { label: 'Duplicar', icon: 'copy', value: 'dup' },
+      { label: 'Guardar como plantilla', icon: 'star', value: 'tpl' },
       '-',
       { label: 'Eliminar', icon: 'trash', value: 'delete', danger: true },
     ].filter(Boolean));
@@ -62,6 +63,7 @@ export async function renderHome(root, _params, navigate) {
       const name = await promptText('Renombrar proyecto', { value: p.name });
       if (name) { p.name = sanitizeName(name); await saveProject(p); refresh(); }
     }
+    if (choice === 'tpl') await saveAsTemplate(p);
     if (choice === 'dup') { await duplicateProject(p.id, p.name + ' (copia)'); refresh(); }
     if (choice === 'delete') {
       if (await confirmDialog('Eliminar proyecto', `Se borrará «${p.name}» y todos sus archivos de este teléfono. No se puede deshacer.`, { ok: 'Eliminar', danger: true })) {
@@ -70,16 +72,6 @@ export async function renderHome(root, _params, navigate) {
         refresh();
       }
     }
-  }
-
-  async function newProject() {
-    const tpl = await sheet('Elige una plantilla', TEMPLATES.map((t) => ({ label: t.name, hint: t.desc, icon: 'file', value: t.id })));
-    if (!tpl) return;
-    const t = TEMPLATES.find((x) => x.id === tpl);
-    const name = await promptText('Nombre del proyecto', { value: t.id === 'vacio' ? 'Documento' : t.name, ok: 'Crear' });
-    if (!name) return;
-    const p = await createProject({ name: sanitizeName(name), files: t.files.map((f) => ({ ...f })) });
-    navigate('editor', { id: p.id });
   }
 
   async function importProject() {
