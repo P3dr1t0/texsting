@@ -8,6 +8,8 @@ const RE_BADBOX = /^(Over|Under)full \\[hv]box \((.*?)\) (?:in paragraph |detect
 
 export const TRANSLATIONS = [
   [/language@active@arg/, 'Conflicto entre babel (español) y TikZ/circuitikz por los símbolos > o <: agrega \\usetikzlibrary{babel} después de cargar tikz/circuitikz'],
+  [/File ended while scanning use of (\\?\S+?)\s*\.?$/, 'El archivo terminó sin cerrar el argumento de $1: falta una llave }'],
+  [/LaTeX Error: File `([^'.]+)' not found/, 'No se encontró la imagen o archivo «$1»: revisa el nombre o súbelo en Archivos'],
   [/^Undefined control sequence/, 'Comando no definido (¿falta un paquete o hay un error de tipeo?)'],
   [/^Missing \$ inserted/, 'Falta un $: hay símbolos matemáticos fuera de modo matemático'],
   [/^Missing \} inserted/, 'Falta cerrar una llave }'],
@@ -17,6 +19,7 @@ export const TRANSLATIONS = [
   [/LaTeX Error: File `(.+)' not found/, 'No se encontró el archivo/paquete $1'],
   [/LaTeX Error: Environment (\S+) undefined/, 'El entorno $1 no existe (¿falta un paquete?)'],
   [/LaTeX Error: \\begin\{(\S+)\} on input line (\d+) ended by \\end\{(\S+)\}/, '\\begin{$1} (línea $2) se cerró con \\end{$3}'],
+  [/LaTeX Error: \\begin\{(\S+)\} ended by \\end\{(\S+)\}/, '\\begin{$1} se cerró con \\end{$2} (revisa los entornos abiertos)'],
   [/LaTeX Error: Missing \\begin\{document\}/, 'Falta \\begin{document} o hay texto antes de él'],
   [/^Misplaced alignment tab character &/, 'Carácter & fuera de una tabla o alineación'],
   [/^Paragraph ended before (.+) was complete/, 'Párrafo terminado antes de completar $1 (¿llave sin cerrar?)'],
@@ -47,7 +50,21 @@ function normFile(f, main) {
   return f.replace(/^\.\//, '');
 }
 
-export function parseLog(log, main = 'main.tex') {
+const NOISE = [/==> Fatal error occurred/, /Writing or overwriting file/, /^\s*$/];
+
+/** Busca en el código el fragmento que TeX muestra tras "Runaway argument?" para ubicar la línea. */
+function locate(snippet, sources) {
+  if (!snippet || !sources) return null;
+  const clean = snippet.replace(/\\par\b.*$/, '').replace(/^\{/, '').trim().slice(0, 40);
+  if (clean.length < 4) return null;
+  for (const [file, text] of Object.entries(sources)) {
+    const idx = text.indexOf(clean);
+    if (idx >= 0) return { file, line: text.slice(0, idx).split('\n').length };
+  }
+  return null;
+}
+
+export function parseLog(log, main = 'main.tex', sources = null) {
   const out = [];
   if (!log) return out;
   // Une líneas cortadas a 79 caracteres por TeX (heurística simple).
@@ -57,6 +74,7 @@ export function parseLog(log, main = 'main.tex') {
     let m = line.match(RE_FILE_LINE_ERROR);
     if (m && !/^\//.test(m[1])) {
       let msg = m[3];
+      if (NOISE.some((re) => re.test(msg))) continue;
       // Contexto: la línea "l.N ..." que sigue suele mostrar dónde ocurrió.
       let context = '';
       for (let j = i + 1; j < Math.min(i + 12, lines.length); j++) {
@@ -72,15 +90,27 @@ export function parseLog(log, main = 'main.tex') {
     }
     if (line.startsWith('! ')) {
       const msg = line.slice(2);
+      if (NOISE.some((re) => re.test(msg))) continue;
       let ln = null;
-      for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
-        const lm = lines[j].match(/^l\.(\d+)/);
-        if (lm) { ln = +lm[1]; break; }
+      let file = main;
+      if (/^File ended while scanning|^Paragraph ended before/.test(msg)) {
+        // TeX imprime "Runaway argument?" y el texto afectado justo antes del error.
+        const prev = lines.slice(Math.max(0, i - 3), i).join(' ');
+        const m2 = prev.match(/Runaway argument\?\s*(.*)$/);
+        const loc = locate(m2 ? m2[1] : '', sources);
+        if (loc) { ln = loc.line; file = loc.file; }
       }
-      out.push({ type: 'error', file: main, line: ln, message: msg, hint: translate(msg) });
+      if (ln == null) {
+        for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
+          const lm = lines[j].match(/^l\.(\d+)/);
+          if (lm) { ln = +lm[1]; break; }
+        }
+      }
+      out.push({ type: 'error', file: ln != null ? file : null, line: ln, message: msg, hint: translate(msg) });
       continue;
     }
     m = line.match(RE_WARNING);
+    if (m && NOISE.some((re) => re.test(m[2]))) continue;
     if (m) {
       let msg = m[2];
       let j = i + 1;

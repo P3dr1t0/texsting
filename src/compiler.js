@@ -39,6 +39,16 @@ async function call(path, { method = 'GET', body, timeout = 15000 } = {}) {
   return data;
 }
 
+/** Versión mínima del servidor de Termux que espera esta app. */
+export const SERVER_VERSION = '0.2.1';
+
+export function serverOutdated(info) {
+  const a = String((info && info.version) || '0').split('.').map(Number);
+  const b = SERVER_VERSION.split('.').map(Number);
+  for (let i = 0; i < 3; i++) { if ((a[i] || 0) !== b[i]) return (a[i] || 0) < b[i]; }
+  return false;
+}
+
 export function ping() {
   return call('/info', { timeout: 6000 });
 }

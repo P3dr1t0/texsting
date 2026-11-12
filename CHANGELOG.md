@@ -17,6 +17,23 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.1] — 12 nov. 2026 · Fase 1: Beta con Termux · compilación 10
+
+> Requiere actualizar el servidor de Termux: la app lo avisa; copia el comando de Ajustes → Instalar o reparar TeX en Termux (tarda segundos).
+
+### Corregido (encontrado con la batería de pruebas)
+- **Volver a compilar un documento con errores sin cambiarlo ya genera el PDF** (latexmk se negaba a repetir).
+- **Llave sin cerrar**: ahora indica la línea donde empieza el problema y lo explica en español.
+- Una **imagen que no existe** se explica como imagen (no como paquete) y ya no se busca inútilmente en internet.
+- Se quitaron mensajes repetidos sin utilidad («Fatal error occurred…», «Writing or overwriting file…»).
+- Explicación para entornos que se cierran con otro (`\begin{X}` cerrado con `\end{Y}`).
+
+### Nuevo
+- Aviso en Inicio cuando el servidor de Termux está desactualizado.
+- Batería de pruebas (`pruebas-texsting.zip`): 7 documentos que deben compilar y 4 con errores a propósito.
+
+---
+
 ## [0.2.0] — 12 nov. 2026 · Fase 1: Beta con Termux · compilaciones 7–9
 
 ### Nuevo

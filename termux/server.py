@@ -18,7 +18,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "0.1.0"
+VERSION = "0.2.1"
 HOME = os.path.expanduser("~")
 CONF_DIR = os.environ.get("TEXSTING_DIR", os.path.join(HOME, ".texsting"))
 HOST = os.environ.get("TEXSTING_HOST", "127.0.0.1")
@@ -174,7 +174,9 @@ def run_cmd(cmd, cwd, timeout):
 def run_latex(project_dir, main, engine, timeout):
     flag, exe = ENGINES[engine]
     if which("latexmk"):
-        cmd = ["latexmk", flag, "-interaction=nonstopmode", "-file-line-error",
+        # -g: compilar siempre que el usuario lo pide (si no, latexmk se niega a
+        # repetir un documento que tuvo errores y no cambió).
+        cmd = ["latexmk", flag, "-g", "-interaction=nonstopmode", "-file-line-error",
                "-synctex=1", "-f", main]
         return run_cmd(cmd, project_dir, timeout)
     # Sin latexmk: dos pasadas del motor.
@@ -191,6 +193,10 @@ def run_latex(project_dir, main, engine, timeout):
     return code, out_all, False
 
 
+# Solo se buscan en CTAN archivos que suelen venir de paquetes (no imágenes ni \\input del usuario).
+INSTALLABLE_EXT = ("sty", "cls", "bst", "def", "fd", "cfg", "clo", "ldf", "tfm", "bbx", "cbx", "lbx", "dbx", "code.tex", "otf", "ttf", "pfb", "map", "enc")
+
+
 def find_missing(log_text):
     found = []
     for pat in MISSING_PATTERNS:
@@ -198,8 +204,8 @@ def find_missing(log_text):
             name = m.group(1).strip()
             if pat is MISSING_PATTERNS[2]:
                 name += ".tfm"
-            if "." not in name:
-                name += ".tex"
+            if not name.lower().endswith(INSTALLABLE_EXT):
+                continue
             if name not in found:
                 found.append(name)
     return found

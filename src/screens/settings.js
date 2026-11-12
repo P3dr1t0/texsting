@@ -2,7 +2,7 @@
 import { Clipboard } from '@capacitor/clipboard';
 import { getSettings, setSettings, ensureToken } from '../store.js';
 import { el, icon, toast, esc } from '../ui.js';
-import { ping } from '../compiler.js';
+import { ping, serverOutdated } from '../compiler.js';
 import { bootstrapCommand, openTermux, TERMUX_FDROID, TERMUX_GITHUB } from '../termux.js';
 import { ENGINES } from '../latex-data.js';
 import { applyTheme, THEMES, ACCENTS, resolvedTheme } from '../theme.js';
@@ -118,6 +118,11 @@ export async function renderTermuxSetup(root, _p, navigate) {
   async function check() {
     try {
       const i = await ping();
+      if (serverOutdated(i)) {
+        status.className = 'server-chip warn';
+        status.innerHTML = `${icon('terminal')}<span>Conectado, pero hay una versión nueva del servidor: copia el comando del paso 2 y pégalo en Termux (tarda segundos).</span>`;
+        return;
+      }
       status.className = 'server-chip ok';
       status.innerHTML = `${icon('check')}<span>¡Conectado! ${esc(i.tex || '')}</span>`;
     } catch (e) {

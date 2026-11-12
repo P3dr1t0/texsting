@@ -418,7 +418,7 @@ export async function renderEditor(root, { id }, navigate) {
       files = await listFiles(project.id);
       const r = await compileProject(project, files);
       lastResult = r;
-      messages = parseLog(r.log, project.main);
+      messages = parseLog(r.log, project.main, Object.fromEntries(files.filter((f) => f.kind === 'text').map((f) => [f.path, f.text])));
       renderMessages(r);
       rawLog.textContent = r.log || r.output || '';
       if (r.pdf) {

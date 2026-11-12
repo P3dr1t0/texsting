@@ -2,7 +2,7 @@
 import { listProjects, createProject, deleteProject, duplicateProject, saveProject, listFiles, getOutput, isTextPath } from '../store.js';
 import { el, icon, logoSvg, toast, sheet, promptText, confirmDialog, pickFiles, esc } from '../ui.js';
 import { saveAsTemplate } from './newproject.js';
-import { ping } from '../compiler.js';
+import { ping, serverOutdated } from '../compiler.js';
 import { createZip, readZip } from '../zip.js';
 import { shareBytes } from '../share.js';
 import { timeAgo, sanitizeName, slug, readFileAsBytes } from '../util.js';
@@ -110,6 +110,11 @@ export async function renderHome(root, _params, navigate) {
   async function checkServer() {
     try {
       const info = await ping();
+      if (serverOutdated(info)) {
+        status.className = 'server-chip warn';
+        status.innerHTML = `${icon('terminal')}<span>Hay mejoras para Termux · <u>Actualizar (unos segundos)</u></span>`;
+        return;
+      }
       status.className = 'server-chip ok';
       status.innerHTML = `${icon('check')}<span>Termux conectado · ${esc((info.tex || 'TeX').replace(/\s*\(.*$/, ''))}${info.tlmgr ? ' · paquetes al vuelo' : ''}</span>`;
     } catch (e) {
