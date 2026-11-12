@@ -25,6 +25,9 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - name: Versión
+        run: echo "APP_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+
       - name: Instalar dependencias
         run: npm install --no-audit --no-fund
 
@@ -56,6 +59,9 @@ jobs:
           ./gradlew assembleDebug --no-daemon
           cp app/build/outputs/apk/debug/app-debug.apk ../TeXsting.apk
 
+      - name: Notas de la versión
+        run: node scripts/release-notes.mjs release-notes.md
+
       - uses: actions/upload-artifact@v4
         with:
           name: TeXsting-apk
@@ -65,10 +71,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: TeXsting compilación ${{ github.run_number }}
+          name: TeXsting ${{ env.APP_VERSION }} (compilación ${{ github.run_number }})
           prerelease: true
           files: TeXsting.apk
-          body: |
-            APK de prueba generado automáticamente.
-            Descarga **TeXsting.apk** desde el teléfono e instálalo.
-            Commit: ${{ github.sha }}
+          body_path: release-notes.md

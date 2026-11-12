@@ -5,6 +5,8 @@
 Editor LaTeX libre para Android, inspirado en la forma de trabajar de TeXstudio.
 Compila **en tu propio teléfono** con TeX Live (dentro de Termux): gratis, sin internet tras la instalación y sin límite de tiempo.
 
+> **Estado:** Fase 1 — Beta con Termux. Novedades de cada versión en [CHANGELOG.md](CHANGELOG.md); pendientes en [Issues](https://github.com/P3dr1t0/texsting/issues).
+
 > TeXsting no usa código, nombre ni logo de TeXstudio; solo toma ideas de su flujo de trabajo.
 > Licencia: GPL-3.0-or-later.
 

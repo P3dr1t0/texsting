@@ -24,7 +24,7 @@ export async function renderHome(root, _params, navigate) {
       el('button', { class: 'btn big', html: icon('upload') + '<span>Importar</span>', onclick: importProject })),
     el('h3', { class: 'section-title' }, 'Tus proyectos'),
     list,
-    el('p', { class: 'home-foot' }, 'TeXsting 0.1 · software libre (GPL-3.0) · inspirado en TeXstudio'));
+    el('p', { class: 'home-foot' }, `TeXsting ${__VERSION__} · Fase 1: Beta · software libre (GPL-3.0)`));
   root.append(screen);
 
   async function refresh() {

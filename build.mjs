@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const TEST = process.argv.includes('--test');
+const VERSION = JSON.parse((await import('node:fs')).readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
 const root = path.dirname(new URL(import.meta.url).pathname);
 const out = path.join(root, 'www');
 const extraNodePaths = TEST ? ['/opt/npm-tools/node_modules'] : [];
@@ -34,7 +35,7 @@ await build({
   loader: { '.py': 'text', '.sh': 'text' },
   alias,
   nodePaths: extraNodePaths,
-  define: { __TEST__: String(TEST) },
+  define: { __TEST__: String(TEST), __VERSION__: JSON.stringify(VERSION) },
   logLevel: 'info',
 });
 
