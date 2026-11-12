@@ -332,3 +332,4 @@ a { color: inherit; }
 .tpl-more { position: absolute; top: 4px; right: 4px; background: var(--surface); }
 .tpl-empty { grid-column: 1 / -1; line-height: 1.45; font-size: 14px; }
 .server-chip.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+.file-switch em.eng { background: var(--accent); color: var(--on-accent); }

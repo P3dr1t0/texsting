@@ -149,7 +149,8 @@ export async function renderEditor(root, { id }, navigate) {
   }
 
   function renderFiles() {
-    fileBtn.innerHTML = `<span>${esc(currentPath)}</span>${currentPath === project.main ? '<em>principal</em>' : ''}<svg viewBox="0 0 24 24" class="ico caret"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+    const engineTag = project.engine && project.engine !== 'pdflatex' ? `<em class="eng">${(ENGINES.find((e) => e[0] === project.engine) || [0, project.engine])[1]}</em>` : '';
+    fileBtn.innerHTML = `<span>${esc(currentPath)}</span>${currentPath === project.main ? '<em>principal</em>' : ''}${engineTag}<svg viewBox="0 0 24 24" class="ico caret"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
     filesList.replaceChildren(...files.map((f) => el('div', { class: 'side-item file' + (f.path === currentPath ? ' active' : '') },
       el('button', { class: 'side-main', onclick: () => openFile(f.path) },
         el('span', { html: icon(fileIcon(f)) }),
@@ -426,6 +427,12 @@ export async function renderEditor(root, { id }, navigate) {
         await saveOutput(project.id, { pdf: r.pdf, log: r.log, status: r.status });
       }
       const sm = summarize(messages);
+      if (r.engineReason === 'fontspec' && project.engine !== 'xelatex') {
+        project.engine = 'xelatex';
+        await saveProject(project);
+        renderFiles();
+        toast('El documento usa fontspec: se compiló con XeLaTeX y el proyecto queda con ese motor', { ms: 6000 });
+      }
       if (r.installed && r.installed.length) toast('Paquetes instalados: ' + r.installed.join(', '), { ms: 5000 });
       if (r.status === 'success') {
         toast(`Listo en ${r.elapsed} s${sm.warnings ? ` · ${sm.warnings} advertencia(s)` : ''}`, { kind: 'ok' });
@@ -517,7 +524,7 @@ export async function renderEditor(root, { id }, navigate) {
     if (choice === 'engine') {
       const e = await sheet('Motor de compilación', ENGINES.map(([v, t]) => ({ label: t + (v === project.engine ? '  ✓' : ''), value: v, icon: 'play',
         hint: v === 'pdflatex' ? 'El clásico; el más rápido' : v === 'xelatex' ? 'Fuentes del sistema (fontspec)' : 'Moderno, con Lua' })));
-      if (e) { project.engine = e; await saveProject(project); toast('Motor: ' + e); }
+      if (e) { project.engine = e; await saveProject(project); renderFiles(); toast('Motor del proyecto: ' + (ENGINES.find((x) => x[0] === e) || [0, e])[1]); }
     }
   }
 

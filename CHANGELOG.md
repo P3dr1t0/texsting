@@ -17,6 +17,24 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.2] — 12 nov. 2026 · Fase 1: Beta con Termux · compilación 11
+
+### Corregido (reportado por Pedro al probar `prueba06-xelatex`)
+- **«Motor para proyectos nuevos» en Ajustes no tenía efecto**: los proyectos se creaban siempre con pdfLaTeX.
+- El mensaje «==> Fatal error occurred…» ya no aparece cuando el error viene de un paquete.
+
+### Nuevo
+- **Detección automática de XeLaTeX**: si el documento carga `fontspec`, `unicode-math` o `polyglossia`, se compila con XeLaTeX y el proyecto queda con ese motor (con aviso).
+- **Comentario mágico** como en TeXstudio: `% !TEX program = xelatex` (o `lualatex`, `pdflatex`) en las primeras líneas fija el motor.
+- El motor se muestra junto al nombre del archivo cuando no es pdfLaTeX.
+- Explicación en español para «fontspec requires XeTeX or LuaTeX».
+
+### Resultados de la batería de pruebas (Poco X7 Pro)
+- ✅ Prueba 1 básico · ✅ 2 matemática · ✅ 3 tablas y figuras · ✅ 4 TikZ/circuitos/pgfplots
+- ✅ 5 **paquete instalado al vuelo** (IEEEtran) · ❌→✅ 6 XeLaTeX (corregido en esta versión) · ✅ 7 bibliografía
+
+---
+
 ## [0.2.1] — 12 nov. 2026 · Fase 1: Beta con Termux · compilación 10
 
 > Requiere actualizar el servidor de Termux: la app lo avisa; copia el comando de Ajustes → Instalar o reparar TeX en Termux (tarda segundos).

@@ -53,22 +53,43 @@ export function ping() {
   return call('/info', { timeout: 6000 });
 }
 
+const ENGINE_NAMES = { pdflatex: 'pdflatex', xelatex: 'xelatex', lualatex: 'lualatex', xetex: 'xelatex', luatex: 'lualatex' };
+
+/**
+ * Decide el motor: 1) comentario mágico "% !TEX program = xelatex" (como TeXstudio),
+ * 2) si el documento carga fontspec/unicode-math/polyglossia y el motor es pdfLaTeX → XeLaTeX,
+ * 3) el motor del proyecto.
+ */
+export function chooseEngine(project, files) {
+  const base = project.engine || getSettings().defaultEngine || 'pdflatex';
+  const main = files.find((f) => f.path === project.main && f.kind === 'text');
+  if (!main) return { engine: base, reason: null };
+  const head = main.text.split('\n').slice(0, 30).join('\n');
+  const magic = head.match(/^%\s*!\s*T[eE]X\s+(?:TS-)?program\s*=\s*([A-Za-z]+)/m);
+  if (magic && ENGINE_NAMES[magic[1].toLowerCase()]) return { engine: ENGINE_NAMES[magic[1].toLowerCase()], reason: 'magic' };
+  const pre = main.text.split('\\begin{document}')[0].replace(/(^|[^\\])%.*$/gm, '$1');
+  if (base === 'pdflatex' && /\\usepackage(\[[^\]]*\])?\{[^}]*\b(fontspec|unicode-math|polyglossia)\b/.test(pre)) return { engine: 'xelatex', reason: 'fontspec' };
+  return { engine: base, reason: null };
+}
+
 /**
  * Compila el proyecto. files: registros de store.listFiles().
  * Devuelve { status, pdf: Uint8Array|null, synctex, log, output, installed, missing, elapsed }.
  */
 export async function compileProject(project, files) {
   const s = getSettings();
+  const chosen = chooseEngine(project, files);
   const payload = {
     project: project.id,
     main: project.main,
-    engine: project.engine || s.defaultEngine,
+    engine: chosen.engine,
     autoinstall: s.autoinstall,
     files: files.map((f) => (f.kind === 'binary' ? { path: f.path, base64: bytesToBase64(f.data) } : { path: f.path, text: f.text })),
   };
   const data = await call('/compile', { method: 'POST', body: payload, timeout: 30 * 60 * 1000 });
   return {
     ...data,
+    engineReason: chosen.reason,
     pdf: data.pdf ? base64ToBytes(data.pdf) : null,
     synctex: data.synctex ? base64ToBytes(data.synctex) : null,
   };

@@ -76,7 +76,7 @@ export async function renderSettings(root, _p, navigate) {
     el('div', { class: 'settings-body' },
       el('h3', { class: 'section-title' }, 'Compilación (Termux)'),
       el('button', { class: 'btn primary', html: icon('terminal') + '<span>Instalar o reparar TeX en Termux</span>', onclick: () => navigate('termux') }),
-      row('Motor por defecto', engine),
+      row('Motor para proyectos nuevos', engine, 'Cada proyecto puede cambiarlo en ⋮ → Motor'),
       row('Instalar paquetes faltantes', toggle('autoinstall'), 'Como MiKTeX: si falta un paquete, se descarga al compilar'),
       row('Compilar al guardar (Ctrl+S)', toggle('compileOnSave')),
       row('Dirección del servidor', url),

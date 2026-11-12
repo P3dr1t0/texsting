@@ -65,7 +65,8 @@ export async function saveProject(p) {
   return p;
 }
 
-export async function createProject({ name, files, main = 'main.tex', engine = 'pdflatex' }) {
+export async function createProject({ name, files, main = 'main.tex', engine }) {
+  engine = engine || getSettings().defaultEngine || 'pdflatex';
   const now = Date.now();
   const p = { id: newId(), name, main, engine, created: now, updated: now, openFiles: [main], current: main };
   await tx(['projects', 'files'], 'readwrite', (t) => {
