@@ -17,6 +17,17 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [Instalador] — 12 nov. 2026 · sin APK nuevo (se aplica al pegar el comando)
+
+### Instalación rápida de TeX Live ([#2](https://github.com/P3dr1t0/texsting/issues/2))
+- **Antes:** el instalador oficial bajaba e instalaba **3593 paquetes uno por uno** → ~1 h 06 min en la Lenovo Idea Tab Pro.
+- **Ahora:** GitHub arma TeX Live 2026 (recomendado) una sola vez en un servidor arm64, lo prueba con pdfLaTeX, XeLaTeX y LuaLaTeX, y lo publica como **un archivo de 485 MB** (1,3 GB instalado, con los formatos ya generados).
+- La descarga se puede **reanudar** si se corta, se **verifica** (SHA-256) y se descomprime directamente.
+- Si algo falla, vuelve solo al instalador oficial.
+- Detecta instalaciones **incompletas** (por ejemplo, canceladas a medias) y las limpia antes de empezar.
+
+---
+
 ## [0.2.2] — 12 nov. 2026 · Fase 1: Beta con Termux · compilación 11
 
 ### Corregido (reportado por Pedro al probar `prueba06-xelatex`)

@@ -44,6 +44,7 @@ fast_texlive() {
     rm -rf "$dir"; return 1
   fi
   echo "Descomprimiendo (unos minutos; no cierres Termux)..."
+  in_debian rm -rf /opt/texlive  # restos de una instalación anterior incompleta
   if [ -d "$rootfs/usr" ]; then
     (cd "$dir" && cat $(cat partes.txt)) | xz -dc | tar -xf - -C "$rootfs" || return 1
   else
@@ -63,7 +64,7 @@ printf '%s' "$TOKEN" > "$SRC_DIR/token"
 # ¿Ya hay TeX Live instalado? Entonces solo actualizamos TeXsting y el token (segundos).
 FAST=0
 if [ -z "$SCHEME" ] && command -v proot-distro >/dev/null 2>&1 \
-   && proot-distro login "$DISTRO" -- bash -c 'ls /opt/texlive/bin/*/tlmgr' >/dev/null 2>&1; then
+   && proot-distro login "$DISTRO" -- test -f /opt/texlive/texmf-var/web2c/pdftex/pdflatex.fmt >/dev/null 2>&1; then
   FAST=1
   say "TeX Live ya está instalado: solo actualizo TeXsting y reconecto la app"
 fi
@@ -94,8 +95,8 @@ else
 fi
 
 say "3/3 Instalando TeX Live ($SCHEME)"
-if in_debian bash -c 'ls /opt/texlive/bin/*/tlmgr' >/dev/null 2>&1; then
-  ok "TeX Live ya estaba descargado"
+if in_debian test -f /opt/texlive/texmf-var/web2c/pdftex/pdflatex.fmt >/dev/null 2>&1; then
+  ok "TeX Live ya estaba instalado"
 elif fast_texlive; then
   ok "TeX Live descargado y descomprimido"
 else
@@ -117,6 +118,10 @@ case "$(uname -m)" in
   *) echo "Arquitectura no soportada: $(uname -m)"; exit 1 ;;
 esac
 BIN="/opt/texlive/bin/$ARCH"
+if [ -x "$BIN/tlmgr" ] && [ ! -f /opt/texlive/texmf-var/web2c/pdftex/pdflatex.fmt ]; then
+  echo "Se encontró una instalación incompleta: se borra para empezar limpio."
+  rm -rf /opt/texlive
+fi
 if [ -x "$BIN/tlmgr" ]; then
   echo "TeX Live ya estaba instalado."
   if [ "$SCHEME" = "completo" ]; then
