@@ -32,6 +32,9 @@ if (!m.includes('networkSecurityConfig')) {
 if (!m.includes('com.termux')) {
   m = m.replace('</manifest>', '    <queries>\n        <package android:name="com.termux" />\n    </queries>\n</manifest>');
 }
+if (!m.includes('hasFragileUserData')) {
+  m = m.replace('<application', '<application\n        android:hasFragileUserData="true"');
+}
 if (!m.includes('windowSoftInputMode')) {
   m = m.replace(/<activity(\s)/, '<activity\n            android:windowSoftInputMode="adjustResize"$1');
 }
@@ -39,6 +42,26 @@ writeFileSync(manifestPath, m);
 
 const gradlePath = path.join(app, 'build.gradle');
 let g = readFileSync(gradlePath, 'utf8');
+// Firma fija: sin esto cada compilación usa una llave nueva y Android no deja actualizar encima.
+if (!g.includes('signingConfigs.texsting')) {
+  g = g.replace(/android\s*\{/, `android {
+    signingConfigs {
+        texsting {
+            storeFile file("\${rootDir}/../android-config/debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }`);
+  if (/buildTypes\s*\{/.test(g)) {
+    g = g.replace(/buildTypes\s*\{/, `buildTypes {
+        debug {
+            signingConfig signingConfigs.texsting
+        }`);
+  } else {
+    g = g.replace(/android \{/, 'android {\n    buildTypes { debug { signingConfig signingConfigs.texsting } }');
+  }
+}
 const build = parseInt(process.env.BUILD_NUMBER || '1', 10);
 const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 g = g.replace(/versionCode \d+/, `versionCode ${build}`).replace(/versionName "[^"]*"/, `versionName "${pkg.version}.${build}"`);

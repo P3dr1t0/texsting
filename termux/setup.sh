@@ -1,13 +1,15 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # TeXsting — instalador para Termux.
 # Instala Debian (proot-distro) + TeX Live oficial + el servidor local de TeXsting.
-# Uso: bash setup.sh [TOKEN] [recomendado|completo]
+# Uso: bash setup.sh [TOKEN] [recomendado|completo]   ó   texsting-setup completo
 # Se puede volver a ejecutar sin problema: retoma lo que falte.
 # Licencia: GPL-3.0-or-later
 
 set -e
 TOKEN="${1:-}"
 SCHEME="${2:-}"
+# Permite: texsting-setup completo  /  texsting-setup recomendado
+case "$TOKEN" in completo|recomendado) SCHEME="$TOKEN"; TOKEN="" ;; esac
 DISTRO="debian"
 SRC_DIR="$HOME/.texsting"
 PORT=8765
@@ -24,7 +26,15 @@ if [ -z "$TOKEN" ] && [ -f "$SRC_DIR/token" ]; then TOKEN="$(cat "$SRC_DIR/token
 if [ -z "$TOKEN" ]; then TOKEN="$(head -c 18 /dev/urandom | od -An -tx1 | tr -d ' \n')"; fi
 printf '%s' "$TOKEN" > "$SRC_DIR/token"
 
-if [ -z "$SCHEME" ]; then
+# ¿Ya hay TeX Live instalado? Entonces solo actualizamos TeXsting y el token (segundos).
+FAST=0
+if [ -z "$SCHEME" ] && command -v proot-distro >/dev/null 2>&1 \
+   && proot-distro login "$DISTRO" -- bash -c 'ls /opt/texlive/bin/*/tlmgr' >/dev/null 2>&1; then
+  FAST=1
+  say "TeX Live ya está instalado: solo actualizo TeXsting y reconecto la app"
+fi
+
+if [ "$FAST" = 0 ] && [ -z "$SCHEME" ]; then
   echo
   echo "¿Qué instalación de TeX Live quieres?"
   echo "  1) Recomendada (~2 GB): lo usual en ingeniería (matemática, TikZ, circuitikz,"
@@ -34,13 +44,14 @@ if [ -z "$SCHEME" ]; then
   case "$ans" in 2) SCHEME="completo" ;; *) SCHEME="recomendado" ;; esac
 fi
 
-say "1/5 Actualizando Termux e instalando herramientas"
+if [ "$FAST" = 0 ]; then
+say "1/3 Actualizando Termux e instalando herramientas"
 pkg update -y || true
 yes | pkg upgrade -y -o Dpkg::Options::=--force-confnew || true
 pkg install -y proot-distro curl procps termux-tools
 ok "Herramientas listas"
 
-say "2/5 Instalando Debian dentro de Termux (solo la primera vez)"
+say "2/3 Instalando Debian dentro de Termux (solo la primera vez)"
 if in_debian true >/dev/null 2>&1; then
   ok "Debian ya estaba instalado"
 else
@@ -48,9 +59,7 @@ else
   ok "Debian instalado"
 fi
 
-say "3/5 Instalando TeX Live ($SCHEME). Puede tardar bastante: déjalo correr."
-in_debian bash -c 'mkdir -p /root/.texsting && cat > /root/.texsting/server.py' < "$SRC_DIR/server.py"
-printf '%s' "$TOKEN" | in_debian bash -c 'cat > /root/.texsting/token && chmod 600 /root/.texsting/token'
+say "3/3 Instalando TeX Live ($SCHEME). Puede tardar bastante: déjalo correr."
 in_debian bash -c 'cat > /root/.texsting/install-texlive.sh' <<'INNER'
 #!/bin/bash
 set -e
@@ -69,6 +78,10 @@ esac
 BIN="/opt/texlive/bin/$ARCH"
 if [ -x "$BIN/tlmgr" ]; then
   echo "TeX Live ya estaba instalado."
+  if [ "$SCHEME" = "completo" ]; then
+    echo "Ampliando a la instalación completa (todos los paquetes)..."
+    "$BIN/tlmgr" install scheme-full
+  fi
 else
   P=/root/.texsting/texlive.profile
   {
@@ -114,8 +127,13 @@ echo "TEXLIVE_OK"
 INNER
 in_debian bash /root/.texsting/install-texlive.sh "$SCHEME" || fail "Falló la instalación de TeX Live. Revisa tu internet y vuelve a ejecutar: texsting-setup"
 ok "TeX Live instalado"
+fi
 
-say "4/5 Creando los comandos texsting, texsting-stop y texsting-setup"
+# Servidor y token siempre actualizados.
+in_debian bash -c 'mkdir -p /root/.texsting && cat > /root/.texsting/server.py' < "$SRC_DIR/server.py"
+printf '%s' "$TOKEN" | in_debian bash -c 'cat > /root/.texsting/token && chmod 600 /root/.texsting/token'
+
+say "Creando los comandos texsting, texsting-stop y texsting-setup"
 cat > "$PREFIX/bin/texsting" <<EOF
 #!$PREFIX/bin/bash
 # Inicia el servidor de compilación de TeXsting (déjalo abierto en segundo plano).
@@ -152,7 +170,7 @@ fi
 EOF
 ok "Comandos creados (y arranque automático al abrir Termux)"
 
-say "5/5 Probando una compilación"
+say "Probando una compilación"
 texsting-stop >/dev/null 2>&1 || true
 nohup texsting > "$SRC_DIR/server.log" 2>&1 &
 for _ in $(seq 1 30); do

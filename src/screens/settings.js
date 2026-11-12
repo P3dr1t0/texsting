@@ -137,7 +137,7 @@ export async function renderTermuxSetup(root, _p, navigate) {
           el('a', { class: 'btn', href: TERMUX_FDROID, target: '_blank', rel: 'noopener' }, 'F-Droid'),
           el('a', { class: 'btn', href: TERMUX_GITHUB, target: '_blank', rel: 'noopener' }, 'GitHub'))),
       step(2, 'Copia el comando de instalación',
-        el('p', { class: 'muted' }, 'Es una sola línea con tu token de seguridad. Descarga el instalador desde GitHub.'),
+        el('p', { class: 'muted' }, 'Es una sola línea con tu token de seguridad. Si TeX ya estaba instalado (por ejemplo, reinstalaste TeXsting), este mismo comando solo reconecta la app en segundos, sin descargar nada.'),
         el('pre', { class: 'cmd' }, bootstrapCommand(token)),
         el('button', { class: 'btn primary', html: icon('copy') + '<span>Copiar comando</span>', onclick: copyCmd })),
       step(3, 'Pégalo en Termux',
@@ -152,7 +152,7 @@ export async function renderTermuxSetup(root, _p, navigate) {
           el('li', {}, 'Ajustes de Android → Apps → Termux → Batería → Sin restricciones.'),
           el('li', {}, 'Android 14 o superior: Opciones de desarrollador → «Desactivar restricciones de procesos secundarios».'),
           el('li', {}, 'Si Termux se queda con líneas que empiezan con «>», toca CTRL y luego la letra c para cancelar, y vuelve a pegar el comando.'),
-          el('li', {}, 'En Termux puedes usar: texsting (iniciar), texsting-stop (detener), texsting-setup (reparar o cambiar instalación).'))),
+          el('li', {}, 'En Termux puedes usar: texsting (iniciar), texsting-stop (detener), texsting-setup (reparar) y texsting-setup completo (pasar a la instalación completa).'))),
       el('details', { class: 'tips' },
         el('summary', {}, 'Tu token'),
         el('p', { class: 'mono' }, token)))));
