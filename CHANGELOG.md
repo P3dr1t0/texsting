@@ -13,6 +13,8 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 | 3 | Prueba cerrada en Google Play: 12 testers durante 14 días | Pendiente |
 | 4 | Lanzamiento 1.0 | Pendiente |
 
+**Objetivo transversal (todas las fases):** optimización de velocidad, fluidez, memoria y batería ([#8](https://github.com/P3dr1t0/texsting/issues/8)); requisito antes del lanzamiento.
+
 ---
 
 ## [0.2.0] — 12 nov. 2026 · Fase 1: Beta con Termux · compilaciones 7–9
