@@ -1,0 +1,96 @@
+# Arma TeX Live (instalación recomendada) para arm64 UNA sola vez y lo publica
+# como un archivo comprimido. Así la instalación en el teléfono es: descargar +
+# descomprimir (minutos), en vez de instalar 3600 paquetes uno por uno (más de 1 hora).
+name: TeX Live para Termux (arm64)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/texlive.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  texlive:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 150
+    steps:
+      - name: Instalar TeX Live (recomendado) en /opt/texlive
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq perl wget xz-utils fontconfig
+          REPO=https://mirror.ctan.org/systems/texlive/tlnet
+          P=/tmp/texlive.profile
+          {
+            echo "selected_scheme scheme-custom"
+            # Misma lista que termux/setup.sh (instalación recomendada)
+            for c in basic latex latexrecommended latexextra fontsrecommended fontutils \
+                     mathscience pictures plaingeneric bibtexextra binextra xetex luatex \
+                     metapost langspanish langenglish; do echo "collection-$c 1"; done
+            echo "TEXDIR /opt/texlive"
+            echo "TEXMFLOCAL /opt/texlive/texmf-local"
+            echo "TEXMFSYSCONFIG /opt/texlive/texmf-config"
+            echo "TEXMFSYSVAR /opt/texlive/texmf-var"
+            echo "TEXMFHOME ~/texmf"
+            echo "TEXMFCONFIG ~/.texlive/texmf-config"
+            echo "TEXMFVAR ~/.texlive/texmf-var"
+            echo "binary_aarch64-linux 1"
+            echo "instopt_adjustpath 0"
+            echo "instopt_adjustrepo 1"
+            echo "instopt_letter 0"
+            echo "instopt_portable 0"
+            echo "instopt_write18_restricted 1"
+            echo "tlpdbopt_autobackup 0"
+            echo "tlpdbopt_install_docfiles 0"
+            echo "tlpdbopt_install_srcfiles 0"
+          } > $P
+          cd /tmp
+          wget -q -O install-tl-unx.tar.gz $REPO/install-tl-unx.tar.gz
+          tar xzf install-tl-unx.tar.gz
+          cd install-tl-2*
+          sudo perl ./install-tl --profile=$P --repository=$REPO
+          du -sh /opt/texlive
+
+      - name: Probar pdfLaTeX, XeLaTeX, LuaLaTeX y latexmk
+        run: |
+          export PATH=/opt/texlive/bin/aarch64-linux:$PATH
+          mkdir -p /tmp/prueba && cd /tmp/prueba
+          cat > t.tex <<'TEX'
+          \documentclass{article}
+          \usepackage[spanish]{babel}
+          \usepackage{amsmath,tikz,booktabs,siunitx}
+          \usepackage[european]{circuitikz}
+          \usetikzlibrary{babel}
+          \begin{document}
+          Hola, ñandú: $\int_0^1 x\,dx = \tfrac12$, \qty{5}{\ohm}.
+          \begin{circuitikz}\draw (0,0) to[R=$R_1$, v^>=$v$] (2,0);\end{circuitikz}
+          \end{document}
+          TEX
+          latexmk -pdf -interaction=nonstopmode t.tex
+          latexmk -C && latexmk -xelatex -interaction=nonstopmode t.tex
+          latexmk -C && latexmk -lualatex -interaction=nonstopmode t.tex
+          tex --version | head -1 | tee /tmp/version.txt
+
+      - name: Empaquetar (xz, en partes de 1.9 GB)
+        run: |
+          cd /
+          sudo tar -cf - opt/texlive | xz -T0 -6 > /tmp/texlive.tar.xz
+          cd /tmp
+          sha256sum texlive.tar.xz | cut -d' ' -f1 > SHA256
+          split -b 1900M -d -a 2 texlive.tar.xz texlive.tar.xz.part
+          ls texlive.tar.xz.part* > partes.txt
+          { cat version.txt; echo "Tamaño comprimido: $(du -h texlive.tar.xz | cut -f1)"; echo "Instalado: $(du -sh /opt/texlive | cut -f1)"; echo "Armado: $(date -u +%F)"; } > info.txt
+          cat info.txt partes.txt SHA256
+
+      - name: Publicar en Releases (texlive-recomendado)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd /tmp
+          gh release delete texlive-recomendado -R ${{ github.repository }} -y --cleanup-tag || true
+          gh release create texlive-recomendado -R ${{ github.repository }} \
+            --title "TeX Live recomendado para Termux (arm64)" \
+            --notes-file info.txt --prerelease \
+            texlive.tar.xz.part* partes.txt SHA256 info.txt

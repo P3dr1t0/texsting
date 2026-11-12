@@ -19,6 +19,40 @@ ok()   { printf '\033[1;32m✔ %s\033[0m\n' "$*"; }
 fail() { printf '\n\033[1;31m✘ %s\033[0m\n' "$*"; exit 1; }
 in_debian() { proot-distro login "$DISTRO" -- "$@"; }
 
+# Descarga rápida: TeX Live ya armado por GitHub (un solo archivo, reanudable) y se
+# descomprime directamente, sin instalar paquete por paquete. Si algo falla, se usa
+# el instalador oficial.
+TL_URL="https://github.com/P3dr1t0/texsting/releases/download/texlive-recomendado"
+fast_texlive() {
+  [ "$SCHEME" = "recomendado" ] || return 1
+  case "$(uname -m)" in aarch64|arm64) ;; *) return 1 ;; esac
+  local dir="$SRC_DIR/descarga" rootfs="$PREFIX/var/lib/proot-distro/installed-rootfs/$DISTRO"
+  mkdir -p "$dir"
+  curl -fsSL "$TL_URL/partes.txt" -o "$dir/partes.txt" && curl -fsSL "$TL_URL/SHA256" -o "$dir/SHA256" || return 1
+  command -v xz >/dev/null || pkg install -y xz-utils || return 1
+  echo "Descargando TeX Live ya preparado. Si se corta, vuelve a pegar el comando: continúa donde quedó."
+  local p
+  while read -r p; do
+    [ -n "$p" ] || continue
+    curl -fL --retry 5 --retry-delay 3 -C - -# "$TL_URL/$p" -o "$dir/$p" || return 1
+  done < "$dir/partes.txt"
+  echo "Verificando la descarga..."
+  local sum
+  sum="$(cd "$dir" && cat $(cat partes.txt) | sha256sum | cut -d' ' -f1)"
+  if [ "$sum" != "$(cat "$dir/SHA256")" ]; then
+    echo "La descarga llegó dañada; se borrará para empezar de nuevo."
+    rm -rf "$dir"; return 1
+  fi
+  echo "Descomprimiendo (unos minutos; no cierres Termux)..."
+  if [ -d "$rootfs/usr" ]; then
+    (cd "$dir" && cat $(cat partes.txt)) | xz -dc | tar -xf - -C "$rootfs" || return 1
+  else
+    (cd "$dir" && cat $(cat partes.txt)) | xz -dc | in_debian tar -xf - -C / || return 1
+  fi
+  rm -rf "$dir"
+  return 0
+}
+
 [ -n "$PREFIX" ] && [ -d "$PREFIX/bin" ] || fail "Este script debe ejecutarse dentro de Termux."
 [ -f "$SRC_DIR/server.py" ] || fail "No encuentro $SRC_DIR/server.py. Copia el comando completo desde la app."
 
@@ -59,7 +93,14 @@ else
   ok "Debian instalado"
 fi
 
-say "3/3 Instalando TeX Live ($SCHEME). Puede tardar bastante: déjalo correr."
+say "3/3 Instalando TeX Live ($SCHEME)"
+if in_debian bash -c 'ls /opt/texlive/bin/*/tlmgr' >/dev/null 2>&1; then
+  ok "TeX Live ya estaba descargado"
+elif fast_texlive; then
+  ok "TeX Live descargado y descomprimido"
+else
+  echo "Usando el instalador oficial (paquete por paquete; tarda bastante: déjalo correr)."
+fi
 in_debian bash -c 'mkdir -p /root/.texsting && cat > /root/.texsting/install-texlive.sh' <<'INNER'
 #!/bin/bash
 set -e
