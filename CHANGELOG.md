@@ -22,6 +22,7 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 ### Corregido (reportado por Pedro al probar `prueba06-xelatex`)
 - **«Motor para proyectos nuevos» en Ajustes no tenía efecto**: los proyectos se creaban siempre con pdfLaTeX.
 - El mensaje «==> Fatal error occurred…» ya no aparece cuando el error viene de un paquete.
+- **Instalador de Termux**: en una instalación desde cero (p. ej. la tablet) fallaba en el paso 3/3 con «install-texlive.sh: No such file or directory». Se corrige solo al volver a pegar el comando (no requiere APK nuevo).
 
 ### Nuevo
 - **Detección automática de XeLaTeX**: si el documento carga `fontspec`, `unicode-math` o `polyglossia`, se compila con XeLaTeX y el proyecto queda con ese motor (con aviso).

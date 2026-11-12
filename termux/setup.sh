@@ -60,7 +60,7 @@ else
 fi
 
 say "3/3 Instalando TeX Live ($SCHEME). Puede tardar bastante: déjalo correr."
-in_debian bash -c 'cat > /root/.texsting/install-texlive.sh' <<'INNER'
+in_debian bash -c 'mkdir -p /root/.texsting && cat > /root/.texsting/install-texlive.sh' <<'INNER'
 #!/bin/bash
 set -e
 SCHEME="$1"
