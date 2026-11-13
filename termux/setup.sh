@@ -80,6 +80,9 @@ if [ "$FAST" = 0 ] && [ -z "$SCHEME" ]; then
 fi
 
 if [ "$FAST" = 0 ]; then
+# Mantener Termux despierto durante la instalación (evita que Android la corte).
+termux-wake-lock >/dev/null 2>&1 || true
+echo "Consejo: deja Termux en pantalla hasta que termine; si Android lo cierra, vuelve a pegar el comando y continúa."
 say "1/3 Actualizando Termux e instalando herramientas"
 pkg update -y || true
 yes | pkg upgrade -y -o Dpkg::Options::=--force-confnew || true
