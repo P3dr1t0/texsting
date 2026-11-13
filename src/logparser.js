@@ -39,6 +39,22 @@ export const TRANSLATIONS = [
   [/There were undefined references/, 'Hay referencias o citas sin definir: revisa los avisos de arriba (si las acabas de agregar, compila otra vez)'],
   [/Command \\\S+ invalid in math mode/, 'Hay un carácter de texto (como una tilde) dentro de modo matemático: probablemente falta cerrar un $'],
   [/Label\(s\) may have changed/, 'Las etiquetas cambiaron: vuelve a compilar'],
+  [/Label `(.+)' multiply defined/, 'La etiqueta $1 está repetida: cada \\label debe ser único'],
+  [/There were multiply-defined labels/, 'Hay etiquetas repetidas: revisa el aviso de arriba'],
+  [/Font shape `(.+)' undefined/, 'La fuente no tiene esa combinación de estilos ($1): LaTeX usó una parecida. No es grave'],
+  [/^Missing \\right\. inserted/, 'Falta \\right para cerrar un \\left (p. ej. \\left( … \\right))'],
+  [/^Extra alignment tab has been changed/, 'Esta fila tiene más columnas (&) que las declaradas en \\begin{tabular}{…}'],
+  [/LaTeX Error: Illegal character in array arg/, 'Tipo de columna no válido en la tabla: usa l, c, r o p{ancho} (X necesita tabularx)'],
+  [/LaTeX Error: \\caption outside float/, '\\caption solo funciona dentro de un entorno figure o table'],
+  [/LaTeX Error: Bad math environment delimiter/, 'Una ecuación no está bien cerrada (¿hay una línea en blanco dentro?)'],
+  [/Giving up on this path\. Did you forget a semicolon/, 'Falta «;» al final de un \\draw (o \\node, \\path, \\fill…)'],
+  [/You've asked me to divide `.*' by `0/, 'División entre cero en una expresión: revisa el dominio de la gráfica'],
+  [/^Arithmetic overflow/, 'Desbordamiento: algún número es demasiado grande'],
+  [/^Dimension too large/, 'Un valor es demasiado grande para dibujarlo (TikZ no pasa de ~5,7 m): reduce el dominio o usa pgfplots, que ajusta la escala'],
+  [/No shape named `(.+)' is known/, 'No existe un nodo llamado «$1»: revisa el nombre (se define con node (nombre) {…})'],
+  [/PGF Math Error: Unknown function `(.+?)'/, '«$1» no es una función conocida: si es parte de un nodo (p. ej. oa.salida), revisa el nombre del ancla (out, north, …)'],
+  [/I do not know the key '(?:\/[^/']+)*\/([^']+)'/, 'Opción desconocida «$1»: revisa cómo está escrita'],
+  [/Package babel Error: Unknown option '(.+?)'/, 'Babel no reconoce el idioma «$1»: revisa cómo está escrito (p. ej. spanish, english)'],
 ];
 
 export function translate(msg) {
@@ -106,6 +122,142 @@ function fixNotFound(entry, sources, main) {
   if (sug) entry.hint = `No existe «${base}». ¿Quisiste decir «${sug}»?`;
 }
 
+function escapeRe(x) { return x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+/** Todas las líneas (archivo principal primero) que cumplen la expresión, sin contar comentarios. */
+function findLines(re, sources, main) {
+  const hits = [];
+  if (!sources) return hits;
+  const order = [main, ...Object.keys(sources).filter((k) => k !== main)];
+  for (const file of order) {
+    const text = sources[file];
+    if (!text) continue;
+    text.split('\n').forEach((l, i) => { if (re.test(l.replace(/(^|[^\\])%.*$/, '$1'))) hits.push({ file, line: i + 1, text: l }); });
+  }
+  return hits;
+}
+
+function closest(word, list, max = 2) {
+  let best = null, bestD = max + 1;
+  for (const w of list) {
+    const d = editDistance(word.toLowerCase(), w.toLowerCase());
+    if (d > 0 && d < bestD) { best = w; bestD = d; }
+  }
+  return best;
+}
+
+const CMD_PKG = {
+  mathbb: 'amssymb', mathfrak: 'amssymb', varnothing: 'amssymb', therefore: 'amssymb', because: 'amssymb', leqslant: 'amssymb', geqslant: 'amssymb',
+  text: 'amsmath', eqref: 'amsmath', dfrac: 'amsmath', tfrac: 'amsmath', binom: 'amsmath', operatorname: 'amsmath', DeclareMathOperator: 'amsmath', intertext: 'amsmath',
+  includegraphics: 'graphicx', rotatebox: 'graphicx', scalebox: 'graphicx', resizebox: 'graphicx',
+  SI: 'siunitx', si: 'siunitx', qty: 'siunitx', unit: 'siunitx', num: 'siunitx', ang: 'siunitx',
+  textcolor: 'xcolor', color: 'xcolor', colorbox: 'xcolor', definecolor: 'xcolor',
+  url: 'url', href: 'hyperref', toprule: 'booktabs', midrule: 'booktabs', bottomrule: 'booktabs', cmidrule: 'booktabs',
+  multirow: 'multirow', lipsum: 'lipsum', degree: 'gensymb', celsius: 'gensymb', ce: 'mhchem', cancel: 'cancel',
+  tikz: 'tikz', usetikzlibrary: 'tikz', pgfplotsset: 'pgfplots', lstinputlisting: 'listings', lstset: 'listings',
+  subcaption: 'subcaption', captionof: 'caption', cref: 'cleveref', Cref: 'cleveref', citep: 'natbib', citet: 'natbib',
+  euro: 'eurosym', checkmark: 'amssymb', bm: 'bm', boldsymbol: 'amsmath', phase: 'steinmetz', ohm: 'siunitx', textdegree: 'textcomp',
+  pagestyle: null, fancyhead: 'fancyhdr', fancyfoot: 'fancyhdr', onehalfspacing: 'setspace', doublespacing: 'setspace', newgeometry: 'geometry',
+};
+const KNOWN_CMDS = ['textbf', 'textit', 'texttt', 'textsc', 'emph', 'underline', 'section', 'subsection', 'subsubsection', 'chapter', 'paragraph',
+  'frac', 'sqrt', 'sum', 'prod', 'int', 'iint', 'oint', 'lim', 'infty', 'partial', 'nabla', 'cdot', 'times', 'div', 'pm', 'mp', 'leq', 'geq', 'neq', 'approx', 'equiv',
+  'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'varepsilon', 'theta', 'lambda', 'omega', 'Omega', 'sigma', 'Sigma', 'Delta', 'Gamma', 'Phi', 'phi', 'varphi', 'rho', 'tau', 'mu', 'pi',
+  'sin', 'cos', 'tan', 'log', 'ln', 'exp', 'left', 'right', 'begin', 'end', 'label', 'ref', 'cite', 'caption', 'centering', 'item', 'hline', 'vspace', 'hspace',
+  'newline', 'newpage', 'clearpage', 'noindent', 'footnote', 'tableofcontents', 'maketitle', 'title', 'author', 'date', 'today', 'documentclass', 'usepackage',
+  'input', 'include', 'bibliography', 'bibliographystyle', 'overline', 'hat', 'vec', 'dot', 'ddot', 'bar', 'tilde', 'mathrm', 'mathbf', 'mathcal', 'quad', 'qquad',
+  'ldots', 'cdots', 'vdots', 'ddots', 'rightarrow', 'leftarrow', 'Rightarrow', 'Leftrightarrow', 'to', 'mapsto', 'in', 'subset', 'cup', 'cap', 'forall', 'exists',
+  'small', 'large', 'Large', 'huge', 'tiny', 'normalsize', 'footnotesize', 'newcommand', 'renewcommand', 'draw', 'node', 'fill', 'path', 'addplot',
+  ...Object.keys(CMD_PKG)];
+const ENV_PKG = { align: 'amsmath', 'align*': 'amsmath', gather: 'amsmath', 'gather*': 'amsmath', multline: 'amsmath', split: 'amsmath', cases: 'amsmath',
+  pmatrix: 'amsmath', bmatrix: 'amsmath', vmatrix: 'amsmath', matrix: 'amsmath', tikzpicture: 'tikz', circuitikz: 'circuitikz', axis: 'pgfplots',
+  semilogxaxis: 'pgfplots', loglogaxis: 'pgfplots', lstlisting: 'listings', tcolorbox: 'tcolorbox', multicols: 'multicol', subfigure: 'subcaption',
+  longtable: 'longtable', tabularx: 'tabularx', wrapfigure: 'wrapfig', karnaugh: 'karnaugh-map', 'karnaugh-map': 'karnaugh-map', minted: 'minted', proof: 'amsthm' };
+const KNOWN_ENVS = ['document', 'figure', 'table', 'tabular', 'itemize', 'enumerate', 'description', 'equation', 'equation*', 'center', 'flushleft', 'flushright',
+  'minipage', 'verbatim', 'quote', 'abstract', 'array', 'eqnarray', 'thebibliography', 'titlepage', 'frame', 'block', 'columns', 'column', ...Object.keys(ENV_PKG)];
+const KNOWN_KEYS = ['xlabel', 'ylabel', 'zlabel', 'title', 'xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax', 'domain', 'samples', 'grid', 'legend', 'width', 'height',
+  'xmode', 'ymode', 'xtick', 'ytick', 'axis lines', 'legend pos', 'mark', 'only marks', 'no marks', 'thick', 'thin', 'dashed', 'dotted', 'color', 'fill', 'draw',
+  'line width', 'scale', 'rotate', 'shift', 'above', 'below', 'left', 'right', 'anchor', 'node', 'smooth', 'colormap', 'colorbar', 'view', 'shader',
+  'resistor', 'capacitor', 'inductor', 'battery', 'battery1', 'diode', 'led', 'short', 'open', 'ground', 'voltmeter', 'ammeter', 'lamp', 'switch', 'fuse',
+  'R', 'C', 'L', 'V', 'I', 'D', 'sV', 'vR', 'cV', 'cI', 'american', 'european', 'cute inductor', 'generic', 'potentiometer', 'thermistor', 'photodiode'];
+const PGF_FUNCS = ['sin', 'cos', 'tan', 'exp', 'ln', 'log10', 'log2', 'sqrt', 'abs', 'deg', 'rad', 'atan', 'atan2', 'asin', 'acos', 'pow', 'mod', 'min', 'max',
+  'floor', 'ceil', 'round', 'pi', 'e', 'rand', 'sinh', 'cosh', 'tanh', 'sec', 'cot', 'cosec'];
+
+/** Explicaciones más precisas usando el código fuente y la línea «l.N …» del log. */
+const SI_UNITS = ['kilo', 'mega', 'giga', 'tera', 'milli', 'micro', 'nano', 'pico', 'femto', 'centi', 'deci', 'ohm', 'volt', 'ampere', 'watt',
+  'farad', 'henry', 'hertz', 'second', 'metre', 'meter', 'gram', 'kilogram', 'newton', 'joule', 'coulomb', 'tesla', 'weber', 'siemens', 'kelvin',
+  'degreeCelsius', 'degree', 'percent', 'radian', 'decibel', 'per', 'square', 'cubic', 'squared', 'cubed', 'tothe', 'minute', 'hour', 'litre', 'liter',
+  'pascal', 'bar', 'electronvolt', 'lumen', 'lux', 'candela', 'mole', 'becquerel', 'gray', 'sievert', 'katal', 'steradian', 'byte', 'bit'];
+
+function enrich(entry, head, sources, main, top = '') {
+  const msg = entry.message;
+  const srcLines = sources && entry.file && sources[entry.file] ? sources[entry.file].split('\n') : null;
+  if (/^Undefined control sequence/.test(msg)) {
+    // TeX deja el comando no definido al final de la primera línea de contexto.
+    const firstCtx = /^l\.\d+/.test(top) ? head : top.replace(/^<[^>]*>\s*/, '');
+    const cm = (firstCtx || '').replace(/\s+$/, '').match(/\\([A-Za-z@]+)\*?$/);
+    if (!cm) return;
+    const cmd = cm[1];
+    if (/\\(SI|si|qty|unit)\{/.test(head || '') && !/^(SI|si|qty|unit|num)$/.test(cmd)) {
+      const sug = closest(cmd, SI_UNITS);
+      entry.hint = sug ? `La unidad \\${cmd} no existe en siunitx. ¿Quisiste decir \\${sug}? (los múltiplos van por partes: \\kilo\\ohm, \\milli\\ampere)`
+        : `La unidad \\${cmd} no existe en siunitx: se escribe por partes, p. ej. \\kilo\\ohm, \\milli\\ampere, \\micro\\farad`;
+    } else if (CMD_PKG[cmd]) {
+      entry.hint = `\\${cmd} necesita el paquete ${CMD_PKG[cmd]}: agrega \\usepackage{${CMD_PKG[cmd]}}`;
+    } else {
+      const sug = cmd.length > 2 ? closest(cmd, KNOWN_CMDS) : null;
+      entry.hint = sug ? `El comando \\${cmd} no existe. ¿Quisiste decir \\${sug}?`
+        : `El comando \\${cmd} no existe: revisa cómo está escrito o defínelo con \\newcommand`;
+    }
+    return;
+  }
+  const env = msg.match(/Environment (\S+) undefined/);
+  if (env) {
+    const name = env[1];
+    if (ENV_PKG[name]) entry.hint = `El entorno ${name} necesita el paquete ${ENV_PKG[name]}: agrega \\usepackage{${ENV_PKG[name]}}`;
+    else { const sug = closest(name, KNOWN_ENVS); if (sug) entry.hint = `El entorno «${name}» no existe. ¿Quisiste decir «${sug}»?`; }
+    return;
+  }
+  const key = msg.match(/I do not know the key '(?:\/[^/']+)*\/([^']+)'/);
+  if (key) {
+    const k = key[1];
+    const sug = closest(k, KNOWN_KEYS);
+    if (sug && k.length > 2) entry.hint = `Opción desconocida «${k}». ¿Quisiste decir «${sug}»?`;
+    if (k.length > 1 && srcLines && entry.line) {
+      const re = new RegExp('(^|[\\[,{\\s])' + escapeRe(k) + '\\s*([=,\\]}]|$)');
+      for (let n = entry.line; n >= Math.max(1, entry.line - 40); n--) {
+        if (re.test((srcLines[n - 1] || '').replace(/(^|[^\\])%.*$/, '$1'))) { if (n !== entry.line) { entry.line = n; entry.context = srcLines[n - 1].trim(); } break; }
+      }
+    }
+    return;
+  }
+  if (/Did you forget a semicolon/.test(msg) && srcLines && entry.line) {
+    for (let n = entry.line - 1; n >= 1; n--) {
+      const t = (srcLines[n - 1] || '').replace(/(^|[^\\])%.*$/, '$1').trim();
+      if (t) { entry.line = n; entry.context = t; break; }
+    }
+    return;
+  }
+  const fn = msg.match(/Unknown function `(.+?)'/);
+  if (fn) {
+    if (fn[1] === 'sen') entry.hint = 'En LaTeX el seno se escribe sin, no sen (igual que en inglés)';
+    else { const sug = closest(fn[1], PGF_FUNCS, 1); if (sug) entry.hint = `«${fn[1]}» no es una función conocida. ¿Quisiste decir «${sug}»?`; }
+    return;
+  }
+  const shape = msg.match(/No shape named `(.+)' is known/);
+  if (shape && /^\s*-?[\d.]+\s+-?[\d.]+\s*$/.test(shape[1])) {
+    entry.hint = `«(${shape[1]})» parece una coordenada sin coma: escríbela así (${shape[1].trim().split(/\s+/).join(',')})`;
+    return;
+  }
+  if (/^Missing \$ inserted/.test(msg)) {
+    if (srcLines && entry.line && !(srcLines[entry.line - 1] || '').trim()) {
+      entry.hint = 'Hay una línea en blanco dentro de una ecuación: bórrala (para varias ecuaciones usa align)';
+      entry.context = '';
+    } else if (/_/.test(head || '') && !/\$|\\\(|\\\[/.test(head || '')) {
+      entry.hint = 'Hay un _ en texto normal: fuera de las ecuaciones el guion bajo se escribe \\_';
+    }
+  }
+}
+
 const NOISE = [/==> Fatal error occurred/, /Writing or overwriting file/, /^\s*$/];
 
 /** Busca en el código el fragmento que TeX muestra tras "Runaway argument?" para ubicar la línea. */
@@ -133,11 +285,13 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       if (NOISE.some((re) => re.test(msg))) continue;
       // Contexto: la línea "l.N ..." que sigue suele mostrar dónde ocurrió.
       let context = '';
+      let head = '';
       for (let j = i + 1; j < Math.min(i + 12, lines.length); j++) {
-        if (/^l\.\d+/.test(lines[j])) { context = (lines[j].replace(/^l\.\d+\s?/, '') + (lines[j + 1] ? lines[j + 1].trim() : '')).replace(/\^\^M/g, '').trim(); break; }
+        if (/^l\.\d+/.test(lines[j])) { head = lines[j].replace(/^l\.\d+\s?/, ''); context = (head + (lines[j + 1] ? lines[j + 1].trim() : '')).replace(/\^\^M/g, '').trim(); break; }
       }
       const entry = { type: 'error', file: normFile(m[1], main), line: +m[2], message: msg, hint: translate(msg), context };
       fixNotFound(entry, sources, main);
+      enrich(entry, head, sources, main, lines[i + 1] || '');
       out.push(entry);
       continue;
     }
@@ -152,6 +306,7 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       if (NOISE.some((re) => re.test(msg))) continue;
       let ln = null;
       let file = main;
+      let bangHead = '';
       if (/^File ended while scanning|^Paragraph ended before/.test(msg)) {
         // TeX imprime "Runaway argument?" y el texto afectado justo antes del error.
         const prev = lines.slice(Math.max(0, i - 3), i).join(' ');
@@ -167,11 +322,12 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       if (ln == null) {
         for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
           const lm = lines[j].match(/^l\.(\d+)/);
-          if (lm) { ln = +lm[1]; break; }
+          if (lm) { ln = +lm[1]; bangHead = lines[j].replace(/^l\.\d+\s?/, ''); break; }
         }
       }
       const entry = { type: 'error', file: ln != null ? file : null, line: ln, message: msg, hint: translate(msg) };
       fixNotFound(entry, sources, main);
+      enrich(entry, bangHead, sources, main, lines[i + 1] || '');
       out.push(entry);
       continue;
     }
@@ -183,7 +339,13 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       while (j < lines.length && /^\(\S*\)\s+/.test(lines[j])) { msg += ' ' + lines[j].replace(/^\(\S*\)\s+/, ''); j++; }
       while (j < lines.length && lines[j].trim() && !RE_INPUT_LINE.test(msg) && j - i < 4 && !/^(LaTeX|Package|Class|Overfull|Underfull|!)/.test(lines[j])) { msg += ' ' + lines[j].trim(); j++; }
       const lm = msg.match(RE_INPUT_LINE);
-      out.push({ type: 'warning', file: lm ? main : null, line: lm ? +lm[1] : null, message: (m[1] ? m[1] + ': ' : '') + msg.trim(), hint: translate(msg) });
+      const w = { type: 'warning', file: lm ? main : null, line: lm ? +lm[1] : null, message: (m[1] ? m[1] + ': ' : '') + msg.trim(), hint: translate(msg) };
+      const dup = msg.match(/Label `([^']+)' multiply defined/);
+      if (dup && sources) {
+        const hits = findLines(new RegExp('\\\\label\\{' + escapeRe(dup[1]) + '\\}'), sources, main);
+        if (hits.length > 1) { w.file = hits[1].file; w.line = hits[1].line; }
+      }
+      out.push(w);
       continue;
     }
     m = line.match(RE_BADBOX);
@@ -210,6 +372,7 @@ export function markCascades(entries) {
   const undefinedEnvs = [];
   let prevMissingDollar = null;
   const firstReal = errs.find((e) => !/^Emergency stop\.?$/.test(e.message));
+  const prevReal = [];
   for (const e of entries) {
     const m = e.message;
     if (e.type === 'error' && /^Emergency stop\.?$/.test(m) && firstReal && firstReal !== e) { e.cascade = firstReal.line ?? '?'; continue; }
@@ -217,8 +380,23 @@ export function markCascades(entries) {
       const runaway = errs.find((x) => x !== e && /^File ended while scanning/.test(x.message));
       if (runaway) { e.cascade = runaway.line ?? '?'; continue; }
     }
+    if (e.type === 'error' && e.line != null) {
+      // Otro error en la misma línea que uno anterior: casi siempre es consecuencia.
+      const same = prevReal.find((x) => x.line === e.line && x.file === e.file);
+      if (same) { e.cascade = same.line; continue; }
+      // Ecuación rota: los errores matemáticos que siguen a «Missing $» en las 2 líneas siguientes.
+      if (/^(Missing \$ inserted|Display math should end|LaTeX Error: Bad math environment delimiter|You can't use `\\eqno')/.test(m)) {
+        const src = prevReal.find((x) => /^(Missing \$ inserted|Display math should end)/.test(x.message) && x.file === e.file && e.line > x.line && e.line - x.line <= 2);
+        if (src) { e.cascade = src.line; continue; }
+      }
+      // La misma fila de más repetida en una tabla.
+      if (/^Extra alignment tab/.test(m)) {
+        const src = prevReal.find((x) => /^Extra alignment tab/.test(x.message) && x.file === e.file && e.line > x.line && e.line - x.line <= 6);
+        if (src) { e.cascade = src.line; continue; }
+      }
+    }
     const env = m.match(/Environment (\S+) undefined/);
-    if (env) { undefinedEnvs.push({ name: env[1], line: e.line }); continue; }
+    if (env) { undefinedEnvs.push({ name: env[1], line: e.line }); prevReal.push(e); continue; }
     if (e.type === 'error') {
       const ended = m.match(/\\begin\{[^}]+\} ended by \\end\{([^}]+)\}/);
       const u = ended && undefinedEnvs.find((x) => x.name === ended[1]);
@@ -233,6 +411,7 @@ export function markCascades(entries) {
         }
         prevMissingDollar = e;
       }
+      prevReal.push(e);
     } else if (e.type === 'warning' && /invalid in math mode/.test(m)) {
       const src = errs.find((x) => /Missing \$ inserted/.test(x.message) && x.line === e.line);
       if (src) e.cascade = src.line;
