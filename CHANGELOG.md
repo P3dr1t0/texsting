@@ -25,6 +25,9 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 - La descarga se puede **reanudar** si se corta, se **verifica** (SHA-256) y se descomprime directamente.
 - Si algo falla, vuelve solo al instalador oficial.
 - Detecta instalaciones **incompletas** (por ejemplo, canceladas a medias) y las limpia antes de empezar.
+- Mantiene Termux despierto desde el inicio para que Android no corte la instalación.
+
+**Medición real (Lenovo Idea Tab Pro, Wi-Fi):** instalación completa desde cero (herramientas + Debian + TeX Live + prueba) en **7 min 11 s**, frente a ~1 h 06 min estimados con el método anterior → **unas 9 veces más rápido**.
 
 ---
 
