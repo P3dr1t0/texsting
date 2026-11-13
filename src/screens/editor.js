@@ -441,7 +441,7 @@ export async function renderEditor(root, { id }, navigate) {
       } else if (r.status === 'timeout') {
         toast('La compilación tardó demasiado y se detuvo', { kind: 'error' });
       } else {
-        const n = sm.errors || 1;
+        const n = sm.errors || sm.cascades || 1;
         toast(`${n} error(es)${r.pdf ? ' (el PDF se generó igual)' : ''}`, { kind: 'error', action: 'Ver', ms: 6000, onAction: () => showPanel('messages') });
         if (WIDE.matches) screen.classList.add('show-messages');
         if (r.missing && r.missing.length) toast('No se encontró: ' + r.missing.join(', '), { kind: 'error', ms: 7000 });
@@ -463,7 +463,7 @@ export async function renderEditor(root, { id }, navigate) {
 
   function renderMessages(r) {
     const sm = summarize(messages);
-    msgCounts.innerHTML = `<span class="c-err">${sm.errors} errores</span> <span class="c-warn">${sm.warnings} advertencias</span> <span class="c-box">${sm.badboxes} cajas</span>`;
+    msgCounts.innerHTML = `<span class="c-err">${sm.errors} errores${sm.cascades ? ` <small>(+${sm.cascades} en cadena)</small>` : ''}</span> <span class="c-warn">${sm.warnings} advertencias</span> <span class="c-box">${sm.badboxes} cajas</span>`;
     const badge = bottomnav.querySelector(':scope > [data-tab="messages"] .badge');
     badge.hidden = !sm.errors;
     badge.textContent = sm.errors;
@@ -481,14 +481,14 @@ export async function renderEditor(root, { id }, navigate) {
       return;
     }
     msgList.replaceChildren(...head, ...shown.map((m) => el('button', {
-      class: 'msg ' + m.type,
+      class: 'msg ' + m.type + (m.cascade != null ? ' cascade' : ''),
       onclick: () => { if (m.line) jumpTo(m.file, m.line); },
     },
-    el('span', { class: 'msg-type' }, m.type === 'error' ? 'Error' : m.type === 'warning' ? 'Aviso' : 'Caja'),
+    el('span', { class: 'msg-type' }, m.cascade != null ? 'En cadena' : m.type === 'error' ? 'Error' : m.type === 'warning' ? 'Aviso' : 'Caja'),
     el('span', { class: 'msg-text' },
       el('span', {}, m.message),
-      m.hint ? el('small', { class: 'hint' }, m.hint) : null,
-      m.context ? el('code', {}, m.context) : null),
+      m.cascade != null ? el('small', { class: 'hint' }, `Consecuencia del error de la línea ${m.cascade}: se corrige al arreglar ese.`) : (m.hint ? el('small', { class: 'hint' }, m.hint) : null),
+      m.context && m.context.trim() ? el('code', {}, m.context) : null),
     m.line ? el('span', { class: 'msg-loc' }, `${(m.file || '').split('/').pop()}:${m.line}`) : null)));
   }
 

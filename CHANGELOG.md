@@ -17,6 +17,19 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.4] — 12 nov. 2026 · Fase 1: Beta con Termux · compilación 14
+
+### Mejorado (a partir de la prueba `errores-A` de Pedro en la tablet)
+- **Errores «en cadena»**: los mensajes que son consecuencia de otro error se muestran atenuados con «Consecuencia del error de la línea N». En `errores-A` ahora se cuentan **7 errores reales (+3 en cadena)**, exactamente los escondidos.
+- Explicación para «Command \' invalid in math mode» (tilde dentro de modo matemático: falta cerrar un `$`).
+- «There were undefined references» ya no sugiere solo «compila otra vez»: indica revisar los avisos.
+- Ya no se muestra un recuadro de contexto vacío.
+
+### Resultado de la prueba `errores-A` (antes de esta versión)
+- ✅ Los 8 errores escondidos detectados en su línea exacta, todos con explicación en español.
+
+---
+
 ## [0.2.3] — 12 nov. 2026 · Fase 1: Beta con Termux · compilación 13
 
 ### Corregido (reportado por Pedro en la tablet)

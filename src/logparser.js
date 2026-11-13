@@ -35,7 +35,8 @@ export const TRANSLATIONS = [
   [/LaTeX Error: There's no line here to end/, 'No hay línea que terminar (\\\\ mal ubicado)'],
   [/Citation `(.+)' on page .* undefined/, 'Cita no definida: $1'],
   [/Reference `(.+)' on page .* undefined/, 'Referencia no definida: $1'],
-  [/There were undefined references/, 'Hay referencias sin definir (compila otra vez)'],
+  [/There were undefined references/, 'Hay referencias o citas sin definir: revisa los avisos de arriba (si las acabas de agregar, compila otra vez)'],
+  [/Command \\\S+ invalid in math mode/, 'Hay un carácter de texto (como una tilde) dentro de modo matemático: probablemente falta cerrar un $'],
   [/Label\(s\) may have changed/, 'Las etiquetas cambiaron: vuelve a compilar'],
 ];
 
@@ -130,17 +131,52 @@ export function parseLog(log, main = 'main.tex', sources = null) {
   }
   // Quita duplicados exactos.
   const seen = new Set();
-  return out.filter((e) => {
+  return markCascades(out.filter((e) => {
     const k = e.type + e.file + e.line + e.message;
     if (seen.has(k)) return false;
     seen.add(k);
     return true;
-  });
+  }));
+}
+
+/**
+ * Marca como "en cadena" los mensajes que son consecuencia de un error anterior,
+ * para no confundir: se arreglan solos al corregir el error original.
+ */
+export function markCascades(entries) {
+  const errs = entries.filter((e) => e.type === 'error');
+  const undefinedEnvs = [];
+  let prevMissingDollar = null;
+  for (const e of entries) {
+    const m = e.message;
+    const env = m.match(/Environment (\S+) undefined/);
+    if (env) { undefinedEnvs.push({ name: env[1], line: e.line }); continue; }
+    if (e.type === 'error') {
+      const ended = m.match(/\\begin\{[^}]+\} ended by \\end\{([^}]+)\}/);
+      const u = ended && undefinedEnvs.find((x) => x.name === ended[1]);
+      if (u) { e.cascade = u.line; continue; }
+      if (/Misplaced alignment tab/.test(m)) {
+        const u2 = undefinedEnvs.find((x) => x.line != null && e.line != null && e.line > x.line && e.line - x.line <= 15);
+        if (u2) { e.cascade = u2.line; continue; }
+      }
+      if (/^Missing \$ inserted/.test(m)) {
+        if (prevMissingDollar && e.line != null && prevMissingDollar.line != null && e.line - prevMissingDollar.line <= 2 && !(e.context || '').trim()) {
+          e.cascade = prevMissingDollar.line; continue;
+        }
+        prevMissingDollar = e;
+      }
+    } else if (e.type === 'warning' && /invalid in math mode/.test(m)) {
+      const src = errs.find((x) => /Missing \$ inserted/.test(x.message) && x.line === e.line);
+      if (src) e.cascade = src.line;
+    }
+  }
+  return entries;
 }
 
 export function summarize(entries) {
   return {
-    errors: entries.filter((e) => e.type === 'error').length,
+    cascades: entries.filter((e) => e.type === 'error' && e.cascade != null).length,
+    errors: entries.filter((e) => e.type === 'error' && e.cascade == null).length,
     warnings: entries.filter((e) => e.type === 'warning').length,
     badboxes: entries.filter((e) => e.type === 'badbox').length,
   };
