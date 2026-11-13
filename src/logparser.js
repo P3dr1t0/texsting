@@ -28,6 +28,7 @@ export const TRANSLATIONS = [
   [/^Runaway argument/, 'Argumento sin cerrar (falta una llave })'],
   [/^Double superscript/, 'Doble superíndice: usa llaves, p. ej. x^{a^b}'],
   [/^Double subscript/, 'Doble subíndice: usa llaves, p. ej. x_{a_b}'],
+  [/no legal \\end found/, 'Falta \\end{document} al final del documento'],
   [/^Emergency stop/, 'Parada de emergencia: revisa el primer error'],
   [/^Display math should end with \$\$/, 'La ecuación en display debe cerrar con $$'],
   [/^Illegal unit of measure/, 'Unidad de medida no válida (usa pt, cm, mm, em...)'],
@@ -51,6 +52,58 @@ export function translate(msg) {
 function normFile(f, main) {
   if (!f) return main;
   return f.replace(/^\.\//, '');
+}
+
+const COMMON_PACKAGES = ['amsmath', 'amssymb', 'amsthm', 'amsfonts', 'mathtools', 'graphicx', 'geometry', 'babel', 'inputenc', 'fontenc',
+  'hyperref', 'xcolor', 'color', 'tikz', 'pgfplots', 'circuitikz', 'siunitx', 'booktabs', 'multirow', 'array', 'tabularx', 'longtable',
+  'float', 'caption', 'subcaption', 'enumitem', 'fancyhdr', 'titlesec', 'listings', 'minted', 'xcolor', 'setspace', 'parskip',
+  'natbib', 'biblatex', 'cleveref', 'csquotes', 'url', 'microtype', 'lipsum', 'multicol', 'wrapfig', 'eurosym', 'textcomp',
+  'fontspec', 'unicode-math', 'polyglossia', 'physics', 'esint', 'bm', 'cancel', 'tcolorbox', 'pdfpages', 'appendix', 'tocloft',
+  'beamer', 'article', 'report', 'book', 'IEEEtran', 'memoir', 'scrartcl', 'standalone', 'chemfig', 'mhchem', 'algorithm2e', 'algorithmic'];
+
+function editDistance(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) {
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  }
+  return d[a.length][b.length];
+}
+
+export function suggestPackage(name) {
+  let best = null, bestD = 3;
+  for (const p of COMMON_PACKAGES) {
+    const dd = editDistance(name.toLowerCase(), p.toLowerCase());
+    if (dd > 0 && dd < bestD) { best = p; bestD = dd; }
+  }
+  return best;
+}
+
+/** Para un .sty/.cls que no existe, busca la línea del \usepackage/\documentclass que lo pide. */
+function locatePackage(fname, sources, main) {
+  const m = fname.match(/^(.+)\.(sty|cls)$/);
+  if (!m || !sources) return null;
+  const re = m[2] === 'cls' ? new RegExp('\\\\documentclass(\\[[^\\]]*\\])?\\{\\s*' + m[1] + '\\s*\\}') : new RegExp('\\\\(usepackage|RequirePackage)(\\[[^\\]]*\\])?\\{[^}]*\\b' + m[1].replace(/[-.]/g, '\\$&') + '\\b');
+  const order = [main, ...Object.keys(sources).filter((k) => k !== main)];
+  for (const file of order) {
+    const text = sources[file];
+    if (!text) continue;
+    const lines = text.split('\n');
+    const idx = lines.findIndex((l) => re.test(l.replace(/(^|[^\\])%.*$/, '$1')));
+    if (idx >= 0) return { file, line: idx + 1 };
+  }
+  return null;
+}
+
+/** Paquete o clase inexistente: apunta al \\usepackage y sugiere el nombre correcto. */
+function fixNotFound(entry, sources, main) {
+  const nf = entry.message.match(/File `([^']+\.(?:sty|cls))' not found/);
+  if (!nf) return;
+  const loc = locatePackage(nf[1], sources, main);
+  if (loc) { entry.file = loc.file; entry.line = loc.line; entry.context = ''; }
+  const base = nf[1].replace(/\.(sty|cls)$/, '');
+  const sug = suggestPackage(base);
+  if (sug) entry.hint = `No existe «${base}». ¿Quisiste decir «${sug}»?`;
 }
 
 const NOISE = [/==> Fatal error occurred/, /Writing or overwriting file/, /^\s*$/];
@@ -81,9 +134,11 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       // Contexto: la línea "l.N ..." que sigue suele mostrar dónde ocurrió.
       let context = '';
       for (let j = i + 1; j < Math.min(i + 12, lines.length); j++) {
-        if (/^l\.\d+/.test(lines[j])) { context = lines[j].replace(/^l\.\d+\s?/, '') + (lines[j + 1] ? ' ' + lines[j + 1].trim() : ''); break; }
+        if (/^l\.\d+/.test(lines[j])) { context = (lines[j].replace(/^l\.\d+\s?/, '') + (lines[j + 1] ? lines[j + 1].trim() : '')).replace(/\^\^M/g, '').trim(); break; }
       }
-      out.push({ type: 'error', file: normFile(m[1], main), line: +m[2], message: msg, hint: translate(msg), context });
+      const entry = { type: 'error', file: normFile(m[1], main), line: +m[2], message: msg, hint: translate(msg), context };
+      fixNotFound(entry, sources, main);
+      out.push(entry);
       continue;
     }
     if (m && /^\//.test(m[1])) {
@@ -104,13 +159,20 @@ export function parseLog(log, main = 'main.tex', sources = null) {
         const loc = locate(m2 ? m2[1] : '', sources);
         if (loc) { ln = loc.line; file = loc.file; }
       }
+      if (/^Emergency stop/.test(msg) && lines.slice(i + 1, i + 5).some((l) => /no legal \\end found/.test(l))) {
+        const lastLine = sources && sources[main] ? sources[main].replace(/\s+$/, '').split('\n').length : null;
+        out.push({ type: 'error', file: main, line: lastLine, message: 'Emergency stop (no legal \\end found).', hint: translate('no legal \\end found') });
+        continue;
+      }
       if (ln == null) {
         for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
           const lm = lines[j].match(/^l\.(\d+)/);
           if (lm) { ln = +lm[1]; break; }
         }
       }
-      out.push({ type: 'error', file: ln != null ? file : null, line: ln, message: msg, hint: translate(msg) });
+      const entry = { type: 'error', file: ln != null ? file : null, line: ln, message: msg, hint: translate(msg) };
+      fixNotFound(entry, sources, main);
+      out.push(entry);
       continue;
     }
     m = line.match(RE_WARNING);
@@ -147,8 +209,14 @@ export function markCascades(entries) {
   const errs = entries.filter((e) => e.type === 'error');
   const undefinedEnvs = [];
   let prevMissingDollar = null;
+  const firstReal = errs.find((e) => !/^Emergency stop\.?$/.test(e.message));
   for (const e of entries) {
     const m = e.message;
+    if (e.type === 'error' && /^Emergency stop\.?$/.test(m) && firstReal && firstReal !== e) { e.cascade = firstReal.line ?? '?'; continue; }
+    if (e.type === 'error' && /no legal \\end found/.test(m)) {
+      const runaway = errs.find((x) => x !== e && /^File ended while scanning/.test(x.message));
+      if (runaway) { e.cascade = runaway.line ?? '?'; continue; }
+    }
     const env = m.match(/Environment (\S+) undefined/);
     if (env) { undefinedEnvs.push({ name: env[1], line: e.line }); continue; }
     if (e.type === 'error') {

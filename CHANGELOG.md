@@ -17,6 +17,23 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.5] — 13 nov. 2026 · Fase 1: Beta con Termux · compilación 15
+
+### Mejorado (a partir de las pruebas `errores-B`, `C` y `D` de Pedro)
+- **Paquete mal escrito**: el error ahora apunta a la línea del `\usepackage` (antes, a la siguiente) y sugiere el nombre correcto: *«No existe «amsmaht». ¿Quisiste decir «amsmath»?»*. Funciona con unos 60 paquetes comunes (amsmath, graphicx, tikz, siunitx…).
+- **Llave sin cerrar**: la «parada de emergencia» que viene después se marca como *en cadena*; ahora `errores-B` muestra **1 error (+1 en cadena)**.
+- **Falta `\end{document}`**: nuevo mensaje claro «Falta \end{document} al final del documento», en la última línea del archivo.
+- Contexto más limpio: ya no aparece `^^M` ni palabras partidas («E ste texto»).
+
+### Resultado de las pruebas
+| Prueba | Qué muestra ahora |
+|---|---|
+| `errores-B-llave` | L7: falta una llave `}` en `\textbf` · +1 en cadena |
+| `errores-C-paquete` | L5: ¿quisiste decir «amsmath»? · +1 en cadena |
+| `errores-D-documento` | L5: texto antes de `\begin{document}` · L7: falta `\end{document}` (los dos son errores reales) |
+
+---
+
 ## [0.2.4] — 12 nov. 2026 · Fase 1: Beta con Termux · compilación 14
 
 ### Mejorado (a partir de la prueba `errores-A` de Pedro en la tablet)
