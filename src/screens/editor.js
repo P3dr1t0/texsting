@@ -13,6 +13,7 @@ import { shareBytes } from '../share.js';
 import { createZip } from '../zip.js';
 import { debounce, readFileAsBytes, slug, extOf, IMAGE_EXT } from '../util.js';
 import { appearance } from './settings.js';
+import { openTermux } from '../termux.js';
 import { saveAsTemplate } from './newproject.js';
 
 const enc = new TextEncoder();
@@ -446,7 +447,9 @@ export async function renderEditor(root, { id }, navigate) {
         if (r.missing && r.missing.length) toast('No se encontró: ' + r.missing.join(', '), { kind: 'error', ms: 7000 });
       }
     } catch (e) {
-      if (e instanceof CompileError && (e.kind === 'offline' || e.kind === 'auth')) {
+      if (e instanceof CompileError && e.kind === 'offline') {
+        toast(e.message, { kind: 'error', action: 'Abrir Termux', ms: 9000, onAction: async () => { if (!(await openTermux())) navigate('termux'); } });
+      } else if (e instanceof CompileError && e.kind === 'auth') {
         toast(e.message, { kind: 'error', action: 'Configurar', ms: 8000, onAction: () => navigate('termux') });
       } else {
         toast('Error: ' + e.message, { kind: 'error', ms: 6000 });

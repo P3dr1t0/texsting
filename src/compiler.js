@@ -49,6 +49,20 @@ export function serverOutdated(info) {
   return false;
 }
 
+/** Comprobación rápida (2,5 s) de que el servidor de Termux está activo. */
+export async function quickCheck() {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 2500);
+  try {
+    const res = await fetch(base() + '/health', { signal: ctrl.signal, cache: 'no-store' });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function ping() {
   return call('/info', { timeout: 6000 });
 }
@@ -77,6 +91,9 @@ export function chooseEngine(project, files) {
  * Devuelve { status, pdf: Uint8Array|null, synctex, log, output, installed, missing, elapsed }.
  */
 export async function compileProject(project, files) {
+  if (!(await quickCheck())) {
+    throw new CompileError('Termux no está abierto: ábrelo un momento para iniciar el servidor y vuelve a compilar.', 'offline');
+  }
   const s = getSettings();
   const chosen = chooseEngine(project, files);
   const payload = {

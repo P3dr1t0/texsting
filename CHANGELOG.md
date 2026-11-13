@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.3] — 12 nov. 2026 · Fase 1: Beta con Termux · compilación 13
+
+### Corregido (reportado por Pedro en la tablet)
+- **Si Termux no está abierto, la app avisa al instante** (antes se quedaba esperando sin decir nada: 73 s en la prueba). El aviso trae el botón **«Abrir Termux»**.
+
+### Medido
+- Plantilla de Presentación (Beamer): ~3 s la primera compilación y ~1 s las siguientes (medido en servidor; en el teléfono dentro de Termux es algo más).
+
+---
+
 ## [Instalador] — 12 nov. 2026 · sin APK nuevo (se aplica al pegar el comando)
 
 ### Instalación rápida de TeX Live ([#2](https://github.com/P3dr1t0/texsting/issues/2))

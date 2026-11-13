@@ -1,6 +1,6 @@
 {
   "name": "texsting",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "TeXsting: editor LaTeX para Android, inspirado en TeXstudio. Compila en el propio teléfono con TeX Live (Termux).",
   "license": "GPL-3.0-or-later",
