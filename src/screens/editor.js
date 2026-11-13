@@ -107,6 +107,8 @@ export async function renderEditor(root, { id }, navigate) {
       return;
     }
     screen.dataset.tab = name;
+    // En Mensajes el aviso de errores ya no hace falta y taparía la lista.
+    if (name === 'messages') document.querySelector('.toast')?.classList.remove('show');
     if (name !== 'code') editor.blur();
     bottomnav.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
     if (name === 'code') setTimeout(() => editor.refresh(), 30);
@@ -473,23 +475,56 @@ export async function renderEditor(root, { id }, navigate) {
     const head = [];
     if (r && r.status === 'failed' && !messages.some((m) => m.type === 'error')) {
       const empty = /No pages of output/.test((r.log || '') + (r.output || ''));
-      head.push(el('div', { class: 'msg error' }, el('span', { class: 'msg-type' }, 'Error'), el('span', { class: 'msg-text' },
+      head.push(el('div', { class: 'msg error' }, el('div', { class: 'msg-top' }, el('span', { class: 'msg-type' }, 'Error')), el('div', { class: 'msg-main' },
         empty ? 'El documento está vacío: escribe algo entre \\begin{document} y \\end{document}.' : 'No se generó el PDF. Revisa el log completo.')));
     }
     if (!shown.length && !head.length) {
       msgList.replaceChildren(el('p', { class: 'muted pad' }, r ? (r.status === 'success' ? '✔ Sin errores.' : 'Sin mensajes para mostrar.') : 'Compila para ver errores y advertencias aquí.'));
       return;
     }
-    msgList.replaceChildren(...head, ...shown.map((m) => el('button', {
-      class: 'msg ' + m.type + (m.cascade != null ? ' cascade' : ''),
-      onclick: () => { if (m.line) jumpTo(m.file, m.line); },
-    },
-    el('span', { class: 'msg-type' }, m.cascade != null ? 'En cadena' : m.type === 'error' ? 'Error' : m.type === 'warning' ? 'Aviso' : 'Caja'),
-    el('span', { class: 'msg-text' },
-      el('span', {}, m.message),
-      m.cascade != null ? el('small', { class: 'hint' }, `Consecuencia del error de la línea ${m.cascade}: se corrige al arreglar ese.`) : (m.hint ? el('small', { class: 'hint' }, m.hint) : null),
-      m.context && m.context.trim() ? el('code', {}, m.context) : null),
-    m.line ? el('span', { class: 'msg-loc' }, `${(m.file || '').split('/').pop()}:${m.line}`) : null)));
+    // Los errores «en cadena» se agrupan dentro del error que los causa.
+    const children = new Map();
+    const top = [];
+    for (const m of shown) {
+      if (m.cascade != null) {
+        const idx = messages.indexOf(m);
+        const src = messages.slice(0, idx).reverse().find((x) => x.cascade == null && x.type === 'error' && x.line === m.cascade && msgFilter.error);
+        if (src) { if (!children.has(src)) children.set(src, []); children.get(src).push(m); continue; }
+      }
+      top.push(m);
+    }
+    const loc = (m) => {
+      if (!m.line) return null;
+      const f = (m.file || '').split('/').pop();
+      return el('span', { class: 'msg-loc' }, (m.file && m.file !== project.main ? f + ' · ' : '') + 'línea ' + m.line);
+    };
+    const card = (m) => {
+      const kids = children.get(m) || [];
+      const isCascade = m.cascade != null;
+      const main = isCascade ? `Consecuencia del error de la línea ${m.cascade}: se corrige al arreglar ese.` : (m.hint || m.message);
+      const sub = el('div', { class: 'msg-kids', hidden: true }, ...kids.map((k) => el('div', {
+        class: 'msg-kid', role: 'button',
+        onclick: (ev) => { ev.stopPropagation(); if (k.line) jumpTo(k.file, k.line); },
+      }, el('span', { class: 'msg-loc' }, k.line ? 'línea ' + k.line : ''), el('span', { class: 'msg-orig' }, k.message))));
+      const toggle = kids.length ? el('button', {
+        class: 'msg-more',
+        onclick: (ev) => { ev.stopPropagation(); sub.hidden = !sub.hidden; toggle.textContent = (sub.hidden ? '▸ ' : '▾ ') + label; },
+      }) : null;
+      const label = `${kids.length} ${kids.length === 1 ? 'error' : 'errores'} en cadena: se corrigen solos al arreglar este`;
+      if (toggle) toggle.textContent = '▸ ' + label;
+      return el('div', {
+        class: 'msg ' + m.type + (isCascade ? ' cascade' : ''), role: 'button', tabindex: 0,
+        onclick: () => { if (m.line) jumpTo(m.file, m.line); },
+      },
+      el('div', { class: 'msg-top' },
+        el('span', { class: 'msg-type' }, isCascade ? 'En cadena' : m.type === 'error' ? 'Error' : m.type === 'warning' ? 'Aviso' : 'Caja'),
+        loc(m)),
+      el('div', { class: 'msg-main' }, main),
+      main !== m.message ? el('div', { class: 'msg-orig' }, m.message) : null,
+      m.context && m.context.trim() ? el('code', {}, m.context) : null,
+      toggle, sub);
+    };
+    msgList.replaceChildren(...head, ...top.map(card));
   }
 
   async function sharePdf() {

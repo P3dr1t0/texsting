@@ -17,6 +17,20 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.7] — 13 nov. 2026 · Fase 1: Beta con Termux · compilación 17
+
+### Mejorado (a partir de las capturas de Pedro con la serie 2)
+- **Pestaña Mensajes rediseñada para el celular**: la explicación en español va primero y en grande; el mensaje original en inglés, debajo y en pequeño. La ubicación ahora dice «línea 16» arriba a la derecha y ya no ocupa media pantalla (antes el texto quedaba en una columna angosta).
+- **Errores «en cadena» agrupados** dentro del error que los causa, plegados: «▸ 5 errores en cadena: se corrigen solos al arreglar este». Se despliegan con un toque.
+- El aviso pgfplots «Axis range … is approximately empty» que sale tras un error en la misma gráfica se marca como consecuencia.
+- El aviso «Listo en X s» ya no tapa la barra de zoom del PDF, y el aviso de errores se oculta al entrar a Mensajes.
+
+### Resultado de la serie 2 en el Poco X7 Pro
+- ✅ Pruebas 08–13: todas compilan. Tiempos: 4,7 s · 31,6 s · 25,4 s · 20,2 s · 8,2 s · 7,5 s (análisis en [#8](https://github.com/P3dr1t0/texsting/issues/8)).
+- ✅ Errores E–J: todos detectados en su línea, con la explicación y sugerencia esperadas.
+
+---
+
 ## [0.2.6] — 13 nov. 2026 · Fase 1: Beta con Termux · compilación 16
 
 ### Mejorado: explicaciones de errores (probado con la nueva serie 2 de pruebas)

@@ -412,6 +412,9 @@ export function markCascades(entries) {
         prevMissingDollar = e;
       }
       prevReal.push(e);
+    } else if (e.type === 'warning' && /Axis range for axis \w+ is approximately empty/.test(m)) {
+      const src = prevReal.slice().reverse().find((x) => x.file === e.file && e.line != null && x.line != null && e.line >= x.line && e.line - x.line <= 3);
+      if (src) e.cascade = src.line;
     } else if (e.type === 'warning' && /invalid in math mode/.test(m)) {
       const src = errs.find((x) => /Missing \$ inserted/.test(x.message) && x.line === e.line);
       if (src) e.cascade = src.line;
@@ -424,7 +427,7 @@ export function summarize(entries) {
   return {
     cascades: entries.filter((e) => e.type === 'error' && e.cascade != null).length,
     errors: entries.filter((e) => e.type === 'error' && e.cascade == null).length,
-    warnings: entries.filter((e) => e.type === 'warning').length,
+    warnings: entries.filter((e) => e.type === 'warning' && e.cascade == null).length,
     badboxes: entries.filter((e) => e.type === 'badbox').length,
   };
 }
