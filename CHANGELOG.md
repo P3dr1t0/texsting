@@ -17,6 +17,36 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.33] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 43
+
+### Pruebas
+- **Serie 4** en `pruebas/pruebas-texsting-serie4.zip`, 8 válidas y 6 con errores:
+  - válidas: libro con índice alfabético, longtable, código con colores, gráficas pesadas, tipografía en español, ejercicios con tcolorbox y cleveref, electrónica digital (Karnaugh y diagramas de tiempos) y physics;
+  - con errores: texto pegado de Word, referencias cruzadas, tablas largas, código, estructura de documentos largos y gráficas con datos.
+
+### Mejorado: diagnósticos nuevos (encontrados al preparar la serie 4)
+- **Caracteres pegados de Word, un PDF o la web**: espacio invisible, signo menos tipográfico «−», emojis, «≤», «×», letras griegas, ligaduras…
+  - Cada uno con su explicación y un botón para quitarlo o cambiarlo por el comando correcto: `\leq` dentro de una fórmula, `$\leq$` en texto.
+  - En el código mostrado, los caracteres invisibles se marcan como ⟦?⟧.
+- **Errores en archivos que no son .tex**, por ejemplo el `.m` que lee `\lstinputlisting`: antes la app decía «con errores» pero mostraba 0. Explicación para «Invalid UTF-8 byte» (listings no acepta Ω ni emojis).
+- **listings**: un lenguaje mal escrito sugiere el correcto («¿Quisiste decir Python?») con botón de arreglo.
+- **Comandos de otra clase**: `\chapter`, `\frontmatter` o `\mainmatter` en un article explican qué clase los tiene.
+- **`\input` o `\include` de un archivo que no existe**: dice que falta en el proyecto (y sugiere uno parecido).
+- **Tablas**:
+  - «Misplaced \noalign»: falta `\\` antes de `\hline`;
+  - «Misplaced \omit»: una columna de más;
+  - `\multirow`, `\cref`, `\printindex` y `\lstinline` indican qué paquete necesitan.
+- **pgfplots con datos**:
+  - una columna que no existe muestra las columnas que sí tiene el archivo;
+  - un archivo de datos que falta se explica;
+  - los avisos que vienen de esos errores («sin coordenadas», «rango vacío») se agrupan en cadena;
+  - «Dimension too large» repetido cuenta una sola vez.
+- `#` en texto se explica (se escribe `\#`).
+- Avisos explicados: karnaugh-map con la forma vieja, cleveref sin nombre para un tipo de referencia, y lipsum en latín (informativo).
+- La tarjeta «Arreglo» ya no dice que todos los arreglos son de fuentes.
+
+---
+
 ## [0.2.32] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 42
 
 ### Nuevo

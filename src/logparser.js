@@ -1,7 +1,8 @@
 // Lectura del log de LaTeX: errores, advertencias y cajas mal ajustadas,
 // con archivo y línea para saltar al código (como el panel de mensajes de TeXstudio).
 
-const RE_FILE_LINE_ERROR = /^(\.?\/?[^:\n]+\.(?:tex|sty|cls|bib|ltx|def)):(\d+): (.*)$/;
+// Cualquier archivo con extensión (también los que lee listings: .m, .py, .c…).
+const RE_FILE_LINE_ERROR = /^(\.?\/?[^:\n]+\.[A-Za-z0-9]{1,8}):(\d+): (.*)$/;
 const RE_WARNING = /^(?:LaTeX|Package|Class)\s*(?:(\S+)\s+)?Warning:\s*(.*)$/;
 const RE_INPUT_LINE = /on input line (\d+)/;
 const RE_BADBOX = /^(Over|Under)full \\[hv]box \((.*?)\) (?:in paragraph |detected |has occurred while \\output is active)?(?:at lines? (\d+)(?:--(\d+))?)?/;
@@ -24,6 +25,16 @@ export const TRANSLATIONS = [
   [/LaTeX Error: \\begin\{(\S+)\} ended by \\end\{(\S+)\}/, '\\begin{$1} se cerró con \\end{$2} (revisa los entornos abiertos)'],
   [/LaTeX Error: Missing \\begin\{document\}/, 'Falta \\begin{document} o hay texto antes de él'],
   [/^Misplaced alignment tab character &/, 'Carácter & fuera de una tabla o alineación'],
+  [/Invalid UTF-8 byte/, 'Hay un carácter que este archivo o paquete no sabe leer (p. ej. listings no acepta Ω, ≤ ni emojis dentro del código): cámbialo por texto o, en listings, usa la opción literate'],
+  [/Unicode character (.+?) \(U\+([0-9A-Fa-f]+)\)/, 'pdfLaTeX no conoce el carácter «$1» (U+$2): bórralo o cámbialo por un comando de LaTeX'],
+  [/Misplaced \\noalign/, 'Un \\hline (o \\midrule) quedó en medio de una fila: casi siempre falta \\\\ al final de la fila anterior'],
+  [/Misplaced \\omit/, 'Esta fila de la tabla tiene más columnas de las que se definieron (o un \\multicolumn en mal lugar)'],
+  [/You can't use `macro parameter character #'/, '# es un carácter especial en LaTeX: en texto se escribe \\#'],
+  [/Couldn't load requested language/, 'listings no conoce ese lenguaje: revisa cómo está escrito (Python, C, C++, Java, Matlab, VHDL…)'],
+  [/could not retrieve column '([^']*)' from table '([^']*)'/, 'La tabla de datos «$2» no tiene una columna llamada «$1»'],
+  [/Could not read table file '([^']*)'/, 'No existe el archivo de datos «$1» en el proyecto: súbelo (Archivos → Subir) o corrige el nombre'],
+  [/the current plot has no coordinates/, 'Esta gráfica quedó sin puntos (normalmente por el error de arriba)'],
+  [/You have an axis with empty range/, 'El eje quedó sin datos para fijar su escala (normalmente por el error de arriba)'],
   [/Unknown float option `H'/, 'La opción [H] (figura o tabla «aquí exactamente») necesita el paquete float: agrega \\usepackage{float}'],
   [/^Paragraph ended before (.+) was complete/, 'Párrafo terminado antes de completar $1 (¿llave sin cerrar?)'],
   [/^Runaway argument/, 'Argumento sin cerrar (falta una llave })'],
@@ -160,6 +171,7 @@ function closest(word, list, max = 2) {
 }
 
 const CMD_PKG = {
+  printindex: 'makeidx', makeindex: 'makeidx', multirow: 'multirow', cref: 'cleveref', Cref: 'cleveref', lstinline: 'listings', lstinputlisting: 'listings',
   mathbb: 'amssymb', mathfrak: 'amssymb', varnothing: 'amssymb', therefore: 'amssymb', because: 'amssymb', leqslant: 'amssymb', geqslant: 'amssymb',
   text: 'amsmath', eqref: 'amsmath', dfrac: 'amsmath', tfrac: 'amsmath', binom: 'amsmath', operatorname: 'amsmath', DeclareMathOperator: 'amsmath', intertext: 'amsmath',
   includegraphics: 'graphicx', rotatebox: 'graphicx', scalebox: 'graphicx', resizebox: 'graphicx',
@@ -255,6 +267,35 @@ function findInSources(re, sources, main, beforeLine = Infinity) {
   return hit;
 }
 
+// Caracteres que pdfLaTeX no conoce (suelen venir al pegar desde Word, PDF o la web).
+const INVISIBLE = {
+  0x200B: 'un espacio invisible', 0x200C: 'un separador invisible', 0x200D: 'un unidor invisible', 0x2060: 'un carácter invisible',
+  0xFEFF: 'una marca invisible (BOM)', 0x00AD: 'un guion invisible', 0x2028: 'un salto de línea especial', 0x2029: 'un salto de párrafo especial',
+  0x202F: 'un espacio angosto especial', 0x200E: 'una marca de dirección invisible', 0x200F: 'una marca de dirección invisible',
+};
+const UNI_REPL = { // [en texto, en fórmula]
+  0x2212: ['$-$', '-'], 0x2264: ['$\\leq$', '\\leq'], 0x2265: ['$\\geq$', '\\geq'], 0x2260: ['$\\neq$', '\\neq'], 0x2248: ['$\\approx$', '\\approx'],
+  0x00D7: ['$\\times$', '\\times'], 0x00F7: ['$\\div$', '\\div'], 0x2192: ['$\\to$', '\\to'], 0x2190: ['$\\leftarrow$', '\\leftarrow'],
+  0x21D2: ['$\\Rightarrow$', '\\Rightarrow'], 0x2194: ['$\\leftrightarrow$', '\\leftrightarrow'], 0x221E: ['$\\infty$', '\\infty'],
+  0x00B1: ['$\\pm$', '\\pm'], 0x221A: ['$\\sqrt{}$', '\\sqrt{}'], 0x2211: ['$\\sum$', '\\sum'], 0x222B: ['$\\int$', '\\int'],
+  0x2202: ['$\\partial$', '\\partial'], 0x0394: ['$\\Delta$', '\\Delta'], 0x03A9: ['$\\Omega$', '\\Omega'], 0x03C9: ['$\\omega$', '\\omega'],
+  0x03C0: ['$\\pi$', '\\pi'], 0x03B1: ['$\\alpha$', '\\alpha'], 0x03B2: ['$\\beta$', '\\beta'], 0x03B8: ['$\\theta$', '\\theta'],
+  0x03BB: ['$\\lambda$', '\\lambda'], 0x03C3: ['$\\sigma$', '\\sigma'], 0x03C6: ['$\\phi$', '\\phi'], 0x00B5: ['\\textmu{}', '\\mu'],
+  0x2026: ['\\dots{}', '\\dots'], 0x2009: ['\\,', '\\,'], 0x2022: ['\\textbullet{}', '\\bullet'], 0x2122: ['\\texttrademark{}', '\\text{\\texttrademark}'],
+  0xFB00: ['ff', 'ff'], 0xFB01: ['fi', 'fi'], 0xFB02: ['fl', 'fl'], 0xFB03: ['ffi', 'ffi'], 0xFB04: ['ffl', 'ffl'],
+};
+
+// Comandos que dependen de la clase del documento.
+const noComments = (t) => (t || '').replace(/(^|[^\\])%.*$/gm, '$1');
+const CLASS_CMDS = {
+  chapter: { classes: ['report', 'book', 'memoir', 'scrbook', 'scrreprt'], text: 'los capítulos son de report o book (cambia \\documentclass{article} por \\documentclass{report}) o usa \\section' },
+  frontmatter: { classes: ['book', 'memoir', 'scrbook'], text: 'es de la clase book; en article/report bórralo' },
+  mainmatter: { classes: ['book', 'memoir', 'scrbook'], text: 'es de la clase book; en article/report bórralo' },
+  backmatter: { classes: ['book', 'memoir', 'scrbook'], text: 'es de la clase book; en article/report bórralo' },
+  frametitle: { classes: ['beamer'], text: 'es de beamer (presentaciones): \\documentclass{beamer}' },
+};
+const LST_LANGS = ['Python', 'C', 'C++', 'Java', 'Matlab', 'Octave', 'VHDL', 'Verilog', 'HTML', 'XML', 'SQL', 'bash', 'R', 'Fortran', 'Pascal', 'Assembler', 'TeX', 'Perl', 'PHP', 'Ruby', 'Lisp', 'Haskell', 'Mathematica', 'make', 'command.com'];
+
 const BEAMER_THEMES = {
   '': ['default', 'AnnArbor', 'Antibes', 'Bergen', 'Berkeley', 'Berlin', 'Boadilla', 'boxes', 'CambridgeUS', 'Copenhagen', 'Darmstadt', 'Dresden', 'EastLansing', 'Frankfurt', 'Goettingen', 'Hannover', 'Ilmenau', 'JuanLesPins', 'Luebeck', 'Madrid', 'Malmoe', 'Marburg', 'Montpellier', 'PaloAlto', 'Pittsburgh', 'Rochester', 'Singapore', 'Szeged', 'Warsaw', 'metropolis'],
   color: ['default', 'albatross', 'beaver', 'beetle', 'crane', 'dolphin', 'dove', 'fly', 'lily', 'monarca', 'orchid', 'rose', 'seagull', 'seahorse', 'sidebartab', 'spruce', 'structure', 'whale', 'wolverine'],
@@ -311,6 +352,79 @@ function enrich(entry, head, sources, main, top = '') {
     return;
   }
   if (/Unknown float option `H'/.test(msg)) { entry.needPkg = 'float'; return; }
+  if (/Couldn't load requested language/.test(msg) && sources && entry.line) {
+    const l = (sources[entry.file || main] || '').split('\n')[entry.line - 1] || '';
+    const lang = (l.match(/language\s*=\s*\{?\s*(?:\[[^\]]*\])?\s*([\w+#.-]+)/i) || [])[1];
+    if (lang) {
+      const sug = closest(lang, LST_LANGS);
+      entry.context = l.trim();
+      entry.hint = `listings no conoce el lenguaje «${lang}»` + (sug && sug.toLowerCase() !== lang.toLowerCase() ? `. ¿Quisiste decir ${sug}?` : ': revisa cómo está escrito');
+      if (sug && sug.toLowerCase() !== lang.toLowerCase()) entry.fix = { file: entry.file || main, line: entry.line, find: 'language=' + lang, replace: 'language=' + sug, label: `Cambiar por ${sug}` };
+    }
+    return;
+  }
+  const col = msg.match(/could not retrieve column '([^']*)' from table '([^']*)'/);
+  if (col && sources) {
+    // Se leen los nombres de columna de la primera línea del archivo de datos (del proyecto o de un filecontents).
+    let header = null;
+    let fname = col[2];
+    if (/\\/.test(fname) && entry.line) {
+      // pgfplots a veces da un nombre interno: se toma el archivo de la línea del \addplot table.
+      const l = (sources[entry.file || main] || '').split('\n')[entry.line - 1] || '';
+      const m = l.match(/table\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/);
+      if (m) fname = m[1].trim();
+    }
+    if (sources[fname]) header = sources[fname].split('\n').find((l) => l.trim() && !/^[#%]/.test(l.trim()));
+    if (!header) for (const t of Object.values(sources)) {
+      const m = t.match(new RegExp('\\\\begin\\{filecontents\\*?\\}(?:\\[[^\\]]*\\])?\\{' + escapeRe(fname) + '\\}\\s*\\n([^\\n]*)'));
+      if (m) { header = m[1]; break; }
+    }
+    if (header) {
+      const cols = header.trim().split(/[\s,;]+/).filter(Boolean);
+      const sug = closest(col[1], cols);
+      entry.hint = `La tabla «${fname}» no tiene una columna «${col[1]}». Sus columnas son: ${cols.join(', ')}` + (sug ? `. ¿Quisiste decir «${sug}»?` : '');
+    } else {
+      entry.hint = `La tabla de datos «${fname}» no tiene una columna llamada «${col[1]}»: revisa la primera línea del archivo (los nombres de columna)`;
+      const l = sources[entry.file || main] && (sources[entry.file || main].split('\n')[(entry.line || 1) - 1] || '');
+      if (sug && l && l.includes('=' + col[1])) entry.fix = { file: entry.file || main, line: entry.line, find: '=' + col[1], replace: '=' + sug, label: `Usar la columna «${sug}»` };
+    }
+    return;
+  }
+  const userFile = msg.match(/File `([^']+\.tex)' not found/);
+  if (userFile && sources && !(userFile[1] in sources)) {
+    const sug = closest(userFile[1], Object.keys(sources));
+    entry.hint = `El archivo «${userFile[1]}» no está en el proyecto` + (sug ? `. ¿Quisiste decir «${sug}»?` : ': créalo en Archivos (+) o corrige la ruta del \\input/\\include');
+    return;
+  }
+  const uni = msg.match(/Unicode character (.+?) \(U\+([0-9A-Fa-f]+)\)/);
+  if (uni) {
+    const cp = parseInt(uni[2], 16);
+    const ch = String.fromCodePoint(cp);
+    const hex = 'U+' + uni[2].toUpperCase();
+    const ls = sources && sources[entry.file || main] ? sources[entry.file || main].split('\n') : null;
+    let line = entry.line && ls && ls[entry.line - 1] != null && ls[entry.line - 1].includes(ch) ? entry.line : null;
+    if (!line && ls) { const k = ls.findIndex((l) => l.includes(ch)); if (k >= 0) line = k + 1; }
+    const text = line ? ls[line - 1] : '';
+    if (line) { entry.file = entry.file || main; entry.line = line; entry.context = text.trim().replace(/[\u200B-\u200D\u2060\uFEFF\u00AD]/g, '⟦?⟧'); }
+    const pos = text.indexOf(ch);
+    const inMath = pos >= 0 && ((text.slice(0, pos).match(/(^|[^\\])\$/g) || []).length % 2 === 1 || /\\\(|\\\[/.test(text.slice(0, pos)));
+    const fix = (replace, label) => { if (line && text.includes(ch)) entry.fix = { file: entry.file, line, find: ch, replace, label }; };
+    if (INVISIBLE[cp]) {
+      entry.hint = `En esta línea hay ${INVISIBLE[cp]} (${hex}) que no se ve en el editor: suele venir al copiar desde Word, un PDF o una página web. Bórralo` + (entry.context ? ' (está marcado como ⟦?⟧ abajo)' : '');
+      fix('', 'Quitar el carácter invisible');
+    } else if (UNI_REPL[cp]) {
+      const [txt, mth] = UNI_REPL[cp];
+      const rep = inMath ? mth : txt;
+      entry.hint = `pdfLaTeX no conoce «${ch}» (${hex}): escríbelo como ${rep}` + (cp >= 0xFB00 ? ' (es una ligadura que viene al copiar de un PDF)' : '') + ' — o compila con XeLaTeX';
+      fix(rep, `Cambiar «${ch}» por ${rep}`);
+    } else if (cp >= 0x1F000 || (cp >= 0x2600 && cp <= 0x27BF)) {
+      entry.hint = `Los emojis («${ch}») no existen en pdfLaTeX: bórralo (o compila con LuaLaTeX y una fuente con emojis)`;
+      fix('', 'Quitar el emoji');
+    } else {
+      entry.hint = `pdfLaTeX no conoce el carácter «${ch}» (${hex}): bórralo, cámbialo por un comando de LaTeX o compila con XeLaTeX (⋮ → Motor)`;
+    }
+    return;
+  }
   const runaway = msg.match(/^(?:Paragraph ended before|File ended while scanning use of) \\?(\S+?)(?: was complete)?\.?$/);
   if (runaway && sources && sources[entry.file || main]) {
     // Una llave sin cerrar: TeX lo nota recién al terminar el párrafo (una línea en blanco más abajo).
@@ -431,6 +545,9 @@ function enrich(entry, head, sources, main, top = '') {
       entry.hint = `\\${cmd} solo existe en XeLaTeX: escribe «% !TEX program = xelatex» en la primera línea o cambia el motor en ⋮ → Motor`;
     } else if (/^pdf[a-z]+$/.test(cmd) && !CMD_PKG[cmd]) {
       entry.hint = `\\${cmd} es propio de pdfLaTeX y no existe en XeLaTeX/LuaLaTeX: compila con pdfLaTeX (⋮ → Motor) o quítalo`;
+    } else if (CLASS_CMDS[cmd] && sources && !new RegExp('\\\\documentclass(\\[[^\\]]*\\])?\\{(' + CLASS_CMDS[cmd].classes.join('|') + ')\\}').test(noComments(sources[main]))) {
+      const cls = (noComments(sources[main]).match(/\\documentclass(?:\[[^\]]*\])?\{([^}]+)\}/) || [])[1] || 'del documento';
+      entry.hint = `\\${cmd} no existe en la clase ${cls}: ${CLASS_CMDS[cmd].text}`;
     } else if (CMD_PKG[cmd]) {
       entry.hint = `\\${cmd} necesita el paquete ${CMD_PKG[cmd]}: agrega \\usepackage{${CMD_PKG[cmd]}}`;
       entry.needPkg = CMD_PKG[cmd];
@@ -516,6 +633,9 @@ const INFO_WARNINGS = [
   [/Using \\overbracket and \\underbracket from `mathtools'/, 'Solo informativo: unicode-math y mathtools traen su propia versión de \\overbracket y \\underbracket; se usa la de mathtools. No hace falta hacer nada.'],
   [/going to overwrite the following commands from the `mathtools' package/, 'Solo informativo: unicode-math reemplaza algunos comandos de mathtools (\\coloneqq, \\eqqcolon…). No hace falta hacer nada; si usas esos símbolos, revisa que se vean bien.'],
   [/Token not allowed in a PDF string/, 'Solo informativo: un título tiene fórmulas o comandos que no se pueden mostrar en el índice lateral del PDF (marcadores), así que ahí se simplifica. Si quieres controlarlo: \\section{\\texorpdfstring{$\\sin\\theta$}{sen θ}}'],
+  [/Unknown language 'latin'/, 'Solo informativo: el texto de relleno de lipsum está en latín y no hay reglas de partición para ese idioma; no afecta a tu texto.'],
+  [/The API for specifying variable labels have been updated/, 'karnaugh-map cambió la forma de poner los nombres de las variables: ahora va uno por corchete, p. ej. \\begin{karnaugh-map}[4][4][1][$D$][$C$][$B$][$A$] (la forma vieja todavía funciona).'],
+  [/cref reference format for label type `([^']+)' undefined/, 'cleveref no sabe qué palabra poner para esta referencia: define \\crefname{$1}{nombre}{nombres} (en tcolorbox, con la opción crefname={…}{…}).'],
   [/Size substitutions with differences/, 'Solo informativo: algún tamaño de letra no existe exacto y se usó el más cercano. No hace falta hacer nada.'],
   [/Some font shapes were not available, defaults substituted/, 'Solo informativo: alguna variante de letra (p. ej. versalitas en cursiva) no existe y se usó otra parecida. Busca arriba el aviso «Font shape … undefined» para ver cuál.'],
   [/Unknown document class \(or package\)/, 'Solo informativo: el paquete caption no reconoce la clase del documento, pero funciona igual.'],
@@ -595,7 +715,7 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       const lm = msg.match(RE_INPUT_LINE);
       const w = { type: 'warning', file: lm ? main : null, line: lm ? +lm[1] : null, message: (m[1] ? m[1] + ': ' : '') + msg.trim(), hint: translate(msg) };
       const info = INFO_WARNINGS.find(([re]) => re.test(msg));
-      if (info) { w.hint = info[1]; if (/^Solo informativo/.test(info[1])) w.info = true; }
+      if (info) { const mm = msg.match(info[0]); w.hint = info[1].replace(/\$(\d)/g, (_, n) => (mm && mm[n]) || ''); if (/^Solo informativo/.test(info[1])) w.info = true; }
       const dup = msg.match(/Label `([^']+)' multiply defined/);
       if (dup && sources) {
         const hits = findLines(new RegExp('\\\\label\\{' + escapeRe(dup[1]) + '\\}'), sources, main);
@@ -642,6 +762,16 @@ export function markCascades(entries) {
   for (const e of entries) {
     const m = e.message;
     if (e.cascade != null) { prevAll.push(e); continue; }
+    // «Dimension too large» repetido en las líneas siguientes: es el mismo problema.
+    if (e.type === 'error' && /^Dimension too large/.test(m)) {
+      const src = prevReal.find((x) => /^Dimension too large/.test(x.message) && x.file === e.file && e.line - x.line <= 3 && e.line >= x.line);
+      if (src) { e.cascade = src.line; continue; }
+    }
+    // Avisos de pgfplots que son consecuencia de un error de pgfplots justo antes.
+    if (e.type === 'warning' && /the current plot has no coordinates|axis with empty range/.test(m)) {
+      const src = prevReal.find((x) => /pgfplots Error/.test(x.message) && x.line != null && e.line != null && e.line - x.line <= 3 && e.line >= x.line);
+      if (src) { e.cascade = src.line; continue; }
+    }
     // En la misma línea que un comando de un paquete «tragado»: también es consecuencia.
     if (e.type === 'error' && e.line != null) {
       const sameCascade = prevAll.find((x) => x.swallowed && x.line === e.line && x.file === e.file);

@@ -763,7 +763,7 @@ export async function renderEditor(root, { id }, navigate) {
     if (fixes.length > 1) {
       head.push(el('div', { class: 'msg info' },
         el('div', { class: 'msg-top' }, el('span', { class: 'msg-type' }, 'Arreglo')),
-        el('div', { class: 'msg-main' }, `Hay ${fixes.length} líneas que se pueden corregir solas (fuentes escritas por nombre).`),
+        el('div', { class: 'msg-main' }, `Hay ${fixes.length} líneas que se pueden corregir con un toque (revisa cada tarjeta para ver qué cambia).`),
         el('button', { class: 'btn small msg-fix', html: icon('wand') + `<span>Aplicar los ${fixes.length} arreglos</span>`, onclick: () => applyFixes(fixes) })));
     }
     const stopped = r && r.status === 'failed' && top.some((m) => m.type === 'error')
