@@ -17,6 +17,18 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.20] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 30 · servidor Termux 0.2.3
+
+### Corregido: XeLaTeX tardaba más de un minuto con una fuente que no existe (prueba de errores M)
+- El aviso decía «No se encontró: Arial.tex, BI.tex, B.tex, I.tex, Consolas.tex». La demora tenía dos causas:
+  - TeX intentaba *fabricar* la fuente Arial con METAFONT, una vez por cada variante (normal, negrita, cursiva, negrita cursiva).
+  - El servidor tomaba esos fallos por archivos de paquete y buscaba cada uno en todo CTAN, cinco búsquedas por compilación.
+- Ahora, en XeLaTeX, no se intenta fabricar fuentes, y los nombres de fuentes del sistema que faltan ya no se buscan en CTAN. El error («no se encontró la fuente Arial», con sus alternativas TeX Gyre) sale en segundos.
+- El servidor recuerda por 7 días los archivos que no existen en CTAN, para no volver a buscarlos en cada compilación.
+- Requiere actualizar el servidor de Termux: la app lo ofrece en el inicio («Hay mejoras para Termux»).
+
+---
+
 ## [0.2.19] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 29
 
 ### Nuevo

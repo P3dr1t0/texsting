@@ -18,7 +18,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "0.2.2"
+VERSION = "0.2.3"
 HOME = os.path.expanduser("~")
 CONF_DIR = os.environ.get("TEXSTING_DIR", os.path.join(HOME, ".texsting"))
 HOST = os.environ.get("TEXSTING_HOST", "127.0.0.1")
@@ -150,9 +150,10 @@ def sync_project(project_dir, files):
         json.dump(sorted(new), fh)
 
 
-def run_cmd(cmd, cwd, timeout):
+def run_cmd(cmd, cwd, timeout, extra_env=None):
     """Ejecuta un comando en su propio grupo de procesos, con límite de tiempo."""
     env = dict(os.environ)
+    env.update(extra_env or {})
     # Evita que TeX corte las líneas del log a 79 caracteres.
     env.update({"max_print_line": "10000", "error_line": "254", "half_error_line": "238"})
     proc = subprocess.Popen(
@@ -173,12 +174,16 @@ def run_cmd(cmd, cwd, timeout):
 
 def run_latex(project_dir, main, engine, timeout):
     flag, exe = ENGINES[engine]
+    # XeLaTeX: si una fuente (p. ej. Arial) no está instalada, kpathsea intenta *fabricarla*
+    # con METAFONT (mktextfm) para cada variante (Arial, Arial/B, Arial/I, Arial/BI…). En el
+    # teléfono eso tarda mucho y nunca funciona: con fontspec las fuentes son OTF/TTF.
+    extra = {"MKTEXTFM": "0"} if engine == "xelatex" else None
     if which("latexmk"):
         # -g: compilar siempre que el usuario lo pide (si no, latexmk se niega a
         # repetir un documento que tuvo errores y no cambió).
         cmd = ["latexmk", flag, "-g", "-interaction=nonstopmode", "-file-line-error",
                "-synctex=1", "-f", main]
-        return run_cmd(cmd, project_dir, timeout)
+        return run_cmd(cmd, project_dir, timeout, extra)
     # Sin latexmk: dos pasadas del motor.
     out_all = ""
     code = 0
@@ -186,7 +191,7 @@ def run_latex(project_dir, main, engine, timeout):
     for _ in range(2):
         left = max(5, int(deadline - time.time()))
         code, out, to = run_cmd([exe, "-interaction=nonstopmode", "-file-line-error",
-                                 "-synctex=1", main], project_dir, left)
+                                 "-synctex=1", main], project_dir, left, extra)
         out_all += out
         if to:
             return code, out_all, True
@@ -200,11 +205,37 @@ INSTALLABLE_EXT = ("sty", "cls", "bst", "def", "fd", "cfg", "clo", "ldf", "tfm",
 BIBER_MISSING = re.compile(r"biber: (command )?not found|Can't exec \"biber\"|Could not find .*biber|'biber' not found", re.I)
 
 
+FONT_NOT_FOUND = [
+    re.compile(r'fontspec Error: The font "([^"]+)" cannot be found'),
+    re.compile(r"mktextfm:? (?:Running )?(?:mf\S* .*input )?\s*\"?([^\s\"']+)"),
+    re.compile(r"kpathsea: Running mktextfm \"?([^\s\"]+)"),
+    # Solo codificación TU (fuentes de fontspec); las OT1/T1 sí pueden ser paquetes de CTAN.
+    re.compile(r"Font \\?TU/[^=\s]+=\"?([^\"\s:]+)"),
+]
+
+
+def bad_font_names(log_text):
+    """Nombres de fuentes del sistema que no existen (Arial, Consolas…): no son paquetes de CTAN."""
+    bad = set()
+    for pat in FONT_NOT_FOUND:
+        for m in pat.finditer(log_text):
+            name = m.group(1).strip().strip('"[]')
+            if name:
+                bad.add(name.lower())
+                bad.add(name.split("/")[0].lower())
+    return bad
+
+
 def find_missing(log_text):
     found = []
+    bad_fonts = bad_font_names(log_text)
     for pat in MISSING_PATTERNS:
         for m in pat.finditer(log_text):
-            name = m.group(1).strip()
+            name = m.group(1).strip().strip('"')
+            stem = name.split("/")[0].rsplit(".", 1)[0].lower()
+            # «Arial/BI», «Arial.tfm»: fuente del sistema que no está, no un archivo de CTAN.
+            if "/" in name or name.lower() in bad_fonts or stem in bad_fonts:
+                continue
             if pat is MISSING_PATTERNS[2]:
                 name += ".tfm"
             # «I can't find file» lo da TeX cuando un *paquete* pide un archivo (p. ej. chemfig
@@ -223,7 +254,43 @@ def find_missing(log_text):
     return found
 
 
+NOTFOUND_FILE = os.path.join(CONF_DIR, "ctan-no-encontrados.json")
+NOTFOUND_DAYS = 7
+
+
+def _load_notfound():
+    try:
+        with open(NOTFOUND_FILE, encoding="utf-8") as fh:
+            data = json.load(fh)
+        cutoff = time.time() - NOTFOUND_DAYS * 86400
+        return {k: v for k, v in data.items() if v > cutoff}
+    except Exception:
+        return {}
+
+
+def _remember_notfound(filename):
+    data = _load_notfound()
+    data[filename] = time.time()
+    try:
+        os.makedirs(CONF_DIR, exist_ok=True)
+        with open(NOTFOUND_FILE, "w", encoding="utf-8") as fh:
+            json.dump(data, fh)
+    except Exception:
+        pass
+
+
 def tlmgr_find_package(filename):
+    # Buscar en todo CTAN tarda (descarga el índice): lo que no se encontró hace poco
+    # no se vuelve a buscar en cada compilación.
+    if filename in _load_notfound():
+        return None
+    pkg = _tlmgr_search(filename)
+    if not pkg:
+        _remember_notfound(filename)
+    return pkg
+
+
+def _tlmgr_search(filename):
     r = subprocess.run(["tlmgr", "search", "--global", "--file", "/" + filename],
                        capture_output=True, text=True, timeout=180)
     pkg = None
