@@ -6,6 +6,7 @@ import { renderHome } from './screens/home.js';
 import { renderEditor } from './screens/editor.js';
 import { renderSettings, renderTermuxSetup } from './screens/settings.js';
 import { renderNewProject } from './screens/newproject.js';
+import { initOpenWith } from './openwith.js';
 
 const root = document.getElementById('app');
 let current = null; // { name, cleanup, onBack }
@@ -34,4 +35,4 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && closeTop
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 
 applyTheme();
-navigate('home');
+navigate('home').then(() => initOpenWith(navigate));

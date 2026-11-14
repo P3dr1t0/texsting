@@ -38,6 +38,22 @@ if (!m.includes('hasFragileUserData')) {
 if (!m.includes('windowSoftInputMode')) {
   m = m.replace(/<activity(\s)/, '<activity\n            android:windowSoftInputMode="adjustResize"$1');
 }
+// «Abrir con → TeXsting» para archivos LaTeX (.tex, .ltx, .bib, .sty, .cls).
+// Cada app que comparte un archivo puede declarar un tipo distinto, así que se aceptan
+// los tipos LaTeX, texto plano y «desconocido»; la app revisa la extensión al abrirlo.
+if (!m.includes('text/x-tex')) {
+  const mimes = ['text/x-tex', 'application/x-tex', 'text/x-latex', 'application/x-latex', 'text/x-bibtex',
+    'application/x-bibtex', 'text/plain', 'application/octet-stream'];
+  const filter = `
+            <intent-filter android:label="TeXsting">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+${mimes.map((t) => `                <data android:mimeType="${t}" />`).join('\n')}
+            </intent-filter>`;
+  m = m.replace('</intent-filter>', '</intent-filter>' + filter);
+}
 writeFileSync(manifestPath, m);
 
 const gradlePath = path.join(app, 'build.gradle');

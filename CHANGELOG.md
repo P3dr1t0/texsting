@@ -17,6 +17,22 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.8] — 13 nov. 2026 · Fase 1: Beta con Termux · compilación 18
+
+### Nuevo: «Abrir con → TeXsting» (issue [#7](https://github.com/P3dr1t0/texsting/issues/7), primera parte)
+- TeXsting aparece en **Abrir con** para archivos LaTeX (`.tex`, `.ltx`, `.bib`, `.sty`, `.cls`) desde Archivos, WhatsApp, Drive, Gmail, etc.
+- Pregunta **«¿Deseas importar «archivo.tex»?»** y ofrece:
+  - **Crear proyecto** (nombre editable) si el archivo es un documento completo (tiene `\documentclass`).
+  - **Agregar a un proyecto** que ya tengas si es un archivo suelto (un capítulo, una bibliografía…).
+  - **Actualizar** el proyecto si ya lo habías importado antes (reemplaza el archivo con la versión nueva).
+- Si el documento usa imágenes o `\input` que no vinieron con el `.tex`, avisa cuáles faltan y cómo agregarlos.
+- Si se abre algo que no es LaTeX (un PDF, una foto), lo rechaza con un aviso en vez de importarlo.
+
+### Pendiente de #7
+- Guardar los cambios de vuelta en el archivo original y abrir la carpeta completa (con sus imágenes) en un solo paso.
+
+---
+
 ## [0.2.7] — 13 nov. 2026 · Fase 1: Beta con Termux · compilación 17
 
 ### Mejorado (a partir de las capturas de Pedro con la serie 2)
