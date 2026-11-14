@@ -151,6 +151,31 @@ export function createPdfViewer(root) {
   // Zoom con pellizco (dos dedos) y doble toque.
   let pinch = null;
   let lastTap = 0;
+  // Mantener presionado (dedo) = ir al código. Vibra al cumplirse el tiempo y salta al soltar,
+  // cancelando ese último toque para que no caiga sobre el código que aparece debajo.
+  let hold = null;
+  const cancelHold = () => { if (hold) clearTimeout(hold.timer); hold = null; };
+  scroller.addEventListener('touchstart', (e) => {
+    cancelHold();
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      hold = { x: t.clientX, y: t.clientY, fired: false };
+      hold.timer = setTimeout(() => { if (hold) { hold.fired = true; if (navigator.vibrate) navigator.vibrate(12); } }, 550);
+    }
+  }, { passive: true });
+  scroller.addEventListener('touchmove', (e) => {
+    if (hold && !hold.fired && e.touches[0] && Math.hypot(e.touches[0].clientX - hold.x, e.touches[0].clientY - hold.y) > 10) cancelHold();
+  }, { passive: true });
+  scroller.addEventListener('touchend', (e) => {
+    const h = hold;
+    cancelHold();
+    if (h && h.fired) {
+      e.preventDefault(); // sin el «clic» que el navegador crea al levantar el dedo
+      requestSource(h.x, h.y);
+    }
+  }, { passive: false });
+  scroller.addEventListener('touchcancel', cancelHold);
+  scroller.addEventListener('contextmenu', (e) => e.preventDefault());
   scroller.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
       const [a, b] = e.touches;
@@ -197,6 +222,11 @@ export function createPdfViewer(root) {
     lastPointer = e.pointerType;
     if (e.pointerType !== 'mouse' || (e.button !== 0 && e.button !== 1)) return;
     if (e.target.closest('.pdfv-bar, button, a, input')) return;
+    if (e.button === 0 && (e.ctrlKey || e.metaKey)) { // Ctrl + clic: ir al código
+      e.preventDefault();
+      requestSource(e.clientX, e.clientY);
+      return;
+    }
     stopGlide();
     if (e.button === 1) e.preventDefault(); // sin el «autodesplazamiento» del navegador
     drag = { id: e.pointerId, x: e.clientX, y: e.clientY, left: scroller.scrollLeft, top: scroller.scrollTop, moved: false, vx: 0, vy: 0, t: performance.now(), px: e.clientX, py: e.clientY };
@@ -243,6 +273,39 @@ export function createPdfViewer(root) {
     if (fit) setZoom(scale * 1.8, y); else { fit = true; layout(); }
   });
 
+  // ---------- SyncTeX: puntos del PDF y resaltado ----------
+  let sourceHandler = null;
+  function pointAt(clientX, clientY) {
+    const elx = document.elementFromPoint(clientX, clientY)?.closest('.pdfv-page-el');
+    if (!elx) return null;
+    const r = elx.getBoundingClientRect();
+    const k = r.width / pages[+elx.dataset.index].vp1.width; // px por punto PDF
+    return { page: +elx.dataset.index + 1, x: (clientX - r.left) / k, y: (clientY - r.top) / k };
+  }
+  function requestSource(clientX, clientY) {
+    const pt = pointAt(clientX, clientY);
+    if (pt && sourceHandler) sourceHandler(pt);
+  }
+  function highlight(rect) {
+    const p = pages[rect.page - 1];
+    if (!p) return false;
+    const k = p.el.clientWidth / p.vp1.width;
+    p.el.querySelectorAll('.pdfv-hl').forEach((n) => n.remove());
+    const pad = 3;
+    const hl = document.createElement('div');
+    hl.className = 'pdfv-hl';
+    Object.assign(hl.style, { left: (rect.x * k - pad) + 'px', top: (rect.y * k - pad) + 'px', width: (rect.w * k + 2 * pad) + 'px', height: (rect.h * k + 2 * pad) + 'px' });
+    p.el.appendChild(hl);
+    // centrar el resaltado en pantalla (vertical y, si hay zoom, horizontal)
+    const top = p.el.offsetTop + rect.y * k - scroller.clientHeight / 3;
+    const left = p.el.offsetLeft + rect.x * k - 24;
+    stopGlide();
+    scroller.scrollTo({ top: Math.max(0, top), left: scroller.scrollWidth > scroller.clientWidth ? Math.max(0, left) : scroller.scrollLeft, behavior: 'smooth' });
+    setTimeout(() => hl.classList.add('fade'), 1600);
+    setTimeout(() => hl.remove(), 2600);
+    return true;
+  }
+
   new ResizeObserver(() => { if (fit && pages.length) layout(); }).observe(scroller);
 
   return {
@@ -250,5 +313,7 @@ export function createPdfViewer(root) {
     clear() { io.disconnect(); pages = []; pagesEl.replaceChildren(); emptyEl.hidden = false; if (doc) destroyDoc(doc); doc = null; updatePageLabel(); },
     get pageCount() { return pages.length; },
     scrollToPage(n) { const p = pages[n - 1]; if (p) scroller.scrollTop = p.el.offsetTop - 8; },
+    highlight,
+    onSource(fn) { sourceHandler = fn; },
   };
 }

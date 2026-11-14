@@ -176,6 +176,14 @@ export function createEditor(parent, { onChange, onSave, onCompile, getContext }
       const l = view.state.doc.line(n);
       view.dispatch({ selection: EditorSelection.cursor(l.from), effects: EditorView.scrollIntoView(l.from, { y: 'center' }) });
       view.focus();
+      // destello breve en la línea de destino (saltos desde el PDF o desde Mensajes)
+      requestAnimationFrame(() => {
+        try {
+          const node = view.domAtPos(l.from).node;
+          const lineEl = (node.nodeType === 1 ? node : node.parentElement)?.closest('.cm-line');
+          if (lineEl) { lineEl.classList.add('cm-flash'); setTimeout(() => lineEl.classList.remove('cm-flash'), 1500); }
+        } catch { /* la línea no está dibujada */ }
+      });
     },
     getCursorLine() { return view.state.doc.lineAt(view.state.selection.main.head).number; },
     moveCursor(delta) {

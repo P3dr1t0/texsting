@@ -4,6 +4,7 @@ import { createEditor } from '#editor-impl';
 import { getProject, saveProject, listFiles, putFile, deleteFile, renameFile, getOutput, saveOutput, getSettings, setSettings, isTextPath } from '../store.js';
 import { el, icon, toast, sheet, panel, promptText, confirmDialog, dialog, pickFiles, esc } from '../ui.js';
 import { createPdfViewer } from '../pdfview.js';
+import { parseSynctex, forward, inverse } from '../synctex.js';
 import { compileProject, CompileError } from '../compiler.js';
 import { parseLog, summarize } from '../logparser.js';
 import { analyzeProject } from '../structure.js';
@@ -293,6 +294,42 @@ export async function renderEditor(root, { id }, navigate) {
     }, el('span', { html: icon(ICON[it.type] || 'file') }), el('span', { class: 'label' }, it.type === 'todo' ? 'POR HACER: ' + it.title : it.title), el('small', {}, String(it.line)))));
   }
 
+  // ---------- SyncTeX: código ↔ PDF ----------
+  let syncBytes = null;
+  let syncData = null;
+  async function getSync() {
+    if (!syncBytes) return null;
+    if (!syncData) {
+      try { syncData = await parseSynctex(syncBytes, files.map((f) => f.path)); } catch (e) { console.warn(e); return null; }
+    }
+    return syncData;
+  }
+  async function forwardSearch() {
+    const sync = await getSync();
+    if (!sync) { toast('Compila primero para poder saltar al PDF'); return; }
+    const r = forward(sync, currentPath, editor.getCursorLine());
+    if (!r) { toast('Esa línea no aparece en el PDF (¿la escribiste después de compilar?)'); return; }
+    if (!WIDE.matches) showPanel('pdf');
+    setTimeout(() => viewer.highlight(r), WIDE.matches ? 0 : 120);
+  }
+  viewer.onSource(async (pt) => {
+    const sync = await getSync();
+    if (!sync) { toast('Compila primero para poder saltar al código'); return; }
+    const r = inverse(sync, pt.page, pt.x, pt.y);
+    if (!r || !r.file) { toast('No encontré el código de ese punto'); return; }
+    if (!files.some((f) => f.path === r.file)) { toast(`Ese texto viene de «${r.file}», que no está en el proyecto`); return; }
+    jumpTo(r.file, r.line);
+  });
+  // Doble clic en el código → PDF. En el celular (pestañas) solo con mouse, para no
+  // cambiar de pestaña al seleccionar una palabra con el dedo.
+  let codePointer = '';
+  editorPane.addEventListener('pointerdown', (e) => { codePointer = e.pointerType; }, true);
+  editorPane.addEventListener('dblclick', (e) => {
+    if (!e.target.closest('.cm-content, .cm-line, .basic-editor, textarea')) return;
+    if (!WIDE.matches && codePointer !== 'mouse') return;
+    setTimeout(forwardSearch, 10);
+  });
+
   function jumpTo(file, line) {
     if (file && file !== currentPath) {
       const f = files.find((x) => x.path === file);
@@ -427,7 +464,8 @@ export async function renderEditor(root, { id }, navigate) {
       rawLog.textContent = r.log || r.output || '';
       if (r.pdf) {
         await viewer.load(r.pdf);
-        await saveOutput(project.id, { pdf: r.pdf, log: r.log, status: r.status });
+        syncBytes = r.synctex || null; syncData = null;
+        await saveOutput(project.id, { pdf: r.pdf, log: r.log, status: r.status, synctex: syncBytes });
       }
       const sm = summarize(messages);
       if (r.engineReason === 'fontspec' && project.engine !== 'xelatex') {
@@ -537,6 +575,7 @@ export async function renderEditor(root, { id }, navigate) {
     const engineName = (ENGINES.find((e) => e[0] === project.engine) || ENGINES[0])[1];
     const choice = await sheet(project.name, [
       { label: 'Compartir PDF', icon: 'share', value: 'pdf' },
+      { label: 'Ver esta línea en el PDF', hint: 'También: doble clic en el código', icon: 'pdf', value: 'sync' },
       { label: 'Motor: ' + engineName, hint: 'pdfLaTeX, XeLaTeX o LuaLaTeX', icon: 'settings', value: 'engine' },
       { label: 'Asistentes e inserciones', icon: 'wand', value: 'wizards' },
       { label: 'Buscar y reemplazar', icon: 'search', value: 'search' },
@@ -550,6 +589,7 @@ export async function renderEditor(root, { id }, navigate) {
     if (choice === 'look') panel('Apariencia', appearance({ onFont: (v) => editor.configure({ fontSize: v }) }));
     if (choice === 'template') { saveSoon.flush(); await saveCurrent(); await saveAsTemplate(project); }
     if (choice === 'pdf') sharePdf();
+    if (choice === 'sync') forwardSearch();
     if (choice === 'wizards') wizardsMenu();
     if (choice === 'search') { showPanel('code'); editor.openSearch(); }
     if (choice === 'files') showPanel('files');
@@ -575,6 +615,7 @@ export async function renderEditor(root, { id }, navigate) {
   const prev = await getOutput(project.id);
   if (prev && prev.pdf) {
     viewer.load(prev.pdf).catch(() => {});
+    syncBytes = prev.synctex || null;
     messages = parseLog(prev.log, project.main);
     renderMessages({ status: prev.status });
     rawLog.textContent = prev.log || '';

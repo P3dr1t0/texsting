@@ -17,6 +17,17 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.11] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 21
+
+### Nuevo: saltar entre el código y el PDF (SyncTeX, como en Overleaf)
+- **Código → PDF**: **doble clic** en una línea del código lleva al lugar del PDF que generó y lo **resalta** unos segundos. En el celular (con el dedo) se hace desde **⋮ → Ver esta línea en el PDF**, para que seleccionar una palabra no te cambie de pestaña.
+- **PDF → código**: **Ctrl + clic** (mouse) o **mantener presionado** (dedo, vibra al cumplirse) sobre una palabra, ecuación o figura lleva a la línea del código que la produjo, en el archivo correcto aunque esté en un `\input`. La línea destino destella.
+- Funciona sin internet y también con el último PDF guardado al volver a abrir el proyecto.
+- Comparado con la herramienta oficial `synctex` en un documento de 23 páginas: 84/84 líneas en la misma página y altura, y 99 % de los puntos del PDF a la misma línea.
+- Si escribiste líneas nuevas después de compilar, compila otra vez para que el salto sea exacto.
+
+---
+
 ## [0.2.10] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 20
 
 ### Nuevo: visor PDF con mouse (idea de Pedro, para tablet + mini PC de escritorio)

@@ -353,3 +353,9 @@ a { color: inherit; }
 /* Visor PDF con mouse: mano para arrastrar */
 @media (hover: hover) and (pointer: fine) { .pdfv-scroll { cursor: grab; } }
 .pdfv-scroll.grabbing { cursor: grabbing; user-select: none; }
+
+/* SyncTeX: resaltado del destino en el PDF */
+.pdfv-hl { position: absolute; border-radius: 4px; background: color-mix(in srgb, var(--accent) 28%, transparent); outline: 2px solid color-mix(in srgb, var(--accent) 75%, transparent); pointer-events: none; transition: opacity .9s ease; animation: pdfv-hl-in .35s ease; }
+.pdfv-hl.fade { opacity: 0; }
+@keyframes pdfv-hl-in { from { transform: scale(1.06); opacity: 0; } to { transform: none; opacity: 1; } }
+.cm-line.cm-flash { background: color-mix(in srgb, var(--accent) 22%, transparent) !important; transition: background .6s ease; }
