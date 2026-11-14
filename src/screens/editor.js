@@ -23,7 +23,8 @@ const WIDE = window.matchMedia('(min-width: 900px)');
 export async function renderEditor(root, { id }, navigate) {
   const project = await getProject(id);
   if (!project) { navigate('home'); return {}; }
-  touchProject(id).catch(() => {});
+  project.opened = Date.now();
+  touchProject(id, { opened: project.opened }).catch(() => {});
   let files = await listFiles(id);
   let currentPath = project.current && files.some((f) => f.path === project.current && f.kind === 'text') ? project.current : project.main;
   let lastResult = null;
@@ -204,12 +205,57 @@ export async function renderEditor(root, { id }, navigate) {
     const ch = currentEngine();
     const engineTag = `<em class="eng${ch.engine === 'pdflatex' ? ' plain' : ''}${ch.reason === 'conflict' ? ' warn' : ''}" title="Motor: toca para cambiarlo">${ENGINE_LABEL[ch.engine] || ch.engine}</em>`;
     fileBtn.innerHTML = `<span>${esc(currentPath)}</span>${currentPath === project.main ? '<em class="main-tag">principal</em>' : ''}${engineTag}<svg viewBox="0 0 24 24" class="ico caret"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
-    filesList.replaceChildren(...files.map((f) => el('div', { class: 'side-item file' + (f.path === currentPath ? ' active' : '') },
-      el('button', { class: 'side-main', onclick: () => openFile(f.path) },
-        el('span', { html: icon(fileIcon(f)) }),
-        el('span', { class: 'label' }, f.path),
-        f.path === project.main ? el('em', { class: 'tag' }, 'principal') : null),
-      el('button', { class: 'icon-btn sm', 'aria-label': 'Opciones de ' + f.path, html: icon('more'), onclick: () => fileMenu(f) }))));
+    filesList.replaceChildren(...fileTree());
+  }
+
+  // Árbol de archivos: carpetas plegables (primero) y luego archivos, en orden alfabético.
+  const closedDirs = new Set(project.closedDirs || []);
+  function fileTree() {
+    const root = { dirs: new Map(), files: [] };
+    for (const f of files) {
+      const parts = f.path.split('/');
+      let node = root;
+      for (const d of parts.slice(0, -1)) {
+        if (!node.dirs.has(d)) node.dirs.set(d, { dirs: new Map(), files: [] });
+        node = node.dirs.get(d);
+      }
+      node.files.push(f);
+    }
+    const cmp = (a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' });
+    const out = [];
+    const walk = (node, prefix, lvl) => {
+      for (const name of [...node.dirs.keys()].sort(cmp)) {
+        const dir = prefix + name;
+        const closed = closedDirs.has(dir);
+        const sub = node.dirs.get(name);
+        const count = countFiles(sub);
+        const hasCurrent = currentPath.startsWith(dir + '/');
+        out.push(el('div', { class: 'side-item dir' + (closed ? ' closed' : ''), style: `--lvl:${lvl}` },
+          el('button', { class: 'side-main', 'aria-expanded': String(!closed), onclick: () => toggleDir(dir) },
+            el('span', { class: 'chev', html: icon('right') }),
+            el('span', { html: icon('files') }),
+            el('span', { class: 'label' }, name),
+            el('small', { class: 'dir-count' + (closed && hasCurrent ? ' cur' : '') }, String(count)))));
+        if (!closed) walk(sub, dir + '/', lvl + 1);
+      }
+      for (const f of [...node.files].sort((a, b) => (a.path === project.main ? -1 : b.path === project.main ? 1 : cmp(a.path, b.path)))) {
+        out.push(el('div', { class: 'side-item file' + (f.path === currentPath ? ' active' : ''), style: `--lvl:${lvl}` },
+          el('button', { class: 'side-main', title: f.path, onclick: () => openFile(f.path) },
+            el('span', { html: icon(fileIcon(f)) }),
+            el('span', { class: 'label' }, f.path.split('/').pop()),
+            f.path === project.main ? el('em', { class: 'tag' }, 'principal') : null),
+          el('button', { class: 'icon-btn sm', 'aria-label': 'Opciones de ' + f.path, html: icon('more'), onclick: () => fileMenu(f) })));
+      }
+    };
+    walk(root, '', 0);
+    return out;
+  }
+  function countFiles(node) { let n = node.files.length; for (const d of node.dirs.values()) n += countFiles(d); return n; }
+  function toggleDir(dir) {
+    if (closedDirs.has(dir)) closedDirs.delete(dir); else closedDirs.add(dir);
+    project.closedDirs = [...closedDirs];
+    touchProject(project.id, { closedDirs: project.closedDirs }).catch(() => {});
+    renderFiles();
   }
 
   async function openFile(path) {
@@ -337,11 +383,29 @@ export async function renderEditor(root, { id }, navigate) {
       outlineList.replaceChildren(el('p', { class: 'muted pad' }, 'Aquí aparecerán tus secciones, figuras, tablas e \\input. Agrega un \\section{...}.'));
       return;
     }
-    outlineList.replaceChildren(...items.map((it) => el('button', {
-      class: `side-item outline-item t-${it.type}`,
-      style: `--lvl:${(it.type === 'section' ? it.level - 2 : it.type === 'frame' ? 1 : 3) + it.depth}`,
-      onclick: () => jumpTo(it.file, it.line),
-    }, el('span', { html: icon(ICON[it.type] || 'file') }), el('span', { class: 'label' }, it.type === 'todo' ? 'POR HACER: ' + it.title : it.title), el('small', {}, String(it.line)))));
+    // Sangría: las secciones según su nivel (el más alto del proyecto = 0); figuras, tablas y
+    // diapositivas, un nivel debajo de la sección en la que están. Un \include/\input que
+    // aporta su propio contenido no se lista aparte: su archivo se ve junto al número de línea.
+    const secLevels = items.filter((i) => i.type === 'section').map((i) => i.level);
+    const minLevel = secLevels.length ? Math.min(...secLevels) : 0;
+    let cur = -1;
+    let lastFile = project.main;
+    const rows = [];
+    items.forEach((it, k) => {
+      if (it.type === 'input' && items[k + 1] && items[k + 1].depth > it.depth) return;
+      let lvl;
+      if (it.type === 'section') { lvl = it.level - minLevel; cur = lvl; } else lvl = cur + 1;
+      const showFile = it.file && it.file !== project.main && it.file !== lastFile;
+      lastFile = it.file;
+      const where = showFile ? `${it.file.split('/').pop().replace(/\.tex$/, '')} · ${it.line}` : String(it.line);
+      rows.push(el('button', {
+        class: `side-item outline-item t-${it.type}`,
+        style: `--lvl:${Math.max(0, lvl)}`,
+        title: `${it.file}, línea ${it.line}`,
+        onclick: () => jumpTo(it.file, it.line),
+      }, el('span', { html: icon(ICON[it.type] || 'file') }), el('span', { class: 'label' }, it.type === 'todo' ? 'POR HACER: ' + it.title : it.title), el('small', {}, where)));
+    });
+    outlineList.replaceChildren(...rows);
   }
 
   // ---------- SyncTeX: código ↔ PDF ----------

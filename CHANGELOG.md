@@ -17,6 +17,27 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.23] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 33
+
+### Resultado en la tablet
+- El proyecto de varios archivos (.zip con carpetas, imagen y bibliografía) se importó entero y compiló las 6 páginas en 5,5 s. La Estructura siguió los `\include` hasta un segundo nivel (`tabla.tex`).
+
+### Nuevo
+- **Árbol de carpetas en Archivos.**
+  - Las carpetas (p. ej. `capitulos/`, `figuras/`) se muestran plegables, con la cantidad de archivos.
+  - Primero van las carpetas y después los archivos sueltos, con el principal arriba.
+  - La app recuerda qué carpetas dejaste cerradas.
+  - Si el archivo abierto está en una carpeta cerrada, su contador se resalta.
+
+### Mejorado
+- **Estructura más ordenada en proyectos con varios archivos.**
+  - Las sangrías siguen el nivel real: un `\chapter` queda al ras y una figura, un nivel debajo de su sección.
+  - Ya no aparece una fila aparte por cada `\include` que aporta contenido.
+  - Al lado del número de línea se indica de qué archivo es, en la primera fila de cada archivo.
+- En beamer, las diapositivas quedan debajo de su `\section`.
+
+---
+
 ## [0.2.22] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 32
 
 ### Resultado en la tablet

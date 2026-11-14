@@ -402,3 +402,14 @@ a { color: inherit; }
 .pdf-pane.stale::before { content: 'PDF de la compilación anterior: esta no generó PDF'; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 5;
   background: var(--warn); color: #1b1b1b; font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.25); pointer-events: none; white-space: nowrap; }
 .pdf-pane.stale .pdf-host { opacity: .55; }
+
+/* Árbol de archivos */
+.side-item.file, .side-item.dir { padding-left: calc(max(0, var(--lvl, 0)) * 16px); }
+.side-item.dir .side-main { gap: 6px; }
+.side-item.dir .chev .ico { width: 14px; height: 14px; transition: transform .15s; transform: rotate(90deg); }
+.side-item.dir.closed .chev .ico { transform: rotate(0deg); }
+.side-item.dir .label { font-weight: 600; }
+.dir-count { color: var(--muted); font-size: 11px; padding: 0 6px; }
+.dir-count.cur { color: var(--accent-strong); font-weight: 700; }
+.outline-item.t-input .label { color: var(--muted); font-style: italic; }
+.outline-item small { white-space: nowrap; }
