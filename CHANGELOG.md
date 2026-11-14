@@ -17,6 +17,17 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.15] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 25
+
+### Nuevo: identidad visual (issue [#5](https://github.com/P3dr1t0/texsting/issues/5))
+- **Ícono nuevo**: «TeX's» en 3D, letras blancas con borde negro fino y volumen gris, con la E bajada como el logo de TeX, en el encuadre del cuadro final de una intro de cine clásica mirando un poco más hacia abajo (variante 3, elegida por Pedro), sobre azul noche.
+- **Ícono adaptable de Android**: el logo va en una capa aparte dentro de la zona segura, así ningún lanzador (círculo, squircle, gota) le corta las letras.
+- **Pantalla de arranque** con el logo sobre azul noche.
+- **Para Play Store**: ícono de 512 px e imagen destacada de 1024×500 con el lema *«LaTeX en tu Android, sin internet»* (también es la portada del README en GitHub).
+- El render 3D se hace con un script propio (`tools/icono/`), así se puede regenerar o ajustar cuando haga falta.
+
+---
+
 ## [0.2.14] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 24
 
 ### Corregido (reporte de Pedro)

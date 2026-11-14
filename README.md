@@ -1,5 +1,7 @@
 # TeXsting
 
+![TeXsting — LaTeX en tu Android, sin internet](assets/play-store-feature-1024x500.png)
+
 [![Compilar APK](https://github.com/P3dr1t0/texsting/actions/workflows/apk.yml/badge.svg)](https://github.com/P3dr1t0/texsting/actions/workflows/apk.yml) · [Descargar el último APK](https://github.com/P3dr1t0/texsting/releases)
 
 Editor LaTeX libre para Android, inspirado en la forma de trabajar de TeXstudio.

@@ -43,7 +43,7 @@ jobs:
 
       - name: Íconos y pantalla de inicio
         continue-on-error: true
-        run: npx @capacitor/assets generate --android --iconBackgroundColor '#1f2a44' --iconBackgroundColorDark '#1f2a44' --splashBackgroundColor '#f7f5ef' --splashBackgroundColorDark '#12141a'
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#1b2540' --iconBackgroundColorDark '#1b2540' --splashBackgroundColor '#18213a' --splashBackgroundColorDark '#18213a'
 
       - name: Sincronizar
         run: npx cap sync android
