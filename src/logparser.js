@@ -235,6 +235,14 @@ function findInSources(re, sources, main, beforeLine = Infinity) {
   return hit;
 }
 
+const BEAMER_THEMES = {
+  '': ['default', 'AnnArbor', 'Antibes', 'Bergen', 'Berkeley', 'Berlin', 'Boadilla', 'boxes', 'CambridgeUS', 'Copenhagen', 'Darmstadt', 'Dresden', 'EastLansing', 'Frankfurt', 'Goettingen', 'Hannover', 'Ilmenau', 'JuanLesPins', 'Luebeck', 'Madrid', 'Malmoe', 'Marburg', 'Montpellier', 'PaloAlto', 'Pittsburgh', 'Rochester', 'Singapore', 'Szeged', 'Warsaw', 'metropolis'],
+  color: ['default', 'albatross', 'beaver', 'beetle', 'crane', 'dolphin', 'dove', 'fly', 'lily', 'monarca', 'orchid', 'rose', 'seagull', 'seahorse', 'sidebartab', 'spruce', 'structure', 'whale', 'wolverine'],
+  font: ['default', 'professionalfonts', 'serif', 'structurebold', 'structureitalicserif', 'structuresmallcapsserif'],
+  inner: ['default', 'circles', 'inmargin', 'rectangles', 'rounded'],
+  outer: ['default', 'infolines', 'miniframes', 'shadow', 'sidebar', 'smoothbars', 'smoothtree', 'split', 'tree'],
+};
+
 function enrich(entry, head, sources, main, top = '') {
   const msg = entry.message;
   const font = msg.match(/The font "([^"]+)" cannot be found/);
@@ -250,6 +258,64 @@ function enrich(entry, head, sources, main, top = '') {
     entry.hint = alt
       ? `La fuente «${font[1]}» no está instalada (es de Windows/Mac). Una parecida que viene con TeX Live: \\${cmd}{${alt}}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic] — o borra la línea para usar Latin Modern`
       : `La fuente «${font[1]}» no está instalada. Usa una de TeX Live, p. ej. \\${cmd}{texgyretermes}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic] — o borra la línea para usar Latin Modern`;
+    return;
+  }
+  const theme = msg.match(/File `beamer(color|font|inner|outer)?theme([^']+)\.sty' not found/);
+  if (theme) {
+    const kind = theme[1] || '';
+    const list = BEAMER_THEMES[kind] || [];
+    const sug = closest(theme[2], list);
+    const cmd = `\\use${kind}theme`;
+    const ln = findInSources(new RegExp(escapeRe(cmd) + '\\s*(\\[[^\\]]*\\])?\\s*\\{\\s*' + escapeRe(theme[2]) + '\\s*\\}'), sources, main);
+    if (ln) { entry.file = main; entry.line = ln; entry.context = sources[main].split('\n')[ln - 1].trim(); }
+    entry.hint = `El tema ${kind ? `de ${{ color: 'colores', font: 'letras', inner: 'interior', outer: 'exterior' }[kind]} ` : ''}de beamer «${theme[2]}» no existe` +
+      (sug ? `. ¿Quisiste decir ${cmd}{${sug}}?` : `. Algunos que vienen con beamer: ${list.slice(0, 6).join(', ')}`);
+    return;
+  }
+  if (/scanning use of \\beamer@collect@@body|scanning use of \\beamer@@frame/.test(msg)) {
+    // Una diapositiva sin \end{frame}: se busca el \begin{frame} que no se cerró.
+    const ls = sources && sources[main] ? sources[main].split('\n') : [];
+    let open = null, found = null;
+    for (let k = 0; k < ls.length && !found; k++) {
+      const l = ls[k].replace(/(^|[^\\])%.*$/, '$1');
+      if (/\\begin\s*\{frame\}/.test(l)) { if (open != null) found = open; else open = k; }
+      if (/\\end\s*\{frame\}/.test(l)) open = null;
+      if (/\\end\s*\{document\}/.test(l) && open != null) found = open;
+    }
+    if (found == null) found = open;
+    if (found != null) { entry.file = main; entry.line = found + 1; entry.context = ls[found].trim(); }
+    entry.hint = 'Esta diapositiva no se cerró: falta \\end{frame} antes de la siguiente (o antes de \\end{document})';
+    return;
+  }
+  const clash = msg.match(/Option clash for package ([^\s.]+)/);
+  if (clash && sources && entry.file && sources[entry.file]) {
+    // LaTeX avisa en la línea siguiente: se apunta a la *segunda* carga del paquete.
+    const ls = sources[entry.file].split('\n');
+    const re = new RegExp('\\\\(usepackage|RequirePackage)\\s*(\\[[^\\]]*\\])?\\s*\\{[^}]*\\b' + escapeRe(clash[1]) + '\\b');
+    const hits = ls.map((l, k) => (re.test(l.replace(/(^|[^\\])%.*$/, '$1')) ? k : -1)).filter((k) => k >= 0 && k < (entry.line || ls.length));
+    if (hits.length) {
+      const k = hits[hits.length - 1];
+      entry.line = k + 1; entry.context = ls[k].trim();
+      if (hits.length > 1) entry.hint += ` (la primera vez está en la línea ${hits[0] + 1})`;
+    }
+    return;
+  }
+  if (/Something's wrong--perhaps a missing \\item/.test(msg) && sources && entry.file && sources[entry.file] && entry.line) {
+    // Si hay texto entre \begin{lista} y el primer \item, ese texto es el problema.
+    const ls = sources[entry.file].split('\n');
+    for (let k = entry.line - 1; k >= 0 && k > entry.line - 40; k--) {
+      if (/\\begin\s*\{(itemize|enumerate|description)\}/.test(ls[k])) {
+        for (let t = k + 1; t < entry.line; t++) {
+          const clean = ls[t].replace(/(^|[^\\])%.*$/, '$1').trim();
+          if (!clean) continue;
+          if (/^\\item\b/.test(clean)) break;
+          entry.line = t + 1; entry.context = clean;
+          entry.hint = 'Este texto está dentro de la lista pero antes del primer \\item: ponle \\item delante o sácalo de la lista';
+          break;
+        }
+        break;
+      }
+    }
     return;
   }
   if (/scanning use of \\@xverbatim|scanning use of \\lst@/.test(msg)) {
@@ -362,6 +428,14 @@ function locate(snippet, sources) {
   return null;
 }
 
+// Los mensajes de LaTeX3 y de muchos paquetes siguen en líneas «(fontspec)   …» o «(LaTeX)  …»;
+// en fontspec reciente la primera línea queda vacía («Package fontspec Error: »).
+function joinContinuation(lines, i, msg) {
+  let j = i + 1;
+  while (j < lines.length && /^\([\w@.-]+\)\s+/.test(lines[j])) { msg = (msg.replace(/\s+$/, '') + ' ' + lines[j].replace(/^\([\w@.-]+\)\s+/, '').trim()).trim(); j++; }
+  return { msg, next: j };
+}
+
 export function parseLog(log, main = 'main.tex', sources = null) {
   const out = [];
   if (!log) return out;
@@ -371,7 +445,8 @@ export function parseLog(log, main = 'main.tex', sources = null) {
     const line = lines[i];
     let m = line.match(RE_FILE_LINE_ERROR);
     if (m && !/^\//.test(m[1])) {
-      let msg = m[3];
+      const jc = joinContinuation(lines, i, m[3]);
+      let msg = jc.msg;
       if (NOISE.some((re) => re.test(msg))) continue;
       // Contexto: la línea "l.N ..." que sigue suele mostrar dónde ocurrió.
       let context = '';
@@ -381,18 +456,20 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       }
       const entry = { type: 'error', file: normFile(m[1], main), line: +m[2], message: msg, hint: translate(msg), context };
       fixNotFound(entry, sources, main);
-      enrich(entry, head, sources, main, lines[i + 1] || '');
+      enrich(entry, head, sources, main, lines[jc.next] || '');
       out.push(entry);
       continue;
     }
     if (m && /^\//.test(m[1])) {
       if (NOISE.some((re) => re.test(m[3]))) continue;
       // Error dentro de un paquete del sistema: se informa sin salto al código.
-      out.push({ type: 'error', file: null, line: null, message: m[3] + ' (' + m[1].split('/').pop() + ':' + m[2] + ')', hint: translate(m[3]) });
+      const sysMsg = joinContinuation(lines, i, m[3]).msg;
+      out.push({ type: 'error', file: null, line: null, message: sysMsg + ' (' + m[1].split('/').pop() + ':' + m[2] + ')', hint: translate(sysMsg) });
       continue;
     }
     if (line.startsWith('! ')) {
-      const msg = line.slice(2);
+      const bj = joinContinuation(lines, i, line.slice(2));
+      const msg = bj.msg;
       if (NOISE.some((re) => re.test(msg))) continue;
       let ln = null;
       let file = main;
@@ -417,7 +494,7 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       }
       const entry = { type: 'error', file: ln != null ? file : null, line: ln, message: msg, hint: translate(msg) };
       fixNotFound(entry, sources, main);
-      enrich(entry, bangHead, sources, main, lines[i + 1] || '');
+      enrich(entry, bangHead, sources, main, lines[bj.next] || '');
       out.push(entry);
       continue;
     }

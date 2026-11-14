@@ -17,6 +17,29 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.21] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 31 · servidor Termux 0.2.4
+
+### Resultado de las pruebas de errores K–P en la tablet
+- K (bibliografía), N (paquetes), O (listas) y P (matemáticas): todos los errores detectados y explicados.
+- La M (fuentes) ya no tarda: salen los errores en segundos.
+
+### Corregido
+- **Errores de fontspec sin explicación (prueba M).** En la versión de fontspec que tiene Termux, el texto del error va en una segunda línea; la tarjeta solo decía «Package fontspec Error:» y apuntaba a la línea equivocada.
+  - Ahora se juntan las líneas de continuación, para fontspec y para cualquier paquete que escriba así.
+  - Vuelve la explicación «La fuente Arial no está instalada…» con su alternativa TeX Gyre, en la línea correcta.
+  - El servidor también reconoce ese formato para no buscar la fuente en CTAN.
+- **«Se cargó dos veces con opciones distintas» (prueba N)** apuntaba a la línea siguiente. Ahora marca la segunda carga del paquete y dice en qué línea está la primera.
+- **Texto suelto dentro de una lista (prueba O):** ahora se señala la línea del texto suelto, con una explicación más clara, en vez de la línea del `\item` siguiente.
+
+### Nuevo
+- **Beamer:**
+  - El panel Estructura muestra las diapositivas numeradas con su título.
+  - Una diapositiva sin `\end{frame}` se señala en su línea, con la explicación correspondiente.
+  - Un tema que no existe (`\usetheme{Madrid2}`) sugiere el más parecido («¿Quisiste decir \usetheme{Madrid}?»).
+- **Cuando un error detiene la compilación** (no hay PDF), el panel de Mensajes avisa que los errores que vengan después aparecerán al corregirlo. Esto explica por qué la prueba L mostraba un solo error de tres.
+
+---
+
 ## [0.2.20] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 30 · servidor Termux 0.2.3
 
 ### Corregido: XeLaTeX tardaba más de un minuto con una fuente que no existe (prueba de errores M)

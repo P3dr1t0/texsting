@@ -395,3 +395,4 @@ a { color: inherit; }
 .home-more { width: 100%; margin-top: 4px; color: var(--accent-strong); }
 .msg .btn.small { padding: 5px 10px; font-size: 13px; min-height: 0; }
 @media (max-width: 599px) { .file-switch em.main-tag { display: none; } }
+.msg-stopped { margin: 10px 14px 14px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); color: var(--muted); font-size: 13.5px; line-height: 1.4; }

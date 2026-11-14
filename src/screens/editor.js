@@ -331,7 +331,7 @@ export async function renderEditor(root, { id }, navigate) {
     const textFiles = files.filter((f) => f.kind === 'text').map((f) => (f.path === currentPath ? { path: f.path, text: editor.getText() } : f));
     analysis = analyzeProject(project.main, textFiles);
     refreshEngineTag();
-    const ICON = { section: 'outline', label: 'edit', input: 'file', figure: 'image', table: 'split', todo: 'star' };
+    const ICON = { section: 'outline', label: 'edit', input: 'file', figure: 'image', table: 'split', todo: 'star', frame: 'pdf' };
     const items = analysis.outline.filter((i) => i.type !== 'label');
     if (!items.length) {
       outlineList.replaceChildren(el('p', { class: 'muted pad' }, 'Aquí aparecerán tus secciones, figuras, tablas e \\input. Agrega un \\section{...}.'));
@@ -339,7 +339,7 @@ export async function renderEditor(root, { id }, navigate) {
     }
     outlineList.replaceChildren(...items.map((it) => el('button', {
       class: `side-item outline-item t-${it.type}`,
-      style: `--lvl:${(it.type === 'section' ? it.level - 2 : 3) + it.depth}`,
+      style: `--lvl:${(it.type === 'section' ? it.level - 2 : it.type === 'frame' ? 1 : 3) + it.depth}`,
       onclick: () => jumpTo(it.file, it.line),
     }, el('span', { html: icon(ICON[it.type] || 'file') }), el('span', { class: 'label' }, it.type === 'todo' ? 'POR HACER: ' + it.title : it.title), el('small', {}, String(it.line)))));
   }
@@ -639,7 +639,10 @@ export async function renderEditor(root, { id }, navigate) {
       m.context && m.context.trim() ? el('code', {}, m.context) : null,
       toggle, sub);
     };
-    msgList.replaceChildren(...head, ...top.map(card));
+    const stopped = r && r.status === 'failed' && top.some((m) => m.type === 'error')
+      ? el('p', { class: 'msg-stopped' }, 'Este error detuvo la compilación antes de llegar al final: si hay más errores después, aparecerán cuando lo corrijas.')
+      : null;
+    msgList.replaceChildren(...head, ...top.map(card), stopped || '');
   }
 
   async function sharePdf() {

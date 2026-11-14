@@ -40,7 +40,7 @@ async function call(path, { method = 'GET', body, timeout = 15000 } = {}) {
 }
 
 /** Versión mínima del servidor de Termux que espera esta app. */
-export const SERVER_VERSION = '0.2.3';
+export const SERVER_VERSION = '0.2.4';
 
 export function serverOutdated(info) {
   const a = String((info && info.version) || '0').split('.').map(Number);

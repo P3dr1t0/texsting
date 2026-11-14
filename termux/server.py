@@ -18,7 +18,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "0.2.3"
+VERSION = "0.2.4"
 HOME = os.path.expanduser("~")
 CONF_DIR = os.environ.get("TEXSTING_DIR", os.path.join(HOME, ".texsting"))
 HOST = os.environ.get("TEXSTING_HOST", "127.0.0.1")
@@ -206,7 +206,8 @@ BIBER_MISSING = re.compile(r"biber: (command )?not found|Can't exec \"biber\"|Co
 
 
 FONT_NOT_FOUND = [
-    re.compile(r'fontspec Error: The font "([^"]+)" cannot be found'),
+    # fontspec reciente lo escribe en una segunda línea «(fontspec)  The font "Arial" cannot be found».
+    re.compile(r'The font "([^"]+)" cannot be found'),
     re.compile(r"mktextfm:? (?:Running )?(?:mf\S* .*input )?\s*\"?([^\s\"']+)"),
     re.compile(r"kpathsea: Running mktextfm \"?([^\s\"]+)"),
     # Solo codificación TU (fuentes de fontspec); las OT1/T1 sí pueden ser paquetes de CTAN.

@@ -6,6 +6,8 @@ const RE_SECTION = /\\(part|chapter|section|subsection|subsubsection|paragraph)(
 const RE_LABEL = /\\label\s*\{([^}]+)\}/g;
 const RE_INPUT = /\\(?:input|include|subfile)\s*\{([^}]+)\}/g;
 const RE_BEGIN = /\\begin\s*\{(figure\*?|table\*?)\}/g;
+const RE_FRAME = /\\begin\s*\{frame\}\s*(?:<[^>]*>)?\s*(?:\[[^\]]*\])?\s*(\{)?/g;
+const RE_FRAMETITLE = /\\frametitle\s*(?:<[^>]*>)?\s*(?:\[[^\]]*\])?\s*\{/g;
 const RE_CAPTION = /\\caption\s*(?:\[[^\]]*\])?\s*\{/g;
 const RE_TODO = /%\s*(TODO|POR HACER|FIXME)[:\s](.*)$/gim;
 const RE_BIBKEY = /@\w+\s*\{\s*([^,\s]+)\s*,/g;
@@ -77,6 +79,20 @@ export function analyzeFile(path, text) {
     let caption = '';
     if (c && (end < 0 || c.index < end)) caption = cleanTitle(readBraced(src, c.index + c[0].length));
     items.push({ type: m[1].startsWith('figure') ? 'figure' : 'table', title: caption || (m[1].startsWith('figure') ? 'Figura' : 'Tabla'), file: path, line: lineOf(m.index), pos: m.index });
+  }
+  RE_FRAME.lastIndex = 0;
+  let nFrame = 0;
+  while ((m = RE_FRAME.exec(src))) {
+    nFrame++;
+    let title = '';
+    if (m[1]) title = readBraced(src, m.index + m[0].length);
+    if (!title.trim()) {
+      const end = src.indexOf('\\end{frame}', m.index);
+      RE_FRAMETITLE.lastIndex = m.index;
+      const t = RE_FRAMETITLE.exec(src);
+      if (t && (end < 0 || t.index < end)) title = readBraced(src, t.index + t[0].length);
+    }
+    items.push({ type: 'frame', title: `${nFrame}. ${title.trim() ? cleanTitle(title) : 'Diapositiva'}`, file: path, line: lineOf(m.index), pos: m.index });
   }
   RE_TODO.lastIndex = 0;
   while ((m = RE_TODO.exec(text))) {
