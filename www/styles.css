@@ -349,3 +349,7 @@ a { color: inherit; }
 .missing-list { margin: 6px 0 10px 18px; display: flex; flex-direction: column; gap: 3px; }
 .missing-list code { font-family: var(--mono); font-size: 12.5px; }
 .dialog-body p.note { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* Visor PDF con mouse: mano para arrastrar */
+@media (hover: hover) and (pointer: fine) { .pdfv-scroll { cursor: grab; } }
+.pdfv-scroll.grabbing { cursor: grabbing; user-select: none; }

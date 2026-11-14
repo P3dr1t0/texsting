@@ -187,6 +187,62 @@ export function createPdfViewer(root) {
     setZoom(scale * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientY - scroller.getBoundingClientRect().top);
   }, { passive: false });
 
+  // Mouse (tablet con mouse o mini PC): arrastrar con el clic de la ruedita —o con el clic
+  // izquierdo— mueve el PDF como un dedo, con inercia al soltar. Doble clic = zoom.
+  let drag = null;
+  let glide = 0;
+  let lastPointer = '';
+  const stopGlide = () => { if (glide) cancelAnimationFrame(glide); glide = 0; };
+  scroller.addEventListener('pointerdown', (e) => {
+    lastPointer = e.pointerType;
+    if (e.pointerType !== 'mouse' || (e.button !== 0 && e.button !== 1)) return;
+    if (e.target.closest('.pdfv-bar, button, a, input')) return;
+    stopGlide();
+    if (e.button === 1) e.preventDefault(); // sin el «autodesplazamiento» del navegador
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, left: scroller.scrollLeft, top: scroller.scrollTop, moved: false, vx: 0, vy: 0, t: performance.now(), px: e.clientX, py: e.clientY };
+  });
+  scroller.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved) {
+      if (Math.hypot(dx, dy) < 4) return; // un clic simple sigue siendo un clic
+      drag.moved = true;
+      scroller.setPointerCapture(e.pointerId);
+      scroller.classList.add('grabbing');
+    }
+    e.preventDefault();
+    scroller.scrollLeft = drag.left - dx;
+    scroller.scrollTop = drag.top - dy;
+    const now = performance.now(), dt = Math.max(1, now - drag.t);
+    drag.vx = 0.8 * ((drag.px - e.clientX) / dt) + 0.2 * drag.vx;
+    drag.vy = 0.8 * ((drag.py - e.clientY) / dt) + 0.2 * drag.vy;
+    drag.t = now; drag.px = e.clientX; drag.py = e.clientY;
+  });
+  const endDrag = (e) => {
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    const d = drag;
+    drag = null;
+    scroller.classList.remove('grabbing');
+    if (!d.moved || performance.now() - d.t > 80) return; // se detuvo antes de soltar: sin inercia
+    let vx = d.vx * 16, vy = d.vy * 16; // px por cuadro
+    const step = () => {
+      vx *= 0.94; vy *= 0.94;
+      if (Math.abs(vx) < 0.4 && Math.abs(vy) < 0.4) { glide = 0; return; }
+      scroller.scrollLeft += vx; scroller.scrollTop += vy;
+      glide = requestAnimationFrame(step);
+    };
+    glide = requestAnimationFrame(step);
+  };
+  scroller.addEventListener('pointerup', endDrag);
+  scroller.addEventListener('pointercancel', endDrag);
+  scroller.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
+  scroller.addEventListener('wheel', stopGlide, { passive: true });
+  scroller.addEventListener('dblclick', (e) => {
+    if (lastPointer !== 'mouse' || e.target.closest('.pdfv-bar')) return; // el dedo ya tiene su doble toque
+    const y = e.clientY - scroller.getBoundingClientRect().top;
+    if (fit) setZoom(scale * 1.8, y); else { fit = true; layout(); }
+  });
+
   new ResizeObserver(() => { if (fit && pages.length) layout(); }).observe(scroller);
 
   return {

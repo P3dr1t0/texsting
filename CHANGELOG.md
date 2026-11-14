@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.10] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 20
+
+### Nuevo: visor PDF con mouse (idea de Pedro, para tablet + mini PC de escritorio)
+- **Arrastrar con el clic de la ruedita** (o con el clic izquierdo) mueve el PDF como un dedo, en vertical y en horizontal, con **inercia** al soltar rápido.
+- **Doble clic** acerca el zoom donde hiciste clic; otro doble clic vuelve a «Ajustar».
+- El cursor cambia a una mano (✋) sobre el PDF y a mano cerrada mientras arrastras.
+- Siguen igual: la rueda para desplazarse, **Ctrl + rueda** para zoom y, en pantalla táctil, el dedo, el pellizco y el doble toque.
+
+---
+
 ## [0.2.9] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 19
 
 ### Corregido (reporte de Pedro: un .tex distinto ofrecía «Actualizar» el proyecto anterior)
