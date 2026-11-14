@@ -221,20 +221,50 @@ export function createPdfViewer(root) {
     if (old) setTimeout(() => destroyDoc(old), 0);
   }
 
-  function setZoom(newScale, anchorY = scroller.clientHeight / 2) {
+  // El zoom se ancla a un punto de la página (bajo el mouse, el dedo o el centro de la
+  // pantalla): ese punto queda en el mismo lugar de la pantalla al acercar o alejar.
+  function anchorAt(clientX, clientY) {
+    const r = scroller.getBoundingClientRect();
+    if (clientX == null) { clientX = r.left + r.width / 2; clientY = r.top + r.height / 2; }
+    let p = null;
+    for (const pg of pages) {
+      const pr = pg.el.getBoundingClientRect();
+      if (clientY >= pr.top - 8 && clientY <= pr.bottom + 8) { p = pg; break; }
+    }
+    if (!p) p = pages[currentPage()];
+    const pr = p.el.getBoundingClientRect();
+    return { p, fx: (clientX - pr.left) / pr.width, fy: (clientY - pr.top) / pr.height, ax: clientX - r.left, ay: clientY - r.top };
+  }
+  function restoreAnchor(a) {
+    scroller.scrollLeft = a.p.el.offsetLeft + a.fx * a.p.el.offsetWidth - a.ax;
+    scroller.scrollTop = a.p.el.offsetTop + a.fy * a.p.el.offsetHeight - a.ay;
+    updatePageLabel();
+  }
+  function setZoom(newScale, clientX, clientY) {
     if (!pages.length) return;
-    const ratio = (scroller.scrollTop + anchorY) / Math.max(1, scroller.scrollHeight);
+    stopGlide();
+    const a = anchorAt(clientX, clientY);
     fit = false;
     scale = Math.max(0.25, Math.min(newScale, 5));
     layout();
-    scroller.scrollTop = ratio * scroller.scrollHeight - anchorY;
+    restoreAnchor(a);
   }
+  function fitAt(clientX, clientY) {
+    if (!pages.length) return;
+    stopGlide();
+    const a = anchorAt(clientX, clientY);
+    fit = true;
+    layout();
+    restoreAnchor(a);
+  }
+  // Doble clic / doble toque: acercar donde apuntas; si ya hay zoom, volver a «Ajustar» sin perder el lugar.
+  const toggleZoom = (x, y) => (fit ? setZoom(scale * 1.8, x, y) : fitAt(x, y));
 
   root.querySelector('.pdfv-bar').addEventListener('click', (e) => {
     const act = e.target.closest('button')?.dataset.act;
     if (act === 'in') setZoom(scale * 1.2);
     if (act === 'out') setZoom(scale / 1.2);
-    if (act === 'fit') { fit = true; layout(); }
+    if (act === 'fit') fitAt();
   });
   scroller.addEventListener('scroll', updatePageLabel, { passive: true });
 
@@ -269,12 +299,12 @@ export function createPdfViewer(root) {
   scroller.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
       const [a, b] = e.touches;
-      pinch = { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), s: scale, y: (a.clientY + b.clientY) / 2 - scroller.getBoundingClientRect().top };
+      const r = scroller.getBoundingClientRect();
+      pinch = { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), s: scale, cx: (a.clientX + b.clientX) / 2, cy: (a.clientY + b.clientY) / 2, ox: (a.clientX + b.clientX) / 2 - r.left, oy: (a.clientY + b.clientY) / 2 - r.top };
     } else if (e.touches.length === 1) {
       const now = Date.now();
       if (now - lastTap < 300) {
-        if (fit) setZoom(scale * 1.8, e.touches[0].clientY - scroller.getBoundingClientRect().top);
-        else { fit = true; layout(); }
+        toggleZoom(e.touches[0].clientX, e.touches[0].clientY);
         lastTap = 0;
       } else lastTap = now;
     }
@@ -284,14 +314,14 @@ export function createPdfViewer(root) {
     e.preventDefault();
     const [a, b] = e.touches;
     const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-    pagesEl.style.transformOrigin = `50% ${scroller.scrollTop + pinch.y}px`;
+    pagesEl.style.transformOrigin = `${scroller.scrollLeft + pinch.ox}px ${scroller.scrollTop + pinch.oy}px`;
     pagesEl.style.transform = `scale(${d / pinch.d})`;
     pinch.k = d / pinch.d;
   }, { passive: false });
   scroller.addEventListener('touchend', (e) => {
     if (pinch && e.touches.length < 2) {
       pagesEl.style.transform = '';
-      if (pinch.k) setZoom(pinch.s * pinch.k, pinch.y);
+      if (pinch.k) setZoom(pinch.s * pinch.k, pinch.cx, pinch.cy);
       pinch = null;
     }
   });
@@ -299,7 +329,7 @@ export function createPdfViewer(root) {
   scroller.addEventListener('wheel', (e) => {
     if (!e.ctrlKey) return;
     e.preventDefault();
-    setZoom(scale * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientY - scroller.getBoundingClientRect().top);
+    setZoom(scale * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX, e.clientY);
   }, { passive: false });
 
   // Mouse (tablet con mouse o mini PC): arrastrar con el clic de la ruedita —o con el clic
@@ -359,8 +389,8 @@ export function createPdfViewer(root) {
   scroller.addEventListener('wheel', stopGlide, { passive: true });
   scroller.addEventListener('dblclick', (e) => {
     if (lastPointer !== 'mouse' || e.target.closest('.pdfv-bar')) return; // el dedo ya tiene su doble toque
-    const y = e.clientY - scroller.getBoundingClientRect().top;
-    if (fit) setZoom(scale * 1.8, y); else { fit = true; layout(); }
+    if (e.target.closest('.pdfv-link')) return; // doble clic sobre un enlace: solo el enlace
+    toggleZoom(e.clientX, e.clientY);
   });
 
   // ---------- SyncTeX: puntos del PDF y resaltado ----------

@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.13] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 23
+
+### Corregido (reporte de Pedro: el zoom con doble clic no iba donde apuntaba y al alejar saltaba páginas)
+- **El zoom se ancla al punto bajo el mouse o el dedo**: ese punto de la página se queda quieto al acercar y al alejar. Antes solo se respetaba la altura (se acercaba hacia el borde izquierdo).
+- **Volver a «Ajustar» ya no salta de página**: antes el desplazamiento se quedaba en el mismo número de píxeles mientras el documento se encogía, y terminaba varias páginas más abajo (a veces en la última).
+- Aplica a todas las formas de zoom: doble clic, doble toque, pellizco, Ctrl + rueda y los botones − / Ajustar / +.
+- Doble clic sobre un enlace del PDF ya no hace zoom (solo sigue el enlace).
+
+---
+
 ## [0.2.12] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 22
 
 ### Nuevo: enlaces del PDF tocables (como en TeXstudio)
