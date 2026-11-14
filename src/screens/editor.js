@@ -484,8 +484,10 @@ export async function renderEditor(root, { id }, navigate) {
         toast('La compilación tardó demasiado y se detuvo', { kind: 'error' });
       } else {
         const n = sm.errors || sm.cascades || 1;
-        toast(`${n} error(es)${r.pdf ? ' (el PDF se generó igual)' : ''}`, { kind: 'error', action: 'Ver', ms: 6000, onAction: () => showPanel('messages') });
+        // En tablet el panel de Mensajes se abre solo y ya dice cuántos errores hay: el aviso
+        // sobraría y taparía la primera tarjeta. En el celular sí avisa, con «Ver».
         if (WIDE.matches) screen.classList.add('show-messages');
+        else toast(`${n} error(es)${r.pdf ? ' (el PDF se generó igual)' : ''}`, { kind: 'error', action: 'Ver', ms: 6000, onAction: () => showPanel('messages') });
         if (r.missing && r.missing.length) toast('No se encontró: ' + r.missing.join(', '), { kind: 'error', ms: 7000 });
       }
     } catch (e) {
