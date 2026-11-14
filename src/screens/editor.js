@@ -575,7 +575,7 @@ export async function renderEditor(root, { id }, navigate) {
     const engineName = (ENGINES.find((e) => e[0] === project.engine) || ENGINES[0])[1];
     const choice = await sheet(project.name, [
       { label: 'Compartir PDF', icon: 'share', value: 'pdf' },
-      { label: 'Ver esta línea en el PDF', hint: 'También: doble clic en el código', icon: 'pdf', value: 'sync' },
+      { label: 'Ver esta línea en el PDF', hint: WIDE.matches ? 'También: doble clic en el código' : 'Lleva al PDF la línea donde está el cursor', icon: 'pdf', value: 'sync' },
       { label: 'Motor: ' + engineName, hint: 'pdfLaTeX, XeLaTeX o LuaLaTeX', icon: 'settings', value: 'engine' },
       { label: 'Asistentes e inserciones', icon: 'wand', value: 'wizards' },
       { label: 'Buscar y reemplazar', icon: 'search', value: 'search' },

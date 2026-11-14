@@ -17,6 +17,13 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.14] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 24
+
+### Corregido (reporte de Pedro)
+- En el celular, el menú **⋮ → Ver esta línea en el PDF** sugería «doble clic en el código», pero ese gesto está desactivado con el dedo (para que seleccionar una palabra no cambie de pestaña). Ahora la ayuda dice lo que hace en cada pantalla: en el celular, «Lleva al PDF la línea donde está el cursor»; en la tablet y con mouse, «También: doble clic en el código».
+
+---
+
 ## [0.2.13] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 23
 
 ### Corregido (reporte de Pedro: el zoom con doble clic no iba donde apuntaba y al alejar saltaba páginas)
