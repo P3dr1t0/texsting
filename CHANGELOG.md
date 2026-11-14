@@ -17,6 +17,49 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.19] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 29
+
+### Nuevo
+- **Inicio con dos pestañas: «Recientes» y «Todos».**
+  - «Recientes» muestra los 8 proyectos que abriste o editaste últimamente.
+  - «Todos» los ordena alfabéticamente (prueba2 va antes de prueba10) y, desde 6 proyectos, trae un buscador por nombre.
+  - La app recuerda qué pestaña dejaste abierta.
+- **El motor siempre está a la vista.** Junto al nombre del archivo aparece una etiqueta (pdfLaTeX, XeLaTeX o LuaLaTeX) con el motor con que se va a compilar de verdad, contando la línea «% !TEX program». Al tocarla se abre el menú del motor.
+- **Menú del motor más claro.**
+  - Cada opción explica para qué sirve.
+  - Abajo dice con qué motor se compila ahora y por qué (por ejemplo «Lo pide la línea 1»).
+  - Si eliges un motor que no se va a usar (porque la línea «% !TEX program» manda, o porque el documento no puede compilar con él), un aviso te explica qué pasará.
+
+### Mejorado: el motor se elige solo con más casos
+- `\directlua`, `luacode` y otros paquetes Lua pasan a LuaLaTeX.
+- xeCJK, mathspec y similares pasan a XeLaTeX.
+- fontspec, unicode-math, polyglossia y `\setmainfont` nunca se compilan con pdfLaTeX.
+- La búsqueda también mira los archivos incluidos (capítulos).
+- **Si la línea «% !TEX program» pide un motor que no sirve** para ese documento, se compila con el correcto y se avisa:
+  - en el aviso al terminar, con el botón «Corregir línea»;
+  - en una tarjeta «Motor» del panel de Mensajes.
+  - La etiqueta del motor se pone en ámbar hasta que se corrige.
+- Mensajes de error nuevos para comandos de otro motor:
+  - `\directlua` → «solo existe en LuaLaTeX»;
+  - `\XeTeX…` → «solo existe en XeLaTeX»;
+  - `\pdf…` → «propio de pdfLaTeX».
+- La lista de proyectos muestra el motor real de cada uno.
+- En el celular se oculta la etiqueta «principal» del encabezado para que quepa el nombre del archivo.
+
+---
+
+## [0.2.18] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 28
+
+### Resultado de la serie 3 en la tablet (Lenovo Idea Tab Pro)
+- ✅ 14 biblatex + biber, 15 BibTeX/natbib, 16 beamer (8 páginas, 4,2 s), 17 química (5,5 s; chemfig instaló lo que le faltaba), 18 geometría (5,7 s), 19 LuaLaTeX (el motor se eligió solo), 20 datos CSV (4,7 s), 21 algoritmos y física (2,1 s).
+- La 19 tenía un error de la prueba (usaba `\dfrac` sin cargar amsmath): TeXsting lo detectó y explicó bien. Corregida la prueba, y también el diseño de la 17 (las moléculas quedan en una fila con su nombre debajo).
+
+### Corregido
+- En la tablet, el aviso rojo «N error(es) — Ver» tapaba la primera tarjeta del panel de Mensajes, que ya se abre solo. Ahora en la tablet no aparece (el panel ya dice cuántos errores hay); en el celular sigue.
+- Tocar «Ver» con el panel de Mensajes ya abierto lo cerraba.
+
+---
+
 ## [0.2.17] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 27 · servidor Termux 0.2.2
 
 ### Nuevo
