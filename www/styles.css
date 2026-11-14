@@ -431,3 +431,16 @@ html.layer-open #app :is(.home, .settings, .termux, .newproject, .side-list, .sy
 html.layer-open #app { pointer-events: none; }
 .backdrop { overscroll-behavior: contain; touch-action: none; }
 .backdrop .sheet, .backdrop .dialog { overscroll-behavior: contain; touch-action: pan-y; }
+
+/* Inicio: selección múltiple */
+.sel-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; padding: 6px 8px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); position: sticky; top: 0; z-index: 5; }
+.sel-bar[hidden], .home-tabs[hidden] { display: none; }
+.sel-count { font-size: 15px; }
+.sel-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.sel-actions .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 13.5px; }
+.sel-actions .btn .ico { width: 16px; height: 16px; }
+.project-card.selecting .project-ico .ico { color: var(--muted); }
+.project-card.selected { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border-color: var(--accent); }
+.project-card.selected .project-ico .ico { color: var(--accent-strong); fill: color-mix(in srgb, var(--accent) 25%, transparent); }
+.project-card .project-open { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+@media (max-width: 599px) { .sel-bar { flex-wrap: nowrap; } .sel-actions { flex-wrap: nowrap; gap: 4px; } .sel-actions .btn span { display: none; } .sel-actions .btn { padding: 9px; } .sel-actions .btn .ico { width: 19px; height: 19px; } }

@@ -17,6 +17,25 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.26] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 36
+
+### Nuevo
+- **Selección múltiple de proyectos en el inicio.**
+  - Se entra **manteniendo presionado** un proyecto (vibra al seleccionar); con mouse, clic derecho.
+  - Mientras se selecciona, cada toque marca o desmarca un proyecto en vez de abrirlo.
+  - Barra de acciones:
+    - **Todos**: marca todos los visibles (respeta el buscador) y, si ya están todos, los desmarca.
+    - **Fijar / Desfijar**.
+    - **Exportar**: un solo .zip con una carpeta por proyecto.
+    - **Eliminar**: pide una sola confirmación con los nombres.
+  - Se sale con la ✕, el botón Atrás o Esc. Cambiar entre Recientes y Todos también sale de la selección.
+  - En el celular, la barra muestra solo íconos para caber en una fila.
+
+### Corregido
+- Si se abría un diálogo con la selección activa, al cerrarlo la pantalla podía quedar sin responder a los toques. Era un efecto del bloqueo de fondo de la versión 0.2.25.
+
+---
+
 ## [0.2.25] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 35
 
 ### Corregido

@@ -1,6 +1,6 @@
 // Pantalla de inicio: lista de proyectos, estado de Termux, crear e importar.
 import { listProjects, createProject, deleteProject, duplicateProject, saveProject, touchProject, listFiles, getOutput, isTextPath, getSettings, setSettings } from '../store.js';
-import { el, icon, logoSvg, brandName, toast, sheet, promptText, confirmDialog, pickFiles, esc } from '../ui.js';
+import { el, icon, logoSvg, brandName, toast, sheet, promptText, confirmDialog, pickFiles, esc, pushBack } from '../ui.js';
 import { saveAsTemplate } from './newproject.js';
 import { ping, serverOutdated, ENGINE_LABEL } from '../compiler.js';
 import { createZip, readZip } from '../zip.js';
@@ -17,7 +17,7 @@ export async function renderHome(root, _params, navigate) {
   let tab = getSettings().homeTab === 'all' ? 'all' : 'recent';
   let query = '';
   let projects = [];
-  const tabBtn = (key, ic, label) => el('button', { dataset: { key }, onclick: () => { tab = key; setSettings({ homeTab: key }); query = ''; searchInput.value = ''; draw(); } });
+  const tabBtn = (key, ic, label) => el('button', { dataset: { key }, onclick: () => { clearSelection(false); tab = key; setSettings({ homeTab: key }); query = ''; searchInput.value = ''; draw(); } });
   const recentBtn = tabBtn('recent');
   const allBtn = tabBtn('all');
   const searchInput = el('input', { class: 'input small', type: 'search', placeholder: 'Buscar por nombre…', 'aria-label': 'Buscar proyecto',
@@ -35,6 +35,18 @@ export async function renderHome(root, _params, navigate) {
   let sortKey = SORTS.some(([k]) => k === getSettings().homeSort) ? getSettings().homeSort : 'az';
   const sortBtn = el('button', { class: 'btn small home-sort', onclick: chooseSort });
   const tabsRow = el('div', { class: 'home-tabs' }, el('div', { class: 'seg', role: 'tablist' }, recentBtn, allBtn), searchBox, sortBtn);
+  // Selección múltiple: se entra manteniendo presionado un proyecto.
+  const selected = new Set();
+  let dropBack = null;
+  const selCount = el('strong', { class: 'sel-count' });
+  const selBar = el('div', { class: 'sel-bar', hidden: true },
+    el('button', { class: 'icon-btn', title: 'Salir de la selección', 'aria-label': 'Salir de la selección', html: icon('close'), onclick: () => clearSelection() }),
+    selCount,
+    el('div', { class: 'sel-actions' },
+      el('button', { class: 'btn small', html: icon('selectall') + '<span>Todos</span>', title: 'Seleccionar todos los visibles', 'aria-label': 'Seleccionar todos', onclick: () => selectAllVisible() }),
+      el('button', { class: 'btn small sel-pin', html: icon('pin') + '<span>Fijar</span>', title: 'Fijar / desfijar', 'aria-label': 'Fijar o desfijar', onclick: () => pinSelected() }),
+      el('button', { class: 'btn small', html: icon('download') + '<span>Exportar</span>', title: 'Exportar en un .zip', 'aria-label': 'Exportar', onclick: () => exportSelected() }),
+      el('button', { class: 'btn small danger', html: icon('trash') + '<span>Eliminar</span>', title: 'Eliminar', 'aria-label': 'Eliminar', onclick: () => deleteSelected() })));
 
   const screen = el('div', { class: 'screen home' },
     el('header', { class: 'home-head' },
@@ -45,6 +57,7 @@ export async function renderHome(root, _params, navigate) {
       el('button', { class: 'btn primary big', html: icon('plus') + '<span>Nuevo proyecto</span>', onclick: () => navigate('new') }),
       el('button', { class: 'btn big', html: icon('upload') + '<span>Importar</span>', onclick: importProject })),
     tabsRow,
+    selBar,
     list,
     el('p', { class: 'home-foot' }, `TeXsting ${__VERSION__} · Fase 1: Beta · software libre (GPL-3.0)`));
   root.append(screen);
@@ -87,12 +100,99 @@ export async function renderHome(root, _params, navigate) {
 
   function card(p) {
     const when = tab === 'recent' && p.opened && p.opened > (p.updated || 0) ? 'abierto ' + timeAgo(p.opened) : timeAgo(p.updated);
-    return el('div', { class: 'project-card' + (p.pinned ? ' pinned' : '') },
-      el('button', { class: 'project-open', onclick: () => navigate('editor', { id: p.id }) },
-        el('span', { class: 'project-ico', html: icon('file') }),
-        el('span', { class: 'project-meta', html: `<strong>${esc(p.name)}</strong><small>${esc(p.main)} · ${ENGINE_LABEL[p.lastEngine || p.engine] || esc(p.engine)} · ${when}</small>` })),
-      el('button', { class: 'icon-btn pin-btn' + (p.pinned ? ' on' : ''), title: p.pinned ? 'Desfijar' : 'Fijar arriba', 'aria-label': p.pinned ? 'Desfijar' : 'Fijar arriba', 'aria-pressed': String(!!p.pinned), html: icon('pin'), onclick: () => togglePin(p) }),
-      el('button', { class: 'icon-btn', 'aria-label': 'Opciones', html: icon('more'), onclick: () => projectMenu(p) }));
+    const isSel = selected.has(p.id);
+    const openBtn = el('button', { class: 'project-open' },
+      el('span', { class: 'project-ico', html: selected.size ? icon(isSel ? 'check2' : 'circle') : icon('file') }),
+      el('span', { class: 'project-meta', html: `<strong>${esc(p.name)}</strong><small>${esc(p.main)} · ${ENGINE_LABEL[p.lastEngine || p.engine] || esc(p.engine)} · ${when}</small>` }));
+    longPress(openBtn, () => toggleSelect(p.id), () => (selected.size ? toggleSelect(p.id) : navigate('editor', { id: p.id })));
+    return el('div', { class: 'project-card' + (p.pinned ? ' pinned' : '') + (isSel ? ' selected' : '') + (selected.size ? ' selecting' : ''), dataset: { id: p.id } },
+      openBtn,
+      selected.size ? null : el('button', { class: 'icon-btn pin-btn' + (p.pinned ? ' on' : ''), title: p.pinned ? 'Desfijar' : 'Fijar arriba', 'aria-label': p.pinned ? 'Desfijar' : 'Fijar arriba', 'aria-pressed': String(!!p.pinned), html: icon('pin'), onclick: () => togglePin(p) }),
+      selected.size ? null : el('button', { class: 'icon-btn', 'aria-label': 'Opciones', html: icon('more'), onclick: () => projectMenu(p) }));
+  }
+
+  // Mantener presionado (≈0,5 s) selecciona; un toque normal abre (o, seleccionando, marca/desmarca).
+  // Con mouse también sirve el clic derecho.
+  // Al seleccionar se vuelve a dibujar la lista, así que el «clic» que llega al soltar el dedo
+  // cae en una tarjeta nueva: se ignora durante un momento para que no desmarque ni abra nada.
+  let ignoreClickUntil = 0;
+  function longPress(node, onLong, onTap) {
+    let timer = null, fired = false, sx = 0, sy = 0;
+    const cancel = () => { clearTimeout(timer); timer = null; };
+    node.addEventListener('pointerdown', (e) => {
+      if (e.button && e.button !== 0) return;
+      fired = false; sx = e.clientX; sy = e.clientY;
+      timer = setTimeout(() => { fired = true; timer = null; ignoreClickUntil = Date.now() + 700; try { navigator.vibrate && navigator.vibrate(25); } catch { /* sin vibración */ } onLong(); }, 480);
+    });
+    node.addEventListener('pointermove', (e) => { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); });
+    node.addEventListener('pointerup', cancel);
+    node.addEventListener('pointercancel', cancel);
+    node.addEventListener('pointerleave', cancel);
+    node.addEventListener('contextmenu', (e) => { e.preventDefault(); if (!fired && Date.now() > ignoreClickUntil) { cancel(); fired = true; ignoreClickUntil = Date.now() + 700; onLong(); } });
+    node.addEventListener('click', (e) => { if (fired || Date.now() < ignoreClickUntil) { fired = false; e.preventDefault(); return; } onTap(); });
+  }
+
+  function toggleSelect(id) {
+    if (selected.has(id)) selected.delete(id); else selected.add(id);
+    if (selected.size && !dropBack) dropBack = pushBack(() => clearSelection());
+    if (!selected.size) clearSelection(false);
+    draw();
+  }
+
+  function clearSelection(redraw = true) {
+    selected.clear();
+    if (dropBack) { dropBack(); dropBack = null; }
+    if (redraw) draw();
+  }
+
+  function visibleProjects() {
+    return [...list.querySelectorAll('.project-card')].map((c) => projects.find((p) => p.id === c.dataset.id)).filter(Boolean);
+  }
+
+  function selectAllVisible() {
+    const vis = visibleProjects();
+    const all = vis.every((p) => selected.has(p.id));
+    for (const p of vis) { if (all) selected.delete(p.id); else selected.add(p.id); }
+    if (!selected.size) { clearSelection(); return; }
+    draw();
+  }
+
+  const selProjects = () => projects.filter((p) => selected.has(p.id));
+
+  async function pinSelected() {
+    const sel = selProjects();
+    const pin = !sel.every((p) => p.pinned);
+    for (const p of sel) { p.pinned = pin ? (p.pinned || Date.now()) : 0; await touchProject(p.id, { pinned: p.pinned }); }
+    toast(pin ? `${sel.length} fijado(s) arriba` : `${sel.length} desfijado(s)`);
+    clearSelection();
+  }
+
+  async function exportSelected() {
+    const sel = selProjects();
+    const entries = [];
+    const used = new Set();
+    for (const p of sel) {
+      let dir = slug(p.name); let k = 2;
+      while (used.has(dir)) dir = slug(p.name) + '-' + k++;
+      used.add(dir);
+      for (const f of await listFiles(p.id)) entries.push({ path: `${dir}/${f.path}`, data: f.kind === 'binary' ? f.data : enc.encode(f.text) });
+    }
+    if (sel.length === 1) { const p = sel[0]; await shareBytes(createZip(entries.map((e) => ({ ...e, path: e.path.split('/').slice(1).join('/') }))), slug(p.name) + '.zip', 'application/zip', p.name); }
+    else await shareBytes(createZip(entries), `texsting-${sel.length}-proyectos.zip`, 'application/zip', `${sel.length} proyectos`);
+  }
+
+  async function deleteSelected() {
+    const sel = selProjects();
+    if (!sel.length) return;
+    const names = sel.slice(0, 6).map((p) => '«' + p.name + '»').join(', ') + (sel.length > 6 ? ` y ${sel.length - 6} más` : '');
+    const pinned = sel.filter((p) => p.pinned).length;
+    const msg = `Se borrarán ${sel.length === 1 ? 'este proyecto' : `estos ${sel.length} proyectos`} y todos sus archivos de este teléfono: ${names}.` +
+      (pinned ? ` (${pinned} ${pinned === 1 ? 'está fijado' : 'están fijados'}).` : '') + ' No se puede deshacer.';
+    if (!(await confirmDialog(sel.length === 1 ? 'Eliminar proyecto' : `Eliminar ${sel.length} proyectos`, msg, { ok: 'Eliminar', danger: true }))) return;
+    for (const p of sel) await deleteProject(p.id);
+    toast(sel.length === 1 ? 'Proyecto eliminado' : `${sel.length} proyectos eliminados`);
+    clearSelection(false);
+    refresh();
   }
 
   // Fijados arriba (con su título), luego el resto.
@@ -105,6 +205,13 @@ export async function renderHome(root, _params, navigate) {
   }
 
   function draw() {
+    selBar.hidden = !selected.size;
+    tabsRow.hidden = !!selected.size;
+    if (selected.size) {
+      const sel = selProjects();
+      selCount.textContent = `${sel.length} seleccionado${sel.length === 1 ? '' : 's'}`;
+      selBar.querySelector('.sel-pin span').textContent = sel.length && sel.every((p) => p.pinned) ? 'Desfijar' : 'Fijar';
+    }
     recentBtn.innerHTML = `${icon('clock')}<span>Recientes</span>`;
     allBtn.innerHTML = `${icon('files')}<span>Todos</span><small>${projects.length}</small>`;
     recentBtn.classList.toggle('active', tab === 'recent');

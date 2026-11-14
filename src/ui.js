@@ -29,6 +29,9 @@ const ICONS = {
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
   star: '<path d="M12 4l2.5 5.2 5.5.8-4 3.9.9 5.6L12 16.8 7.1 19.5 8 13.9 4 10l5.5-.8z"/>',
   keyboard: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/>',
+  check2: '<circle cx="12" cy="12" r="8.5"/><path d="M8 12.3l2.8 2.8L16.2 9.6"/>',
+  circle: '<circle cx="12" cy="12" r="8.5"/>',
+  selectall: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12.3l2.8 2.8L16.2 9.6"/>',
   pin: '<path d="M9 4h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 15v5"/>',
   sort: '<path d="M7 5v14M4 16l3 3 3-3M14 7h6M14 12h4.5M14 17h3"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.5v.5"/>',
@@ -90,6 +93,13 @@ export function toast(msg, { action, onAction, ms = 3200, kind = '' } = {}) {
 
 // Pila de capas (diálogos/hojas) para manejar el botón Atrás de Android.
 const layers = [];
+let overlays = 0;
+/** Registra algo que el botón Atrás (o Esc) debe cerrar antes que la pantalla, p. ej. un modo de selección. */
+export function pushBack(fn) {
+  layers.push(fn);
+  return () => { const i = layers.indexOf(fn); if (i >= 0) layers.splice(i, 1); };
+}
+
 export function closeTopLayer() {
   const top = layers[layers.length - 1];
   if (top) { top(); return true; }
@@ -102,6 +112,7 @@ function mountLayer(node, onClose) {
   document.body.append(backdrop);
   // Mientras haya un menú o diálogo abierto, lo de atrás no se desplaza (en Android el gesto
   // sobre la hoja se «encadenaba» a la lista de proyectos).
+  overlays++;
   document.documentElement.classList.add('layer-open');
   requestAnimationFrame(() => backdrop.classList.add('show'));
   let closed = false;
@@ -111,7 +122,8 @@ function mountLayer(node, onClose) {
     const i = layers.indexOf(closer);
     if (i >= 0) layers.splice(i, 1);
     backdrop.classList.remove('show');
-    if (!layers.length) document.documentElement.classList.remove('layer-open');
+    // Se cuentan solo los menús/diálogos (no el modo selección, que también usa el botón Atrás).
+    if (--overlays <= 0) { overlays = 0; document.documentElement.classList.remove('layer-open'); }
     setTimeout(() => backdrop.remove(), 180);
     onClose && onClose(v);
   };
