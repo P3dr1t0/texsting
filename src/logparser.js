@@ -33,7 +33,18 @@ export const TRANSLATIONS = [
   [/^Display math should end with \$\$/, 'La ecuación en display debe cerrar con $$'],
   [/^Illegal unit of measure/, 'Unidad de medida no válida (usa pt, cm, mm, em...)'],
   [/^Too many \}'s/, 'Demasiadas llaves }'],
-  [/LaTeX Error: There's no line here to end/, 'No hay línea que terminar (\\\\ mal ubicado)'],
+  [/LaTeX Error: There's no line here to end/, 'No hay línea que terminar: \\\\ al empezar un párrafo o después de una línea en blanco. Para dejar espacio usa \\vspace{1em}'],
+  [/Option clash for package ([^\s.]+)/, 'El paquete $1 se cargó dos veces con opciones distintas: cárgalo una sola vez, con todas sus opciones juntas'],
+  [/LaTeX Error: Can be used only in preamble/, 'Este comando (p. ej. \\usepackage) solo puede ir en el preámbulo, antes de \\begin{document}'],
+  [/LaTeX Error: Command (\\\S+) already defined/, 'El comando $1 ya existe: usa otro nombre, o \\renewcommand si de verdad quieres cambiarlo'],
+  [/Lonely \\item/, '\\item solo puede ir dentro de una lista (itemize, enumerate o description)'],
+  [/Something's wrong--perhaps a missing \\item/, 'Hay texto dentro de la lista antes del primer \\item (o falta un \\item)'],
+  [/Undefined color `([^']*![^']*)'/, 'El color «$1» es una mezcla y necesita el paquete xcolor: agrega \\usepackage{xcolor} (antes de hyperref)'],
+  [/Undefined color `([^']+)'/, 'El color «$1» no está definido: defínelo con \\definecolor o usa uno básico (red, blue, black…)'],
+  [/I can't find file `([^']+)'/, 'Falta el archivo «$1», que necesita un paquete. TeXsting intenta instalarlo solo (necesita internet la primera vez)'],
+  [/The font "([^"]+)" cannot be found/, 'La fuente «$1» no está instalada en este equipo'],
+  [/not loadable: Metric \(TFM\) file/, 'No se pudo cargar esta fuente'],
+  [/scanning use of \\@xverbatim|scanning use of \\lst@/, 'Código literal (verbatim/lstlisting) que no se cerró bien'],
   [/Citation `(.+)' on page .* undefined/, 'Cita no definida: $1'],
   [/Reference `(.+)' on page .* undefined/, 'Referencia no definida: $1'],
   [/There were undefined references/, 'Hay referencias o citas sin definir: revisa los avisos de arriba (si las acabas de agregar, compila otra vez)'],
@@ -188,8 +199,81 @@ const SI_UNITS = ['kilo', 'mega', 'giga', 'tera', 'milli', 'micro', 'nano', 'pic
   'degreeCelsius', 'degree', 'percent', 'radian', 'decibel', 'per', 'square', 'cubic', 'squared', 'cubed', 'tothe', 'minute', 'hour', 'litre', 'liter',
   'pascal', 'bar', 'electronvolt', 'lumen', 'lux', 'candela', 'mole', 'becquerel', 'gray', 'sievert', 'katal', 'steradian', 'byte', 'bit'];
 
+// Fuentes de Windows/Mac que no vienen en Android/Linux, y su equivalente libre incluido en TeX Live.
+const FONT_ALTERNATIVES = {
+  // Solo TeX Gyre: viene en la instalación recomendada de TeX Live (los nombres son de archivo,
+  // así funcionan también en XeLaTeX aunque el sistema no conozca las fuentes de TeX Live).
+  arial: 'texgyreheros', helvetica: 'texgyreheros', verdana: 'texgyreheros', tahoma: 'texgyreheros', 'segoe ui': 'texgyreheros', calibri: 'texgyreheros',
+  'times new roman': 'texgyretermes', times: 'texgyretermes', cambria: 'texgyretermes',
+  georgia: 'texgyrepagella', 'book antiqua': 'texgyrepagella', palatino: 'texgyrepagella', garamond: 'texgyrepagella',
+  consolas: 'texgyrecursor', 'courier new': 'texgyrecursor', courier: 'texgyrecursor', 'lucida console': 'texgyrecursor',
+  'century gothic': 'texgyreadventor',
+};
+
+/** Entorno de alineación abierto más interno en esa línea (cases, tabular, align…). */
+function innermostEnv(text, line) {
+  if (!text) return null;
+  const stack = [];
+  for (const l of text.split('\n').slice(0, line)) {
+    for (const m of l.replace(/(^|[^\\])%.*$/, '$1').matchAll(/\\(begin|end)\{([a-zA-Z]+)\*?\}/g)) {
+      if (m[1] === 'begin') stack.push(m[2]);
+      else { const i = stack.lastIndexOf(m[2]); if (i >= 0) stack.splice(i); }
+    }
+  }
+  const ALIGN = /^(cases|dcases|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|array|tabular|tabularx|longtable|align|alignat|flalign|eqnarray|split|aligned|gathered)$/;
+  for (let i = stack.length - 1; i >= 0; i--) if (ALIGN.test(stack[i])) return stack[i];
+  return null;
+}
+
+function findInSources(re, sources, main, beforeLine = Infinity) {
+  if (!sources) return null;
+  const text = sources[main];
+  if (!text) return null;
+  const lines = text.split('\n');
+  let hit = null;
+  lines.forEach((l, i) => { if (i + 1 <= beforeLine && re.test(l.replace(/(^|[^\\])%.*$/, '$1'))) hit = i + 1; });
+  return hit;
+}
+
 function enrich(entry, head, sources, main, top = '') {
   const msg = entry.message;
+  const font = msg.match(/The font "([^"]+)" cannot be found/);
+  if (font) {
+    const alt = FONT_ALTERNATIVES[font[1].toLowerCase()];
+    // fontspec avisa una línea después: se busca la línea que de verdad nombra esa fuente.
+    let cmd = 'setmainfont';
+    const fre = new RegExp('\\\\(set(?:main|sans|mono|math)font|newfontfamily\\\\\\w+)\\s*(\\[[^\\]]*\\])?\\s*\\{\\s*' + font[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\}');
+    for (const [file, text] of Object.entries(sources || {})) {
+      const i = text.split('\n').findIndex((l) => fre.test(l));
+      if (i >= 0) { entry.file = file; entry.line = i + 1; entry.context = text.split('\n')[i].trim(); cmd = text.split('\n')[i].match(fre)[1]; break; }
+    }
+    entry.hint = alt
+      ? `La fuente «${font[1]}» no está instalada (es de Windows/Mac). Una parecida que viene con TeX Live: \\${cmd}{${alt}}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic] — o borra la línea para usar Latin Modern`
+      : `La fuente «${font[1]}» no está instalada. Usa una de TeX Live, p. ej. \\${cmd}{texgyretermes}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic] — o borra la línea para usar Latin Modern`;
+    return;
+  }
+  if (/scanning use of \\@xverbatim|scanning use of \\lst@/.test(msg)) {
+    const isBeamer = sources && sources[main] && /\\documentclass(\[[^\]]*\])?\{beamer\}/.test(sources[main]);
+    const ln = findInSources(/\\begin\{(verbatim|lstlisting|minted)\}/, sources, main);
+    if (ln && entry.line == null) { entry.file = main; entry.line = ln; }
+    entry.hint = isBeamer
+      ? 'En beamer, una diapositiva con código literal (verbatim, lstlisting) necesita la opción fragile: \\begin{frame}[fragile]{…}'
+      : 'Un bloque de código literal no se cerró: revisa que \\end{verbatim} (o \\end{lstlisting}) esté solo en su línea y bien escrito';
+    return;
+  }
+  if (/^Extra alignment tab has been changed/.test(msg) && sources && entry.line) {
+    const env = innermostEnv(sources[entry.file], entry.line);
+    if (env === 'cases' || env === 'dcases') entry.hint = 'cases admite solo 2 columnas (valor & condición): sobra un & en esta fila';
+    else if (env && /matrix$/.test(env)) entry.hint = 'Esta fila de la matriz tiene más columnas (&) que el máximo (10 por defecto) o que las demás';
+    else if (env && /^(array|tabular|tabularx|longtable)$/.test(env)) entry.hint = `Esta fila tiene más columnas (&) que las declaradas en \\begin{${env}}{…}`;
+    return;
+  }
+  if (/^Misplaced alignment tab character &/.test(msg) && sources && entry.line) {
+    const env = innermostEnv(sources[entry.file], entry.line);
+    if (env) { entry.hint = `Hay un & de más o mal ubicado dentro de ${env}: revisa cuántas columnas tiene esta fila`; return; }
+    entry.hint = 'Carácter & fuera de una tabla o alineación: en texto normal se escribe \\&';
+    return;
+  }
   const srcLines = sources && entry.file && sources[entry.file] ? sources[entry.file].split('\n') : null;
   if (/^Undefined control sequence/.test(msg)) {
     // TeX deja el comando no definido al final de la primera línea de contexto.
@@ -389,6 +473,15 @@ export function markCascades(entries) {
         const src = prevReal.find((x) => /^(Missing \$ inserted|Display math should end)/.test(x.message) && x.file === e.file && e.line > x.line && e.line - x.line <= 2);
         if (src) { e.cascade = src.line; continue; }
       }
+      // Fuente que no carga porque fontspec no la encontró antes.
+      if (/not loadable: Metric \(TFM\) file/.test(m)) {
+        const src = prevReal.find((x) => /The font ".+" cannot be found/.test(x.message));
+        if (src) { e.cascade = src.line; continue; }
+      }
+      if (/^LaTeX Error: Something's wrong--perhaps a missing \\item/.test(m)) {
+        const src = prevReal.find((x) => x.message === m && x.file === e.file && e.line > x.line && e.line - x.line <= 3);
+        if (src) { e.cascade = src.line; continue; }
+      }
       // La misma fila de más repetida en una tabla.
       if (/^Extra alignment tab/.test(m)) {
         const src = prevReal.find((x) => /^Extra alignment tab/.test(x.message) && x.file === e.file && e.line > x.line && e.line - x.line <= 6);
@@ -421,6 +514,61 @@ export function markCascades(entries) {
     }
   }
   return entries;
+}
+
+/**
+ * Errores y avisos de BibTeX y biber (programas aparte de LaTeX). Se leen de la salida de latexmk.
+ * Si el .bib lo escribió el propio documento con filecontents, la línea se traduce al .tex.
+ */
+export function parseBibOutput(output, sources = null, main = 'main.tex', existing = []) {
+  if (!output) return [];
+  const out = [];
+  const seen = new Set();
+  const push = (e) => { const k = e.type + e.message; if (!seen.has(k)) { seen.add(k); out.push(e); } };
+  const bibLine = (bib, n) => {
+    if (sources && sources[bib]) return { file: bib, line: n };
+    for (const [file, text] of Object.entries(sources || {})) {
+      const lines = text.split('\n');
+      const i = lines.findIndex((l) => new RegExp('\\\\begin\\{filecontents\\*?\\}(\\[[^\\]]*\\])?\\{' + bib.replace(/[.]/g, '\\.') + '\\}').test(l));
+      if (i >= 0) return { file, line: i + 1 + n };
+    }
+    return { file: null, line: null };
+  };
+  const citeLine = (key) => {
+    for (const [file, text] of Object.entries(sources || {})) {
+      const i = text.split('\n').findIndex((l) => new RegExp('\\\\\\w*cite\\w*\\*?(\\[[^\\]]*\\])*\\{[^}]*\\b' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(l));
+      if (i >= 0) return { file, line: i + 1 };
+    }
+    return { file: null, line: null };
+  };
+  const lines = output.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    let m;
+    if ((m = l.match(/^I was expecting a `,' or a `\}'---line (\d+) of file (\S+)/))) {
+      const loc = bibLine(m[2], Math.max(1, +m[1] - 1));
+      push({ type: 'error', ...loc, message: `BibTeX: formato incorrecto en ${m[2]} (línea ${m[1]})`, hint: 'Entrada mal escrita en la bibliografía: casi siempre falta la coma después de la clave (@book{clave,) o hay una llave de más o de menos' });
+    } else if ((m = l.match(/^I couldn't open database file (\S+)/))) {
+      const ln = findInSources(/\\bibliography\{/, sources, main);
+      push({ type: 'error', file: ln ? main : null, line: ln, message: `BibTeX: no se encontró ${m[1]}`, hint: `No existe el archivo de bibliografía «${m[1]}»: revisa el nombre en \\bibliography{…} (sin .bib) o agrégalo al proyecto` });
+    } else if ((m = l.match(/^I couldn't open style file (\S+)/))) {
+      const ln = findInSources(/\\bibliographystyle\{/, sources, main);
+      push({ type: 'error', file: ln ? main : null, line: ln, message: `BibTeX: no se encontró el estilo ${m[1]}`, hint: 'Estilo de bibliografía inexistente: prueba plain, unsrt, alpha, abbrv, ieeetr o plainnat (con natbib)' });
+    } else if ((m = l.match(/^Warning--I didn't find a database entry for "([^"]+)"/)) || (m = l.match(/WARN - I didn't find a database entry for '([^']+)'/))) {
+      const hint = `La clave «${m[1]}» no está en el archivo .bib: corrígela en \\cite{…} o agrega la entrada`;
+      const latexWarn = existing.find((e) => e.type === 'warning' && e.message.includes('`' + m[1] + "'"));
+      if (latexWarn) { latexWarn.hint = hint; continue; }
+      push({ type: 'warning', ...citeLine(m[1]), message: `Cita «${m[1]}» sin entrada en la bibliografía`, hint });
+    } else if ((m = l.match(/ERROR - (.*)/)) && /biber|BibTeX subsystem|\.bib/.test(l)) {
+      const ln = m[1].match(/(\S+\.bib)[^\d]*line (\d+)/);
+      const loc = ln ? bibLine(ln[1].split('/').pop(), +ln[2]) : { file: null, line: null };
+      push({ type: 'error', ...loc, message: 'biber: ' + m[1].slice(0, 160), hint: 'Error en la bibliografía (biber): revisa la entrada indicada del .bib (comas, llaves y comillas)' });
+    } else if (/biber: (command )?not found|Could not find biber|'biber' not found/i.test(l)) {
+      const ln = findInSources(/\\usepackage(\[[^\]]*\])?\{biblatex\}/, sources, main);
+      push({ type: 'error', file: ln ? main : null, line: ln, message: 'No está instalado el programa biber', hint: 'biblatex usa el programa biber, que no está instalado. Alternativa: \\usepackage[backend=bibtex]{biblatex}' });
+    }
+  }
+  return out;
 }
 
 export function summarize(entries) {

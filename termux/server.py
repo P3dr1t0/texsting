@@ -18,7 +18,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 HOME = os.path.expanduser("~")
 CONF_DIR = os.environ.get("TEXSTING_DIR", os.path.join(HOME, ".texsting"))
 HOST = os.environ.get("TEXSTING_HOST", "127.0.0.1")
@@ -197,6 +197,9 @@ def run_latex(project_dir, main, engine, timeout):
 INSTALLABLE_EXT = ("sty", "cls", "bst", "def", "fd", "cfg", "clo", "ldf", "tfm", "bbx", "cbx", "lbx", "dbx", "code.tex", "otf", "ttf", "pfb", "map", "enc")
 
 
+BIBER_MISSING = re.compile(r"biber: (command )?not found|Can't exec \"biber\"|Could not find .*biber|'biber' not found", re.I)
+
+
 def find_missing(log_text):
     found = []
     for pat in MISSING_PATTERNS:
@@ -204,10 +207,19 @@ def find_missing(log_text):
             name = m.group(1).strip()
             if pat is MISSING_PATTERNS[2]:
                 name += ".tfm"
-            if not name.lower().endswith(INSTALLABLE_EXT):
+            # «I can't find file» lo da TeX cuando un *paquete* pide un archivo (p. ej. chemfig
+            # pide simplekv.tex): ahí también se buscan .tex. Un \input del usuario que falta
+            # da «File `x.tex' not found» y no se busca en CTAN.
+            pkg_file = pat is MISSING_PATTERNS[1] and (name.endswith(".tex") or "." not in name)
+            if pkg_file and "." not in name:
+                name += ".tex"
+            if not pkg_file and not name.lower().endswith(INSTALLABLE_EXT):
                 continue
             if name not in found:
                 found.append(name)
+    # biblatex necesita el programa biber (no es un archivo .sty)
+    if BIBER_MISSING.search(log_text) and "@biber" not in found:
+        found.append("@biber")
     return found
 
 
@@ -279,14 +291,14 @@ def compile_project(req):
         log_bytes = read_file(log_path) or b""
         log_text = log_bytes.decode("utf-8", "replace")
         missing = [m for m in find_missing(log_text + "\n" + output)
-                   if m not in failed and not os.path.exists(os.path.join(project_dir, m))]
+                   if m not in failed and (m.startswith("@") or not os.path.exists(os.path.join(project_dir, m)))]
         if timed_out or not missing or not can_install or rounds >= MAX_INSTALL_ROUNDS:
             break
         rounds += 1
         progress = False
         with _install_lock:
             for fname in missing:
-                pkg = tlmgr_find_package(fname)
+                pkg = "biber" if fname == "@biber" else tlmgr_find_package(fname)
                 if not pkg:
                     failed.append(fname)
                     continue

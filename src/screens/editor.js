@@ -6,7 +6,7 @@ import { el, icon, toast, sheet, panel, promptText, confirmDialog, dialog, pickF
 import { createPdfViewer } from '../pdfview.js';
 import { parseSynctex, forward, inverse } from '../synctex.js';
 import { compileProject, CompileError } from '../compiler.js';
-import { parseLog, summarize } from '../logparser.js';
+import { parseLog, parseBibOutput, summarize } from '../logparser.js';
 import { analyzeProject } from '../structure.js';
 import { SYMBOLS, KEYBAR, ENGINES, envSnippet } from '../latex-data.js';
 import { tableWizard, matrixWizard, listWizard, QUICK_INSERTS } from '../wizards.js';
@@ -459,7 +459,9 @@ export async function renderEditor(root, { id }, navigate) {
       files = await listFiles(project.id);
       const r = await compileProject(project, files);
       lastResult = r;
-      messages = parseLog(r.log, project.main, Object.fromEntries(files.filter((f) => f.kind === 'text').map((f) => [f.path, f.text])));
+      const srcMap = Object.fromEntries(files.filter((f) => f.kind === 'text').map((f) => [f.path, f.text]));
+      const logMsgs = parseLog(r.log, project.main, srcMap);
+      messages = [...logMsgs, ...parseBibOutput(r.output, srcMap, project.main, logMsgs)];
       renderMessages(r);
       rawLog.textContent = r.log || r.output || '';
       if (r.pdf) {

@@ -17,6 +17,23 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.17] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 27 · servidor Termux 0.2.2
+
+### Nuevo
+- **Errores de bibliografía (BibTeX y biber)**: antes no aparecían porque los da otro programa. Ahora salen en Mensajes, explicados y en su línea, incluso si el `.bib` se escribe dentro del documento con `filecontents`: entrada mal escrita (falta la coma tras la clave), clave inexistente, archivo `.bib` o estilo que no existe, biber que no está instalado.
+- **Servidor de Termux 0.2.2** (la app avisa «Hay mejoras para Termux»; se actualiza en segundos):
+  - instala solo los archivos de apoyo que piden algunos paquetes (p. ej. chemfig necesita `simplekv.tex`); antes solo buscaba `.sty`/`.cls`;
+  - instala el programa **biber** si un documento usa biblatex y no lo encuentra.
+- **Serie 3 de pruebas** (`pruebas/pruebas-texsting-serie3.zip`): biblatex, BibTeX/natbib, beamer, química, geometría con tkz-euclide, LuaLaTeX con cálculos en Lua, datos desde CSV con ajuste lineal, pseudocódigo y física, un proyecto de varios archivos para importar, y 6 documentos con errores nuevos.
+
+### Mejorado: explicaciones de errores
+- **Fuentes de Windows en XeLaTeX** (Arial, Consolas, Times New Roman, Calibri…): dice que no están instaladas y sugiere la equivalente de TeX Live lista para copiar (TeX Gyre Heros, Termes, Pagella, Cursor), con el mismo comando de tu línea (`\setmainfont`, `\setmonofont`…). Apunta a la línea correcta (fontspec avisa una línea después) y marca como «en cadena» las fuentes que no cargan por eso.
+- **beamer**: código literal en una diapositiva sin `[fragile]` → explica que falta `\begin{frame}[fragile]` y apunta al `verbatim`.
+- Nuevas explicaciones: paquete cargado dos veces con opciones distintas, `\usepackage` dentro del documento, comando ya definido, `\item` fuera de una lista, texto antes del primer `\item`, `\\` sin línea que terminar, colores no definidos (las mezclas como `blue!60!black` necesitan xcolor), archivos que pide un paquete.
+- **Columnas de más según dónde ocurre**: en `cases` («admite solo 2 columnas»), matrices, `tabular`/`array`; y `&` en texto normal («se escribe \&»).
+
+---
+
 ## [0.2.16] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 26
 
 ### Mejorado (pedido de Pedro)
