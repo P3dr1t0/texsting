@@ -17,6 +17,33 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.34] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 44
+
+### Resultado de la serie 4 (válidas) en el celular (Poco X7 Pro)
+| Prueba | Tiempo | Resultado |
+|---|---|---|
+| 23 tabla larga | 5,5 s | ✅ 2 páginas, encabezado repetido |
+| 24 código | 3,7 s | ✅ |
+| 25 gráficas pesadas | 24,7 s | ✅ (la más pesada; el eje de tiempo salía con números repetidos) |
+| 27 ejercicios | 9,5 s | ✅ referencias «el ejercicio 1.1», «el teorema 1.1» |
+| 28 digital | 8,8 s | ✅ Karnaugh, compuertas y diagrama de tiempos |
+| 29 física | 3,7 s | ✅ |
+| 22 libro | — | ❌ error de la prueba: babel en español + flecha `->` de TikZ. TeXsting lo diagnosticó bien |
+| 26 tipografía | — | ❌ error de la prueba: opción de csquotes inexistente |
+
+### Pruebas corregidas (serie 4 actualizada)
+- 22: `\usetikzlibrary{babel}`.
+- 25: tiempo en milisegundos y la tabla de primeras filas, que no se mostraba; ahora con líneas y coma decimal.
+- 26: `\usepackage[autostyle]{csquotes}`.
+
+### Mejorado
+- **Conflicto babel (español) + TikZ:** botón **«Agregar \usetikzlibrary{babel}»**, que lo inserta debajo de `\usepackage{tikz}` (o circuitikz/pgfplots).
+- **csquotes con un estilo que no existe:** explicación en español, ubicada en la línea del `\usepackage`, con el botón «Usar [autostyle]».
+- Los errores que ocurren dentro de un paquete ahora también pueden ubicarse en el documento cuando se sabe de qué línea vienen.
+- Al aplicar varios arreglos juntos se procesan de abajo hacia arriba, así uno que agrega una línea no corre a los demás.
+
+---
+
 ## [0.2.33] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 43
 
 ### Pruebas

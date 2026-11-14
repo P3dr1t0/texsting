@@ -588,6 +588,8 @@ export async function renderEditor(root, { id }, navigate) {
     for (const [file, fx] of byFile) {
       if (currentPath !== file) await openFile(file);
       const lines = editor.getText().split('\n');
+      // De abajo hacia arriba: un arreglo que agrega una línea no corre a los de más abajo.
+      fx.sort((a, b) => b.line - a.line);
       for (const f of fx) {
         const cur = lines[f.line - 1];
         if (cur == null || !cur.includes(f.find)) continue;

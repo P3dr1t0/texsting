@@ -35,6 +35,7 @@ export const TRANSLATIONS = [
   [/Could not read table file '([^']*)'/, 'No existe el archivo de datos «$1» en el proyecto: súbelo (Archivos → Subir) o corrige el nombre'],
   [/the current plot has no coordinates/, 'Esta gráfica quedó sin puntos (normalmente por el error de arriba)'],
   [/You have an axis with empty range/, 'El eje quedó sin datos para fijar su escala (normalmente por el error de arriba)'],
+  [/Quote style not defined/, 'csquotes no tiene ese estilo de comillas: usa \\usepackage[autostyle]{csquotes}, que toma el idioma de babel («» en español)'],
   [/Unknown float option `H'/, 'La opción [H] (figura o tabla «aquí exactamente») necesita el paquete float: agrega \\usepackage{float}'],
   [/^Paragraph ended before (.+) was complete/, 'Párrafo terminado antes de completar $1 (¿llave sin cerrar?)'],
   [/^Runaway argument/, 'Argumento sin cerrar (falta una llave })'],
@@ -352,6 +353,28 @@ function enrich(entry, head, sources, main, top = '') {
     return;
   }
   if (/Unknown float option `H'/.test(msg)) { entry.needPkg = 'float'; return; }
+  if (/language@active@arg/.test(msg) && sources) {
+    // babel en español y TikZ: se ofrece agregar \usetikzlibrary{babel} debajo de \usepackage{tikz/circuitikz/pgfplots}.
+    const f = main;
+    const ls = (sources[f] || '').split('\n');
+    if (!/\\usetikzlibrary\s*\{[^}]*\bbabel\b/.test(noComments(sources[f]))) {
+      let k = -1;
+      ls.forEach((l, i) => { if (/^\s*\\usepackage\s*(\[[^\]]*\])?\s*\{[^}]*\b(tikz|circuitikz|pgfplots)\b/.test(l)) k = i; });
+      if (k >= 0) entry.fix = { file: f, line: k + 1, find: ls[k].trim(), replace: ls[k].trim() + '\n\\usetikzlibrary{babel}', label: 'Agregar \\usetikzlibrary{babel}' };
+    }
+    return;
+  }
+  if (/Quote style not defined/.test(msg) && sources) {
+    const f = Object.keys(sources).find((k) => /\\usepackage\s*\[[^\]]*\]\s*\{csquotes\}/.test(sources[k]));
+    if (f) {
+      const ls = sources[f].split('\n');
+      const k = ls.findIndex((l) => /\\usepackage\s*\[[^\]]*\]\s*\{csquotes\}/.test(l));
+      entry.file = f; entry.line = k + 1; entry.context = ls[k].trim();
+      const m = ls[k].match(/\\usepackage\s*\[[^\]]*\]\s*\{csquotes\}/);
+      entry.fix = { file: f, line: k + 1, find: m[0], replace: '\\usepackage[autostyle]{csquotes}', label: 'Usar [autostyle]' };
+    }
+    return;
+  }
   if (/Couldn't load requested language/.test(msg) && sources && entry.line) {
     const l = (sources[entry.file || main] || '').split('\n')[entry.line - 1] || '';
     const lang = (l.match(/language\s*=\s*\{?\s*(?:\[[^\]]*\])?\s*([\w+#.-]+)/i) || [])[1];
@@ -671,7 +694,10 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       if (NOISE.some((re) => re.test(m[3]))) continue;
       // Error dentro de un paquete del sistema: se informa sin salto al código.
       const sysMsg = joinContinuation(lines, i, m[3]).msg;
-      out.push({ type: 'error', file: null, line: null, message: sysMsg + ' (' + m[1].split('/').pop() + ':' + m[2] + ')', hint: translate(sysMsg) });
+      const sysEntry = { type: 'error', file: null, line: null, message: sysMsg + ' (' + m[1].split('/').pop() + ':' + m[2] + ')', hint: translate(sysMsg) };
+      // Algunos errores «dentro» de un paquete se pueden ubicar en el documento (p. ej. la opción de csquotes).
+      try { enrich(sysEntry, '', sources, main, ''); } catch { /* sin ubicación */ }
+      out.push(sysEntry);
       continue;
     }
     if (line.startsWith('! ')) {
