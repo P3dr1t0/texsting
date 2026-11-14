@@ -43,6 +43,7 @@ export const TRANSLATIONS = [
   [/Undefined color `([^']+)'/, 'El color «$1» no está definido: defínelo con \\definecolor o usa uno básico (red, blue, black…)'],
   [/I can't find file `([^']+)'/, 'Falta el archivo «$1», que necesita un paquete. TeXsting intenta instalarlo solo (necesita internet la primera vez)'],
   [/The font "([^"]+)" cannot be found/, 'La fuente «$1» no está instalada en este equipo'],
+  [/\\textfont \d+ is undefined|Insufficient symbol fonts/, 'Falta la fuente matemática (casi siempre porque otra fuente no se pudo cargar antes)'],
   [/not loadable: Metric \(TFM\) file/, 'No se pudo cargar esta fuente'],
   [/scanning use of \\@xverbatim|scanning use of \\lst@/, 'Código literal (verbatim/lstlisting) que no se cerró bien'],
   [/Citation `(.+)' on page .* undefined/, 'Cita no definida: $1'],
@@ -210,6 +211,24 @@ const FONT_ALTERNATIVES = {
   'century gothic': 'texgyreadventor',
 };
 
+// Fuentes que vienen con TeX Live. En Termux, XeLaTeX (con un servidor viejo) no las
+// encuentra por su nombre; por archivo siempre funcionan.
+const FOUR = (base) => `${base}}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]`;
+const TL_FONTS = {
+  'latin modern roman': FOUR('lmroman10'),
+  'latin modern sans': 'lmsans10}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-oblique, BoldItalicFont=*-boldoblique]',
+  'latin modern mono': 'lmmono10}[Extension=.otf, UprightFont=*-regular, ItalicFont=*-italic]',
+  'latin modern math': 'latinmodern-math.otf}',
+  'tex gyre termes': FOUR('texgyretermes'), 'tex gyre pagella': FOUR('texgyrepagella'), 'tex gyre heros': FOUR('texgyreheros'),
+  'tex gyre cursor': FOUR('texgyrecursor'), 'tex gyre bonum': FOUR('texgyrebonum'), 'tex gyre schola': FOUR('texgyreschola'), 'tex gyre adventor': FOUR('texgyreadventor'),
+  'tex gyre termes math': 'texgyretermes-math.otf}', 'tex gyre pagella math': 'texgyrepagella-math.otf}', 'tex gyre bonum math': 'texgyrebonum-math.otf}',
+  'tex gyre schola math': 'texgyreschola-math.otf}', 'tex gyre dejavu math': 'texgyredejavu-math.otf}',
+  'libertinus serif': 'LibertinusSerif}[Extension=.otf, UprightFont=*-Regular, BoldFont=*-Bold, ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]',
+  'libertinus sans': 'LibertinusSans}[Extension=.otf, UprightFont=*-Regular, BoldFont=*-Bold, ItalicFont=*-Italic]',
+  'libertinus mono': 'LibertinusMono-Regular.otf}', 'libertinus math': 'LibertinusMath-Regular.otf}',
+  'stix two math': 'STIXTwoMath-Regular.otf}', 'stix two text': 'STIXTwoText}[Extension=.otf, UprightFont=*-Regular, BoldFont=*-Bold, ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]',
+};
+
 /** Entorno de alineación abierto más interno en esa línea (cases, tabular, align…). */
 function innermostEnv(text, line) {
   if (!text) return null;
@@ -251,13 +270,43 @@ function enrich(entry, head, sources, main, top = '') {
     // fontspec avisa una línea después: se busca la línea que de verdad nombra esa fuente.
     let cmd = 'setmainfont';
     const fre = new RegExp('\\\\(set(?:main|sans|mono|math)font|newfontfamily\\\\\\w+)\\s*(\\[[^\\]]*\\])?\\s*\\{\\s*' + font[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\}');
+    // Si la misma fuente aparece en varias líneas (\setmainfont y \setsansfont), se elige la
+    // última que está antes de la línea que informó TeX.
+    const reported = entry.line || Infinity;
+    let best = null;
     for (const [file, text] of Object.entries(sources || {})) {
-      const i = text.split('\n').findIndex((l) => fre.test(l));
-      if (i >= 0) { entry.file = file; entry.line = i + 1; entry.context = text.split('\n')[i].trim(); cmd = text.split('\n')[i].match(fre)[1]; break; }
+      const ls = text.split('\n');
+      ls.forEach((l, i) => {
+        if (!fre.test(l.replace(/(^|[^\\])%.*$/, '$1'))) return;
+        const sameFile = file === entry.file;
+        // TeX informa una línea después (mira si sigue un [...]): primero las de antes, luego la misma.
+        const score = sameFile ? (i + 1 < reported ? 4 : i + 1 === reported ? 3 : 2) : 1;
+        if (!best || score > best.score || (score === best.score && score === 4 && i > best.i) || (score === best.score && score < 3 && i < best.i)) best = { file, i, score, l };
+      });
     }
-    entry.hint = alt
-      ? `La fuente «${font[1]}» no está instalada (es de Windows/Mac). Una parecida que viene con TeX Live: \\${cmd}{${alt}}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic] — o borra la línea para usar Latin Modern`
-      : `La fuente «${font[1]}» no está instalada. Usa una de TeX Live, p. ej. \\${cmd}{texgyretermes}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic] — o borra la línea para usar Latin Modern`;
+    if (best) { entry.file = best.file; entry.line = best.i + 1; entry.context = best.l.trim(); cmd = best.l.match(fre)[1]; }
+    const name = font[1];
+    const tl = TL_FONTS[name.toLowerCase()];
+    const isMath = cmd === 'setmathfont';
+    // Arreglo con un toque: reemplazar el nombre por el archivo de la fuente.
+    const spec = tl || (alt ? FOUR(alt) : null);
+    if (spec && entry.context) {
+      const m = entry.context.match(fre);
+      if (m) {
+        const find = m[0];
+        const newCmd = find.replace(/\{[^}]*\}$/, '{' + spec);
+        entry.fix = { file: entry.file, line: entry.line, find, replace: newCmd, label: tl ? 'Usar el archivo de la fuente' : `Cambiar por ${alt}` };
+      }
+    }
+    if (tl) {
+      const isLM = /^latin modern (roman|math)$/i.test(name);
+      entry.hint = `«${name}» viene con TeX Live, pero XeLaTeX no la encontró por su nombre en este equipo (se arregla actualizando el servidor de Termux). ` +
+        `Mientras tanto, escríbela por archivo: \\${cmd}{${spec}` + (isLM ? ` — o borra la línea: ${isMath ? 'Latin Modern Math' : 'Latin Modern'} ya es la fuente por defecto` : '');
+    } else if (alt) {
+      entry.hint = `La fuente «${name}» no está instalada (es de Windows/Mac). Una parecida que viene con TeX Live: \\${cmd}{${FOUR(alt)} — o borra la línea para usar Latin Modern`;
+    } else {
+      entry.hint = `La fuente «${name}» no está instalada. Usa una de TeX Live, p. ej. \\${cmd}{${isMath ? 'latinmodern-math.otf}' : FOUR('texgyretermes')} — o borra la línea para usar Latin Modern`;
+    }
     return;
   }
   const theme = msg.match(/File `beamer(color|font|inner|outer)?theme([^']+)\.sty' not found/);
@@ -557,7 +606,7 @@ export function markCascades(entries) {
         if (src) { e.cascade = src.line; continue; }
       }
       // Fuente que no carga porque fontspec no la encontró antes.
-      if (/not loadable: Metric \(TFM\) file/.test(m)) {
+      if (/not loadable: Metric \(TFM\) file|\\(text|script|scriptscript)font \d+ is undefined|Math formula deleted: Insufficient symbol fonts/.test(m)) {
         const src = prevReal.find((x) => /The font ".+" cannot be found/.test(x.message));
         if (src) { e.cascade = src.line; continue; }
       }

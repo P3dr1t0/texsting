@@ -561,6 +561,26 @@ export async function renderEditor(root, { id }, navigate) {
   }
   setCompileState('idle');
 
+  // Aplica arreglos { file, line, find, replace } sobre el texto actual (si la línea no cambió).
+  async function applyFixes(list) {
+    let done = 0;
+    const byFile = new Map();
+    for (const f of list) { if (!byFile.has(f.file)) byFile.set(f.file, []); byFile.get(f.file).push(f); }
+    for (const [file, fx] of byFile) {
+      if (currentPath !== file) await openFile(file);
+      const lines = editor.getText().split('\n');
+      for (const f of fx) {
+        const cur = lines[f.line - 1];
+        if (cur == null || !cur.includes(f.find)) continue;
+        editor.replaceLine(f.line, cur.replace(f.find, f.replace));
+        done++;
+      }
+    }
+    if (list.length === 1 && done) jumpTo(list[0].file, list[0].line);
+    toast(done ? `${done === 1 ? 'Línea corregida' : done + ' líneas corregidas'}: compila de nuevo` : 'Esas líneas ya cambiaron: compila de nuevo para ver los errores actuales',
+      done ? { action: 'Compilar', onAction: () => compile() } : {});
+  }
+
   async function fixMagicLine(ech) {
     if (currentPath !== project.main) await openFile(project.main);
     editor.replaceLine(ech.magic.line, `% !TEX program = ${ech.engine}`);
@@ -706,8 +726,17 @@ export async function renderEditor(root, { id }, navigate) {
       el('div', { class: 'msg-main' }, main),
       main !== m.message ? el('div', { class: 'msg-orig' }, m.message) : null,
       m.context && m.context.trim() ? el('code', {}, m.context) : null,
+      m.fix && !isCascade ? el('button', { class: 'btn small msg-fix', html: icon('wand') + `<span>${esc(m.fix.label)}</span>`,
+        title: m.fix.replace, onclick: (ev) => { ev.stopPropagation(); applyFixes([m.fix]); } }) : null,
       toggle, sub);
     };
+    const fixes = top.filter((m) => m.fix && m.cascade == null).map((m) => m.fix);
+    if (fixes.length > 1) {
+      head.push(el('div', { class: 'msg info' },
+        el('div', { class: 'msg-top' }, el('span', { class: 'msg-type' }, 'Arreglo')),
+        el('div', { class: 'msg-main' }, `Hay ${fixes.length} líneas que se pueden corregir solas (fuentes escritas por nombre).`),
+        el('button', { class: 'btn small msg-fix', html: icon('wand') + `<span>Aplicar los ${fixes.length} arreglos</span>`, onclick: () => applyFixes(fixes) })));
+    }
     const stopped = r && r.status === 'failed' && top.some((m) => m.type === 'error')
       ? el('p', { class: 'msg-stopped' }, 'Este error detuvo la compilación antes de llegar al final: si hay más errores después, aparecerán cuando lo corrijas.')
       : null;

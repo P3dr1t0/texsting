@@ -444,3 +444,5 @@ html.layer-open #app { pointer-events: none; }
 .project-card.selected .project-ico .ico { color: var(--accent-strong); fill: color-mix(in srgb, var(--accent) 25%, transparent); }
 .project-card .project-open { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 @media (max-width: 599px) { .sel-bar { flex-wrap: nowrap; } .sel-actions { flex-wrap: nowrap; gap: 4px; } .sel-actions .btn span { display: none; } .sel-actions .btn { padding: 9px; } .sel-actions .btn .ico { width: 19px; height: 19px; } }
+.msg-fix { margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; }
+.msg-fix .ico { width: 16px; height: 16px; }

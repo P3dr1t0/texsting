@@ -17,6 +17,25 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.27] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 37 · servidor Termux 0.2.5
+
+### Corregido: XeLaTeX no encontraba por su nombre las fuentes de TeX Live (Cuaderno de Trigonometría)
+- Un documento con `\setmainfont{Latin Modern Roman}` y `\setmathfont{Latin Modern Math}` daba 172 errores (+513 en cadena) en la tablet.
+  - Las fuentes sí están instaladas, pero en Termux el buscador de fuentes que usa XeLaTeX (fontconfig) no mira las carpetas de TeX Live.
+  - **Servidor 0.2.5:** al arrancar, prepara una configuración de fuentes que incluye las carpetas de TeX Live (OpenType y TrueType). Además construye la caché en segundo plano.
+  - Ahora Latin Modern, TeX Gyre, Libertinus, STIX Two y demás se encuentran por su nombre, como en una computadora.
+- **Explicación corregida.** Antes decía «no está instalada» y sugería otra fuente. Ahora, si la fuente viene con TeX Live, lo dice y da la forma por archivo, que siempre funciona (`\setmainfont{lmroman10}[Extension=.otf, …]`). Con Latin Modern, recuerda que se puede borrar la línea porque ya es la fuente por defecto.
+- Si la misma fuente está en dos líneas (`\setmainfont` y `\setsansfont`), cada error señala su propia línea.
+- «\textfont N is undefined» (falta la fuente matemática) se explica y se agrupa como consecuencia de la fuente que no cargó.
+
+### Nuevo
+- **Arreglar con un toque.**
+  - Las tarjetas de fuentes traen un botón que reescribe la línea: «Usar el archivo de la fuente» o «Cambiar por texgyreheros».
+  - Si hay varias, una tarjeta «Arreglo» las aplica todas juntas.
+  - Los cambios se pueden deshacer, y un aviso ofrece «Compilar».
+
+---
+
 ## [0.2.26] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 36
 
 ### Nuevo

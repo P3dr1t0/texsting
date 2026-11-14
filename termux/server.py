@@ -18,7 +18,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "0.2.4"
+VERSION = "0.2.5"
 HOME = os.path.expanduser("~")
 CONF_DIR = os.environ.get("TEXSTING_DIR", os.path.join(HOME, ".texsting"))
 HOST = os.environ.get("TEXSTING_HOST", "127.0.0.1")
@@ -172,12 +172,81 @@ def run_cmd(cmd, cwd, timeout, extra_env=None):
         return -9, out.decode("utf-8", "replace"), True
 
 
+# ---------- Fuentes de TeX Live para XeLaTeX ----------
+# XeLaTeX busca las fuentes *por nombre* («Latin Modern Roman», «TeX Gyre Termes») con
+# fontconfig. En Termux, fontconfig no conoce las carpetas de TeX Live, así que no las
+# encuentra aunque estén instaladas. Se le da una configuración que sí las incluye.
+FONTS_CONF = os.path.join(CONF_DIR, "fonts.conf")
+FONT_CACHE = os.path.join(CONF_DIR, "fontcache")
+_fonts_conf_ready = False
+
+
+def _kpse_var(name):
+    try:
+        r = subprocess.run(["kpsewhich", "-var-value", name], capture_output=True, text=True, timeout=20)
+        return [p for p in re.split(r"[:;]", r.stdout.strip()) if p and not p.startswith("!!")]
+    except Exception:
+        return []
+
+
+def tex_font_dirs():
+    dirs = []
+    roots = []
+    for var in ("TEXMFDIST", "TEXMFMAIN", "TEXMFLOCAL", "TEXMFHOME"):
+        roots += _kpse_var(var)
+    for root in roots:
+        for sub in ("fonts/opentype", "fonts/truetype"):
+            d = os.path.join(os.path.expanduser(root), sub)
+            if os.path.isdir(d) and d not in dirs:
+                dirs.append(d)
+    # Por si acaso: la carpeta real donde está Latin Modern.
+    try:
+        r = subprocess.run(["kpsewhich", "lmroman10-regular.otf"], capture_output=True, text=True, timeout=20)
+        f = r.stdout.strip()
+        while f and os.path.basename(f) != "opentype" and f != os.path.dirname(f):
+            f = os.path.dirname(f)
+        if f and os.path.isdir(f) and f not in dirs:
+            dirs.append(f)
+    except Exception:
+        pass
+    return dirs
+
+
+def setup_fontconfig():
+    """Escribe ~/.texsting/fonts.conf (sistema + TeX Live) y precalienta la caché en segundo plano."""
+    global _fonts_conf_ready
+    if not which("kpsewhich"):
+        return None
+    dirs = tex_font_dirs()
+    if not dirs:
+        return None
+    system = [c for c in (os.environ.get("FONTCONFIG_FILE"),
+                          os.path.join(os.environ.get("PREFIX", ""), "etc/fonts/fonts.conf"),
+                          "/etc/fonts/fonts.conf") if c and os.path.isfile(c) and os.path.abspath(c) != FONTS_CONF]
+    os.makedirs(FONT_CACHE, exist_ok=True)
+    xml = ['<?xml version="1.0"?>', '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">', "<fontconfig>"]
+    if system:
+        xml.append('  <include ignore_missing="yes">%s</include>' % system[0])
+    xml += ["  <dir>%s</dir>" % d for d in dirs]
+    xml += ["  <cachedir>%s</cachedir>" % FONT_CACHE, "</fontconfig>", ""]
+    with open(FONTS_CONF, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(xml))
+    _fonts_conf_ready = True
+    if which("fc-cache"):
+        env = dict(os.environ, FONTCONFIG_FILE=FONTS_CONF)
+        threading.Thread(target=lambda: subprocess.run(["fc-cache"], env=env, capture_output=True, timeout=1800),
+                         daemon=True).start()
+    return dirs
+
+
 def run_latex(project_dir, main, engine, timeout):
     flag, exe = ENGINES[engine]
     # XeLaTeX: si una fuente (p. ej. Arial) no está instalada, kpathsea intenta *fabricarla*
     # con METAFONT (mktextfm) para cada variante (Arial, Arial/B, Arial/I, Arial/BI…). En el
     # teléfono eso tarda mucho y nunca funciona: con fontspec las fuentes son OTF/TTF.
     extra = {"MKTEXTFM": "0"} if engine == "xelatex" else None
+    if engine == "xelatex" and _fonts_conf_ready:
+        extra["FONTCONFIG_FILE"] = FONTS_CONF
     if which("latexmk"):
         # -g: compilar siempre que el usuario lo pide (si no, latexmk se niega a
         # repetir un documento que tuvo errores y no cambió).
@@ -415,6 +484,7 @@ def server_info():
         "latexmk": bool(which("latexmk")),
         "tlmgr": tlmgr_usable(),
         "engines": [e for e, (_, exe) in ENGINES.items() if which(exe)],
+        "texfonts": _fonts_conf_ready,
     }
 
 
@@ -501,6 +571,12 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     os.makedirs(WORK, exist_ok=True)
+    try:
+        fdirs = setup_fontconfig()
+        if fdirs:
+            print("Fuentes de TeX Live visibles para XeLaTeX (%d carpetas)" % len(fdirs))
+    except Exception as e:
+        print("AVISO: no se pudo preparar fontconfig: %s" % e)
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     info = server_info()
     print("TeXsting servidor %s escuchando en http://%s:%d" % (VERSION, HOST, PORT))
