@@ -40,11 +40,16 @@ export function icon(name, cls = '') {
 }
 
 export function logoSvg(size = 28) {
+  // «T» de Latin Modern Bold (la tipografía de TeX) en un cuadrito redondeado
   return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true">
     <rect width="64" height="64" rx="16" fill="var(--logo-bg)"/>
-    <path d="M16 18h32v8H36v26h-8V26H16z" fill="var(--logo-fg)"/>
-    <path d="M36 44l10 8-12-2z" fill="var(--accent)"/>
+    <path transform="translate(10.768 49.937) scale(0.05315 -0.05315)" fill="var(--logo-fg)" d="M757 434 736 675H63L42 434H89C98 547 108 628 252 628H329V47H176V0C230 3 341 3 400 3C459 3 570 3 624 0V47H471V628H547C690 628 700 548 710 434Z"/>
   </svg>`;
+}
+
+/** Nombre de la app con la tipografía de TeX: «TeX» con la E bajada, como el logo de Knuth. */
+export function brandName() {
+  return '<span class="brand-name"><span class="tex">T<span class="tex-e">E</span>X</span><b>sting</b></span>';
 }
 
 export function el(tag, attrs = {}, ...children) {

@@ -1,6 +1,6 @@
 // Pantalla de inicio: lista de proyectos, estado de Termux, crear e importar.
 import { listProjects, createProject, deleteProject, duplicateProject, saveProject, listFiles, getOutput, isTextPath } from '../store.js';
-import { el, icon, logoSvg, toast, sheet, promptText, confirmDialog, pickFiles, esc } from '../ui.js';
+import { el, icon, logoSvg, brandName, toast, sheet, promptText, confirmDialog, pickFiles, esc } from '../ui.js';
 import { saveAsTemplate } from './newproject.js';
 import { ping, serverOutdated } from '../compiler.js';
 import { createZip, readZip } from '../zip.js';
@@ -16,7 +16,7 @@ export async function renderHome(root, _params, navigate) {
 
   const screen = el('div', { class: 'screen home' },
     el('header', { class: 'home-head' },
-      el('div', { class: 'brand', html: logoSvg(34) + '<span>TeX<b>sting</b></span>' }),
+      el('div', { class: 'brand', html: logoSvg(36) + brandName() }),
       el('button', { class: 'icon-btn', title: 'Ajustes', 'aria-label': 'Ajustes', html: icon('settings'), onclick: () => navigate('settings') })),
     status,
     el('div', { class: 'home-actions' },

@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.16] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 26
+
+### Mejorado (pedido de Pedro)
+- **Marca con la tipografía de LaTeX**: en la pantalla de inicio, «TeXsting» va en Latin Modern (la letra de TeX) con la **E bajada** como el logo de Knuth, y la «T» del cuadrito también es la de Latin Modern. Solo se incluyen las letras necesarias (2,8 kB).
+- **Ícono más grande y nítido**: las letras ocupan casi todo el ancho del ícono (≈94 %, con un pequeño margen) y caben completas incluso en lanzadores con ícono circular.
+  - Causa de que se vieran chicas y algo borrosas: el generador automático dejaba la capa del logo en 192 px; ahora cada densidad de pantalla lleva su tamaño correcto (hasta 432 px).
+- **Ícono temático (Android 13+)**: si usas íconos temáticos con los colores del fondo de pantalla, TeXsting muestra las letras «TeX's» en ese estilo.
+
+---
+
 ## [0.2.15] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 25
 
 ### Nuevo: identidad visual (issue [#5](https://github.com/P3dr1t0/texsting/issues/5))

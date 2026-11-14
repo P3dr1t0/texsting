@@ -45,6 +45,8 @@ jobs:
         continue-on-error: true
         run: npx @capacitor/assets generate --android --iconBackgroundColor '#1b2540' --iconBackgroundColorDark '#1b2540' --splashBackgroundColor '#18213a' --splashBackgroundColorDark '#18213a'
 
+      - name: Íconos en la resolución correcta (los del repositorio reemplazan a los generados)
+        run: cp -r android-config/res/. android/app/src/main/res/
       - name: Sincronizar
         run: npx cap sync android
 

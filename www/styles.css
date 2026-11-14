@@ -90,8 +90,12 @@ a { color: inherit; }
 .home, .settings, .termux { overflow-y: auto; }
 .home { padding: 16px max(16px, calc(50% - 360px)) calc(24px + var(--safe-bottom)); gap: 14px; }
 .home-head { display: flex; align-items: center; justify-content: space-between; }
-.brand { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 500; letter-spacing: -.3px; }
-.brand b { color: var(--accent-strong); font-weight: 800; }
+@font-face { font-family: 'LM Roman Marca'; src: url('fonts/lmroman10-bold-marca.woff') format('woff'); font-weight: 700; font-display: block; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-name { font-family: 'LM Roman Marca', 'Latin Modern Roman', 'CMU Serif', Georgia, serif; font-weight: 700; font-size: 30px; letter-spacing: 0; line-height: 1; }
+.brand-name b { color: var(--accent-strong); font-weight: 700; }
+/* logo de TeX: la E baja medio «ex» y las letras se juntan */
+.brand-name .tex-e { display: inline-block; vertical-align: -0.5ex; margin: 0 -0.125em 0 -0.1667em; }
 .home-actions { display: flex; gap: 10px; }
 .section-title { margin: 12px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
 .server-chip { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); text-align: left; font-size: 14px; width: 100%; }
