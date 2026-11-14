@@ -100,6 +100,9 @@ function mountLayer(node, onClose) {
   const backdrop = el('div', { class: 'backdrop' });
   backdrop.append(node);
   document.body.append(backdrop);
+  // Mientras haya un menú o diálogo abierto, lo de atrás no se desplaza (en Android el gesto
+  // sobre la hoja se «encadenaba» a la lista de proyectos).
+  document.documentElement.classList.add('layer-open');
   requestAnimationFrame(() => backdrop.classList.add('show'));
   let closed = false;
   const close = (v) => {
@@ -108,6 +111,7 @@ function mountLayer(node, onClose) {
     const i = layers.indexOf(closer);
     if (i >= 0) layers.splice(i, 1);
     backdrop.classList.remove('show');
+    if (!layers.length) document.documentElement.classList.remove('layer-open');
     setTimeout(() => backdrop.remove(), 180);
     onClose && onClose(v);
   };

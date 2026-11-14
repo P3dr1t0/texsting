@@ -425,3 +425,9 @@ a { color: inherit; }
 .project-card .pin-btn:hover .ico { opacity: .7; }
 .project-card .pin-btn.on .ico { opacity: 1; color: var(--accent-strong); transform: rotate(0deg); fill: currentColor; }
 .project-card.pinned { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+
+/* Con un menú o diálogo abierto, el fondo queda quieto */
+html.layer-open #app :is(.home, .settings, .termux, .newproject, .side-list, .symbols, .msg-list, .raw-log, .pdfv-scroll, .cm-scroller, textarea) { overflow: hidden !important; }
+html.layer-open #app { pointer-events: none; }
+.backdrop { overscroll-behavior: contain; touch-action: none; }
+.backdrop .sheet, .backdrop .dialog { overscroll-behavior: contain; touch-action: pan-y; }

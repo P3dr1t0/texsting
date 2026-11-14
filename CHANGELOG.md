@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.25] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 35
+
+### Corregido
+- **Con un menú abierto, el fondo se desplazaba.** Por ejemplo, al deslizar sobre la hoja «Ordenar proyectos» se movía la lista de proyectos de atrás (visto en la tablet).
+  - Ahora, mientras hay un menú o diálogo abierto, la pantalla de atrás queda fija y no recibe toques.
+  - Al cerrarlo, todo queda en la misma posición.
+  - Los menús largos (en el celular) se siguen pudiendo desplazar por dentro.
+
+---
+
 ## [0.2.24] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 34
 
 ### Nuevo
