@@ -511,6 +511,7 @@ export async function renderEditor(root, { id }, navigate) {
     saveSoon.flush();
     await saveCurrent();
     const t0 = Date.now();
+    document.querySelector('.toast')?.classList.remove('show');
     setCompileState('busy');
     const tick = setInterval(() => setCompileState('busy', Math.round((Date.now() - t0) / 1000) + ' s'), 1000);
     try {
@@ -522,6 +523,9 @@ export async function renderEditor(root, { id }, navigate) {
       messages = [...logMsgs, ...parseBibOutput(r.output, srcMap, project.main, logMsgs)];
       renderMessages(r);
       rawLog.textContent = r.log || r.output || '';
+      // Si esta compilación no dio PDF, el que se ve es el anterior: se avisa con una franja.
+      const hadPdf = !!pdfPane.querySelector('.pdfv-page-el');
+      pdfPane.classList.toggle('stale', !r.pdf && hadPdf);
       if (r.pdf) {
         await viewer.load(r.pdf);
         syncBytes = r.synctex || null; syncData = null;
@@ -551,7 +555,8 @@ export async function renderEditor(root, { id }, navigate) {
         // sobraría y taparía la primera tarjeta. En el celular sí avisa, con «Ver».
         if (WIDE.matches) screen.classList.add('show-messages');
         else toast(`${n} error(es)${r.pdf ? ' (el PDF se generó igual)' : ''}`, { kind: 'error', action: 'Ver', ms: 6000, onAction: () => showPanel('messages') });
-        if (r.missing && r.missing.length) toast('No se encontró: ' + r.missing.join(', '), { kind: 'error', ms: 7000 });
+        // En tablet el panel de Mensajes ya lo explica (y el aviso lo taparía).
+        if (r.missing && r.missing.length && !WIDE.matches) toast('No se encontró: ' + r.missing.join(', '), { kind: 'error', ms: 7000 });
       }
     } catch (e) {
       if (e instanceof CompileError && e.kind === 'offline') {

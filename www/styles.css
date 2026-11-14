@@ -396,3 +396,9 @@ a { color: inherit; }
 .msg .btn.small { padding: 5px 10px; font-size: 13px; min-height: 0; }
 @media (max-width: 599px) { .file-switch em.main-tag { display: none; } }
 .msg-stopped { margin: 10px 14px 14px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); color: var(--muted); font-size: 13.5px; line-height: 1.4; }
+
+/* PDF de una compilación anterior (la última falló sin PDF) */
+.pdf-pane { position: relative; }
+.pdf-pane.stale::before { content: 'PDF de la compilación anterior: esta no generó PDF'; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 5;
+  background: var(--warn); color: #1b1b1b; font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.25); pointer-events: none; white-space: nowrap; }
+.pdf-pane.stale .pdf-host { opacity: .55; }

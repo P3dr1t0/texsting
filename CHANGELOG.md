@@ -17,6 +17,21 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.22] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 32
+
+### Resultado en la tablet
+- La prueba M (fuentes) ya no tarda.
+- La prueba L (beamer) en sus tres variantes da el error correcto con su línea: falta `fragile`, diapositiva sin cerrar y tema inexistente («¿Quisiste decir \usetheme{Madrid}?»).
+
+### Corregido
+- En la tablet, el aviso rojo «No se encontró: …» tapaba la tarjeta del error. Ya no aparece ahí: el panel de Mensajes ya lo explica. En el celular sigue.
+- El aviso de la compilación anterior («Listo en…») se oculta al empezar una nueva.
+
+### Nuevo
+- **PDF de la compilación anterior:** si una compilación falla sin generar PDF, el que queda a la vista es el anterior. Ahora se ve atenuado, con la franja «PDF de la compilación anterior: esta no generó PDF», para que no parezca el resultado actual.
+
+---
+
 ## [0.2.21] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 31 · servidor Termux 0.2.4
 
 ### Resultado de las pruebas de errores K–P en la tablet
