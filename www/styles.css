@@ -413,3 +413,15 @@ a { color: inherit; }
 .dir-count.cur { color: var(--accent-strong); font-weight: 700; }
 .outline-item.t-input .label { color: var(--muted); font-style: italic; }
 .outline-item small { white-space: nowrap; }
+
+/* Inicio: orden y fijados */
+.home-sort { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 6px 12px; }
+.home-sort .ico { width: 16px; height: 16px; }
+.home-tabs .home-search { margin-left: auto; }
+.home-tabs .home-search[hidden] + .home-sort { margin-left: auto; }
+.home-group { display: flex; align-items: center; gap: 6px; margin: 12px 2px 4px; font-size: 12px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
+.home-group .ico { width: 14px; height: 14px; }
+.project-card .pin-btn .ico { opacity: .35; transform: rotate(30deg); transition: opacity .15s, transform .15s; }
+.project-card .pin-btn:hover .ico { opacity: .7; }
+.project-card .pin-btn.on .ico { opacity: 1; color: var(--accent-strong); transform: rotate(0deg); fill: currentColor; }
+.project-card.pinned { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }

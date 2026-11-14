@@ -17,6 +17,23 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.24] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 34
+
+### Nuevo
+- **Ordenar los proyectos en «Todos»** con el botón de orden junto al buscador. Opciones:
+  - nombre de la A a la Z;
+  - nombre de la Z a la A;
+  - modificados (recientes o antiguos primero);
+  - creados (nuevos o antiguos primero).
+  - La app recuerda el orden elegido.
+- **Fijar proyectos.**
+  - Se fija con el alfiler de cada tarjeta o con ⋮ → «Fijar arriba».
+  - Los fijados quedan siempre arriba, en el grupo «Fijados», con cualquier orden y también en «Recientes».
+  - Entre ellos siguen el mismo orden elegido.
+  - Fijar no cambia la fecha de modificación del proyecto.
+
+---
+
 ## [0.2.23] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 33
 
 ### Resultado en la tablet
