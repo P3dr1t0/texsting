@@ -670,7 +670,7 @@ export async function renderEditor(root, { id }, navigate) {
 
   function renderMessages(r) {
     const sm = summarize(messages);
-    msgCounts.innerHTML = `<span class="c-err">${sm.errors} errores${sm.cascades ? ` <small>(+${sm.cascades} en cadena)</small>` : ''}</span> <span class="c-warn">${sm.warnings} advertencias</span> <span class="c-box">${sm.badboxes} cajas</span>`;
+    msgCounts.innerHTML = `<span class="c-err">${sm.errors} errores${sm.cascades ? ` <small>(+${sm.cascades} en cadena)</small>` : ''}</span> <span class="c-warn">${sm.warnings} advertencias</span> <span class="c-box">${sm.badboxes} cajas</span>${sm.infos ? ` <span class="c-info">${sm.infos} informativo${sm.infos === 1 ? '' : 's'}</span>` : ''}`;
     const badge = bottomnav.querySelector(':scope > [data-tab="messages"] .badge');
     // Rojo con el número de errores; si no hay errores pero sí advertencias, ámbar.
     for (const b of [badge, msgBtn.querySelector('.badge')]) {
@@ -714,6 +714,7 @@ export async function renderEditor(root, { id }, navigate) {
       }
       top.push(m);
     }
+    top.sort((a, b) => (a.info ? 1 : 0) - (b.info ? 1 : 0)); // los informativos, al final
     const loc = (m) => {
       if (!m.line) return null;
       const f = (m.file || '').split('/').pop();
@@ -734,11 +735,11 @@ export async function renderEditor(root, { id }, navigate) {
       const label = `${kids.length} ${kids.length === 1 ? 'error' : 'errores'} en cadena: se corrigen solos al arreglar este`;
       if (toggle) toggle.textContent = '▸ ' + label;
       return el('div', {
-        class: 'msg ' + m.type + (isCascade ? ' cascade' : ''), role: 'button', tabindex: 0,
+        class: 'msg ' + m.type + (isCascade ? ' cascade' : '') + (m.info ? ' is-info' : ''), role: 'button', tabindex: 0,
         onclick: () => { if (m.line) jumpTo(m.file, m.line); },
       },
       el('div', { class: 'msg-top' },
-        el('span', { class: 'msg-type' }, isCascade ? 'En cadena' : m.type === 'error' ? 'Error' : m.type === 'warning' ? 'Aviso' : 'Caja'),
+        el('span', { class: 'msg-type' }, isCascade ? 'En cadena' : m.type === 'error' ? 'Error' : m.info ? 'Info' : m.type === 'warning' ? 'Aviso' : 'Caja'),
         loc(m)),
       el('div', { class: 'msg-main' }, main),
       main !== m.message ? el('div', { class: 'msg-orig' }, m.message) : null,

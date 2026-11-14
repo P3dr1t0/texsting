@@ -17,6 +17,25 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.29] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 39
+
+### Mejorado
+- **Avisos «solo informativos».** Algunos avisos de paquetes no piden hacer nada; antes salían en inglés y contaban como advertencias. Ahora:
+  - se explican en español;
+  - se marcan como «Info» en gris;
+  - van al final de la lista;
+  - no suman al contador de advertencias (se muestran aparte, «N informativos»).
+- Avisos que se reconocen como informativos:
+  - unicode-math + mathtools (`\overbracket`, `\coloneqq`…), los dos que salían en el Cuaderno de Trigonometría;
+  - «Token not allowed in a PDF string» de hyperref (fórmulas en títulos, con la sugerencia `\texorpdfstring`);
+  - tamaños y variantes de letra sustituidos;
+  - caption con una clase desconocida.
+- Avisos que ahora se explican (y sí conviene atender):
+  - pgfplots en modo compatible: sugiere `\pgfplotsset{compat=1.18}`;
+  - `\headheight` demasiado pequeño en fancyhdr.
+
+---
+
 ## [0.2.28] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 38
 
 ### Resultado en la tablet

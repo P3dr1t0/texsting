@@ -485,6 +485,18 @@ function joinContinuation(lines, i, msg) {
   return { msg, next: j };
 }
 
+// Avisos que no piden hacer nada: se explican y se muestran como «Info», sin contarlos como advertencias.
+const INFO_WARNINGS = [
+  [/Using \\overbracket and \\underbracket from `mathtools'/, 'Solo informativo: unicode-math y mathtools traen su propia versión de \\overbracket y \\underbracket; se usa la de mathtools. No hace falta hacer nada.'],
+  [/going to overwrite the following commands from the `mathtools' package/, 'Solo informativo: unicode-math reemplaza algunos comandos de mathtools (\\coloneqq, \\eqqcolon…). No hace falta hacer nada; si usas esos símbolos, revisa que se vean bien.'],
+  [/Token not allowed in a PDF string/, 'Solo informativo: un título tiene fórmulas o comandos que no se pueden mostrar en el índice lateral del PDF (marcadores), así que ahí se simplifica. Si quieres controlarlo: \\section{\\texorpdfstring{$\\sin\\theta$}{sen θ}}'],
+  [/Size substitutions with differences/, 'Solo informativo: algún tamaño de letra no existe exacto y se usó el más cercano. No hace falta hacer nada.'],
+  [/Some font shapes were not available, defaults substituted/, 'Solo informativo: alguna variante de letra (p. ej. versalitas en cursiva) no existe y se usó otra parecida. Busca arriba el aviso «Font shape … undefined» para ver cuál.'],
+  [/Unknown document class \(or package\)/, 'Solo informativo: el paquete caption no reconoce la clase del documento, pero funciona igual.'],
+  [/running in backwards compatibility mode/, 'pgfplots funciona en modo compatible con versiones viejas: agrega \\pgfplotsset{compat=1.18} después de \\usepackage{pgfplots} para usar el comportamiento actual (y que desaparezca este aviso).'],
+  [/\\headheight is too small/, 'La cabecera (fancyhdr) es más alta que el espacio reservado: agrega headheight=14pt (o el valor que sugiere el aviso) a las opciones de geometry.'],
+];
+
 export function parseLog(log, main = 'main.tex', sources = null) {
   const out = [];
   if (!log) return out;
@@ -556,6 +568,8 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       while (j < lines.length && lines[j].trim() && !RE_INPUT_LINE.test(msg) && j - i < 4 && !/^(LaTeX|Package|Class|Overfull|Underfull|!)/.test(lines[j])) { msg += ' ' + lines[j].trim(); j++; }
       const lm = msg.match(RE_INPUT_LINE);
       const w = { type: 'warning', file: lm ? main : null, line: lm ? +lm[1] : null, message: (m[1] ? m[1] + ': ' : '') + msg.trim(), hint: translate(msg) };
+      const info = INFO_WARNINGS.find(([re]) => re.test(msg));
+      if (info) { w.hint = info[1]; if (/^Solo informativo/.test(info[1])) w.info = true; }
       const dup = msg.match(/Label `([^']+)' multiply defined/);
       if (dup && sources) {
         const hits = findLines(new RegExp('\\\\label\\{' + escapeRe(dup[1]) + '\\}'), sources, main);
@@ -707,7 +721,8 @@ export function summarize(entries) {
   return {
     cascades: entries.filter((e) => e.type === 'error' && e.cascade != null).length,
     errors: entries.filter((e) => e.type === 'error' && e.cascade == null).length,
-    warnings: entries.filter((e) => e.type === 'warning' && e.cascade == null).length,
+    warnings: entries.filter((e) => e.type === 'warning' && e.cascade == null && !e.info).length,
+    infos: entries.filter((e) => e.type === 'warning' && e.info).length,
     badboxes: entries.filter((e) => e.type === 'badbox').length,
   };
 }

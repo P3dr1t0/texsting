@@ -453,3 +453,6 @@ html.layer-open #app { pointer-events: none; }
 .msg-btn .badge[hidden], .bottomnav .badge[hidden] { display: none; }
 .badge.warn { background: var(--warn) !important; color: #1b1b1b !important; }
 .editor-screen.show-messages .msg-btn { background: var(--surface-2); color: var(--accent-strong); }
+.msg.is-info .msg-type { background: var(--surface-2) !important; color: var(--muted) !important; }
+.msg.is-info .msg-main { color: var(--muted); }
+.msg-counts .c-info { color: var(--muted); }
