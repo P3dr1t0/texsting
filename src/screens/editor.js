@@ -125,6 +125,8 @@ export async function renderEditor(root, { id }, navigate) {
     screen.dataset.tab = name;
     // En Mensajes el aviso de errores ya no hace falta y taparía la lista.
     if (name === 'messages') document.querySelector('.toast')?.classList.remove('show');
+    // En el PDF, la franja ya avisa de los errores: el aviso de abajo sobra.
+    if (name === 'pdf' && !pdfBanner.hidden && document.querySelector('.toast.error')) document.querySelector('.toast').classList.remove('show');
     if (name !== 'code') editor.blur();
     bottomnav.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
     if (name === 'code') setTimeout(() => editor.refresh(), 30);

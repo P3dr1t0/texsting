@@ -286,6 +286,11 @@ const UNI_REPL = { // [en texto, en fórmula]
   0xFB00: ['ff', 'ff'], 0xFB01: ['fi', 'fi'], 0xFB02: ['fl', 'fl'], 0xFB03: ['ffi', 'ffi'], 0xFB04: ['ffl', 'ffl'],
 };
 
+// Equivalentes en ASCII para caracteres dentro de código (listings no lee UTF-8).
+const ASCII_REPL = { 'Ω': 'ohm', 'µ': 'u', 'μ': 'u', '°': ' grados', '≤': '<=', '≥': '>=', '≠': '!=', '→': '->', '×': '*', '÷': '/', '±': '+/-', '·': '*',
+  'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ñ': 'n', 'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U', 'Ñ': 'N', 'ü': 'u', '¿': '', '¡': '',
+  '“': '"', '”': '"', '‘': "'", '’': "'", '–': '-', '—': '-', '…': '...', 'π': 'pi', 'Δ': 'Delta', 'α': 'alpha', 'β': 'beta', 'θ': 'theta', 'λ': 'lambda', 'ω': 'omega' };
+
 // Comandos que dependen de la clase del documento.
 const noComments = (t) => (t || '').replace(/(^|[^\\])%.*$/gm, '$1');
 const CLASS_CMDS = {
@@ -353,6 +358,36 @@ function enrich(entry, head, sources, main, top = '') {
     return;
   }
   if (/Unknown float option `H'/.test(msg)) { entry.needPkg = 'float'; return; }
+  if (/macro parameter character #/.test(msg) && sources && entry.line) {
+    const l = (sources[entry.file || main] || '').split('\n')[entry.line - 1] || '';
+    const m = l.match(/(^|[^\\])#/);
+    if (m) { const find = m[0]; entry.fix = { file: entry.file || main, line: entry.line, find, replace: m[1] + '\\#', label: 'Escribir \\#' }; }
+    return;
+  }
+  if (/Misplaced \\noalign/.test(msg) && sources && entry.line) {
+    // Falta \\ al final de la fila anterior (la última línea no vacía antes del \hline).
+    const ls = (sources[entry.file || main] || '').split('\n');
+    for (let k = entry.line - 2; k >= 0 && k >= entry.line - 6; k--) {
+      const t = ls[k].replace(/(^|[^\\])%.*$/, '$1').trimEnd();
+      if (!t.trim()) continue;
+      if (/&/.test(t) && !/\\\\\s*(\\hline|\\midrule|\\toprule|\\bottomrule)?\s*$/.test(t)) {
+        entry.hint = `Falta \\\\ al final de la fila de la línea ${k + 1}: por eso el \\hline de abajo quedó «en medio» de esa fila`;
+        entry.fix = { file: entry.file || main, line: k + 1, find: t.trim(), replace: t.trim() + ' \\\\', label: `Agregar \\\\ en la línea ${k + 1}` };
+      }
+      break;
+    }
+    return;
+  }
+  if (/Invalid UTF-8 byte/.test(msg) && sources && entry.line) {
+    const l = (sources[entry.file || main] || '').split('\n')[entry.line - 1] || '';
+    const ch = [...l].find((c) => c.codePointAt(0) > 127);
+    if (ch) {
+      const rep = ASCII_REPL[ch] != null ? ASCII_REPL[ch] : '';
+      entry.hint = `«${ch}» no lo puede leer listings dentro del código: cámbialo por ${rep ? `«${rep}»` : 'texto simple'} (para que se vea, usa la opción literate de \\lstset)`;
+      entry.fix = { file: entry.file || main, line: entry.line, find: ch, replace: rep, label: rep ? `Cambiar «${ch}» por «${rep}»` : `Quitar «${ch}»` };
+    }
+    return;
+  }
   if (/language@active@arg/.test(msg) && sources) {
     // babel en español y TikZ: se ofrece agregar \usetikzlibrary{babel} debajo de \usepackage{tikz/circuitikz/pgfplots}.
     const f = main;
@@ -625,6 +660,9 @@ function enrich(entry, head, sources, main, top = '') {
       entry.context = '';
     } else if (/_/.test(head || '') && !/\$|\\\(|\\\[/.test(head || '')) {
       entry.hint = 'Hay un _ en texto normal: fuera de las ecuaciones el guion bajo se escribe \\_';
+      const l = srcLines && entry.line ? srcLines[entry.line - 1] || '' : '';
+      const tok = (l.match(/[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+/) || [])[0];
+      if (tok && !/\$/.test(l.slice(0, l.indexOf(tok)))) entry.fix = { file: entry.file, line: entry.line, find: tok, replace: tok.replace(/_/g, '\\_'), label: `Escribir ${tok.replace(/_/g, '\\_')}` };
     }
   }
 }
@@ -764,6 +802,20 @@ export function parseLog(log, main = 'main.tex', sources = null) {
     for (const m of pre.matchAll(/\\usepackage\s*(?:\[[^\]]*\])?\s*\{([^}\n]*)\}?/g)) m[1].split(',').forEach((p) => loaded.add(p.trim()));
     for (const e of out) if (e !== swallow && e.needPkg && loaded.has(e.needPkg)) { e.cascade = swallow.line; e.swallowed = true; }
   }
+  // «Falta el paquete X»: botón para agregar \usepackage{X} debajo del último \usepackage.
+  if (sources && sources[main]) {
+    const ls = sources[main].split('\n');
+    const begin = ls.findIndex((l) => /\\begin\s*\{document\}/.test(l));
+    let last = -1;
+    ls.forEach((l, i) => { if ((begin < 0 || i < begin) && /^\s*\\usepackage/.test(l)) last = i; });
+    const loadedAll = new Set();
+    for (const m of noComments(sources[main].split('\\begin{document}')[0]).matchAll(/\\usepackage\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g)) m[1].split(',').forEach((p) => loadedAll.add(p.trim()));
+    if (last >= 0) for (const e of out) {
+      if (e.needPkg && !e.fix && !e.swallowed && !loadedAll.has(e.needPkg)) {
+        e.fix = { file: main, line: last + 1, find: ls[last].trim(), replace: ls[last].trim() + '\n\\usepackage{' + e.needPkg + '}', label: `Agregar \\usepackage{${e.needPkg}}` };
+      }
+    }
+  }
   // Quita duplicados exactos.
   const seen = new Set();
   return markCascades(out.filter((e) => {
@@ -788,6 +840,12 @@ export function markCascades(entries) {
   for (const e of entries) {
     const m = e.message;
     if (e.cascade != null) { prevAll.push(e); continue; }
+    // Los avisos de resumen («There were undefined references») repiten los de arriba.
+    if (e.type === 'warning' && /There were (undefined references|multiply-defined labels|undefined citations)/.test(m)) {
+      const src = prevAll.find((x) => x.type === 'warning' && /(Reference|Citation) `[^']+' on page|Label `[^']+' multiply defined/.test(x.message));
+      if (src) { e.info = true; e.hint = 'Solo informativo: es el resumen de los avisos de arriba (' + (/labels/.test(m) ? 'etiquetas repetidas' : 'referencias sin definir') + ').'; continue; }
+    }
+    if (e.type === 'warning') prevAll.push(e);
     // «Dimension too large» repetido en las líneas siguientes: es el mismo problema.
     if (e.type === 'error' && /^Dimension too large/.test(m)) {
       const src = prevReal.find((x) => /^Dimension too large/.test(x.message) && x.file === e.file && e.line - x.line <= 3 && e.line >= x.line);

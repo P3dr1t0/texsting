@@ -17,6 +17,25 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.35] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 45
+
+### Resultado de la serie 4 (errores Q–V) en el celular
+- Las 6 pruebas mostraron cada error en su línea y con una explicación correcta: texto pegado, referencias, tablas largas, código, estructura y datos.
+
+### Nuevo: más arreglos con un toque
+- **Falta un paquete** (`\multirow`, `\cref`, `\eqref`, `\toprule`, `[H]`…): botón «Agregar \usepackage{X}», que lo pone debajo del último `\usepackage`. No aparece si el paquete ya está escrito, por ejemplo cuando se lo «tragó» una llave sin cerrar.
+- **Falta `\\` antes de `\hline`**: botón «Agregar \\ en la línea N». La explicación ahora dice en qué fila falta.
+- **`_` en texto**: botón «Escribir mi\_variable».
+- **`#` en texto**: botón «Escribir \#».
+- **Ω, °, á, ≤… dentro de código (listings)**: botón para cambiarlos por texto simple («ohm», «grados», «a», «<=»…).
+- Con varios arreglos, «Aplicar los N arreglos» los hace todos: en la prueba T quedan 0 errores de 4; en la S, solo el que hay que decidir a mano (qué columna sobra).
+
+### Mejorado
+- Los avisos de resumen («There were undefined references», «There were multiply-defined labels») pasan a ser **informativos**: repetían los de arriba y se contaban dos veces.
+- En la pestaña PDF del celular ya no aparece el aviso rojo de abajo si la franja de arriba ya avisa de los errores.
+
+---
+
 ## [0.2.34] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 44
 
 ### Resultado de la serie 4 (válidas) en el celular (Poco X7 Pro)
