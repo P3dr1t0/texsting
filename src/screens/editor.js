@@ -36,6 +36,9 @@ export async function renderEditor(root, { id }, navigate) {
   // ---------- Estructura de la pantalla ----------
   const fileBtn = el('button', { class: 'file-switch', onclick: (e) => (e.target.closest('.eng') ? engineMenu() : showPanel('files')) });
   const compileBtn = el('button', { class: 'compile-btn', title: 'Compilar (Ctrl+Enter / F5)', onclick: () => compile() });
+  // Botón de Mensajes en la barra (tablet): muestra cuántos errores/avisos hubo y abre el panel.
+  const msgBtn = el('button', { class: 'icon-btn wide-only msg-btn', title: 'Mensajes: errores y advertencias', 'aria-label': 'Mensajes', html: icon('log') + '<em class="badge" hidden></em>',
+    onclick: () => screen.classList.toggle('show-messages') });
   const topbar = el('header', { class: 'topbar' },
     el('button', { class: 'icon-btn', 'aria-label': 'Volver a proyectos', html: icon('back'), onclick: () => navigate('home') }),
     el('div', { class: 'title-block' }, el('span', { class: 'project-name' }, project.name), fileBtn),
@@ -44,6 +47,7 @@ export async function renderEditor(root, { id }, navigate) {
       el('button', { class: 'icon-btn wide-only', title: 'Rehacer', 'aria-label': 'Rehacer', html: icon('redo'), onclick: () => editor.redo() }),
       el('button', { class: 'icon-btn', title: 'Buscar y reemplazar', 'aria-label': 'Buscar', html: icon('search'), onclick: () => { showPanel('code'); editor.openSearch(); } }),
       el('button', { class: 'icon-btn wide-only', title: 'Asistentes', 'aria-label': 'Asistentes', html: icon('wand'), onclick: () => wizardsMenu() }),
+      msgBtn,
       compileBtn,
       el('button', { class: 'icon-btn', title: 'Compartir PDF', 'aria-label': 'Compartir PDF', html: icon('share'), onclick: () => sharePdf() }),
       el('button', { class: 'icon-btn', title: 'Más opciones', 'aria-label': 'Más opciones', html: icon('more'), onclick: () => moreMenu() })));
@@ -115,6 +119,12 @@ export async function renderEditor(root, { id }, navigate) {
     if (name !== 'code') editor.blur();
     bottomnav.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
     if (name === 'code') setTimeout(() => editor.refresh(), 30);
+  }
+
+  // Abre (no alterna) el panel de Mensajes en cualquier diseño.
+  function openMessages() {
+    if (WIDE.matches) screen.classList.add('show-messages');
+    else showPanel('messages');
   }
 
   function setSideTab(name) {
@@ -629,7 +639,8 @@ export async function renderEditor(root, { id }, navigate) {
       if (r.installed && r.installed.length) toast('Paquetes instalados: ' + r.installed.join(', '), { ms: 5000 });
       if (r.status === 'success') {
         if (engineNote) toast(`Listo en ${r.elapsed} s. ${engineNote.text}`, { kind: 'ok', ms: 9000, action: engineNote.action, onAction: engineNote.onAction });
-        else toast(`Listo en ${r.elapsed} s${sm.warnings ? ` · ${sm.warnings} advertencia(s)` : ''}`, { kind: 'ok' });
+        else if (sm.warnings) toast(`Listo en ${r.elapsed} s · ${sm.warnings} advertencia(s)`, { kind: 'ok', ms: 6000, action: 'Ver', onAction: () => openMessages() });
+        else toast(`Listo en ${r.elapsed} s`, { kind: 'ok' });
         if (!WIDE.matches) showPanel('pdf');
       } else if (r.status === 'timeout') {
         toast('La compilación tardó demasiado y se detuvo', { kind: 'error' });
@@ -661,8 +672,14 @@ export async function renderEditor(root, { id }, navigate) {
     const sm = summarize(messages);
     msgCounts.innerHTML = `<span class="c-err">${sm.errors} errores${sm.cascades ? ` <small>(+${sm.cascades} en cadena)</small>` : ''}</span> <span class="c-warn">${sm.warnings} advertencias</span> <span class="c-box">${sm.badboxes} cajas</span>`;
     const badge = bottomnav.querySelector(':scope > [data-tab="messages"] .badge');
-    badge.hidden = !sm.errors;
-    badge.textContent = sm.errors;
+    // Rojo con el número de errores; si no hay errores pero sí advertencias, ámbar.
+    for (const b of [badge, msgBtn.querySelector('.badge')]) {
+      const n = sm.errors || sm.warnings;
+      b.hidden = !n;
+      b.textContent = n > 99 ? '99+' : n;
+      b.classList.toggle('warn', !sm.errors && !!sm.warnings);
+    }
+    msgBtn.title = `Mensajes: ${sm.errors} errores, ${sm.warnings} advertencias`;
     filterBtns.replaceChildren(...[['error', 'Errores'], ['warning', 'Advertencias'], ['badbox', 'Cajas']].map(([k, t]) =>
       el('button', { class: 'chip' + (msgFilter[k] ? ' on' : ''), onclick: () => { msgFilter[k] = !msgFilter[k]; renderMessages(r); } }, t)));
     const shown = messages.filter((m) => msgFilter[m.type]);

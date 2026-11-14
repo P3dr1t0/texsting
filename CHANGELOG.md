@@ -17,6 +17,21 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.28] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 38
+
+### Resultado en la tablet
+- El *Cuaderno de Trigonometría* (XeLaTeX con Latin Modern por nombre, varios capítulos y TikZ) compila entero: 55 páginas.
+  - 40 s la primera vez, mientras el servidor armaba el índice de fuentes.
+  - 20 s las siguientes.
+
+### Corregido
+- **En la tablet no había cómo ver las advertencias.** Con errores el panel de Mensajes se abre solo, pero si la compilación salía bien con advertencias no había forma de abrirlo.
+  - **Botón de Mensajes en la barra superior** (tablet), con contador: rojo con los errores o, si no hay errores, ámbar con las advertencias. Abre y cierra el panel.
+  - El aviso verde «Listo en … · N advertencia(s)» trae ahora el botón **«Ver»**.
+  - En el celular, la pestaña Mensajes también muestra el contador ámbar cuando solo hay advertencias.
+
+---
+
 ## [0.2.27] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 37 · servidor Termux 0.2.5
 
 ### Corregido: XeLaTeX no encontraba por su nombre las fuentes de TeX Live (Cuaderno de Trigonometría)

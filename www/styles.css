@@ -446,3 +446,10 @@ html.layer-open #app { pointer-events: none; }
 @media (max-width: 599px) { .sel-bar { flex-wrap: nowrap; } .sel-actions { flex-wrap: nowrap; gap: 4px; } .sel-actions .btn span { display: none; } .sel-actions .btn { padding: 9px; } .sel-actions .btn .ico { width: 19px; height: 19px; } }
 .msg-fix { margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; }
 .msg-fix .ico { width: 16px; height: 16px; }
+
+/* Botón de Mensajes en la barra (tablet) y contador ámbar para advertencias */
+.msg-btn { position: relative; }
+.msg-btn .badge { position: absolute; top: 2px; right: 0; min-width: 17px; height: 17px; border-radius: 9px; background: var(--danger); color: #fff; font-style: normal; font-size: 10px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; line-height: 1; }
+.msg-btn .badge[hidden], .bottomnav .badge[hidden] { display: none; }
+.badge.warn { background: var(--warn) !important; color: #1b1b1b !important; }
+.editor-screen.show-messages .msg-btn { background: var(--surface-2); color: var(--accent-strong); }
