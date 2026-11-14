@@ -17,6 +17,15 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.36] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 46
+
+### Corregido
+- **En la tablet, al ocultar el panel izquierdo** (Archivos / Estructura / Símbolos) con «<», no quedaba ningún botón para volver a mostrarlo.
+  - Ahora queda una franja angosta a la izquierda con «>» y los íconos de Archivos, Estructura y Símbolos. Cada ícono abre el panel directamente en esa sección.
+  - La app recuerda si dejaste el panel oculto o visible, también al cerrar y volver a abrir el proyecto.
+
+---
+
 ## [0.2.35] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 45
 
 ### Resultado de la serie 4 (errores Q–V) en el celular

@@ -464,3 +464,13 @@ html.layer-open #app { pointer-events: none; }
 .pdf-banner u { font-weight: 700; white-space: nowrap; }
 .pdf-banner.stale { background: var(--warn); color: #1b1b1b; }
 .pdf-banner.errors { background: var(--danger); color: #fff; }
+
+/* Tablet: franja para volver a abrir el panel izquierdo */
+.side-rail { display: none; }
+@media (min-width: 900px) {
+  .editor-screen:not(.show-sidebar) .side-rail { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 50px; flex: none; padding: 8px 0;
+    background: var(--surface); border-right: 1px solid var(--border); }
+  .side-rail .icon-btn { width: 40px; height: 40px; }
+  .side-rail .icon-btn:first-child { margin-bottom: 6px; color: var(--accent-strong); }
+  .editor-screen:not(.show-sidebar).show-messages .messages { left: 50px; }
+}

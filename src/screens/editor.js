@@ -93,7 +93,13 @@ export async function renderEditor(root, { id }, navigate) {
       el('button', { class: 'icon-btn sm wide-only', 'aria-label': 'Cerrar mensajes', html: icon('close'), onclick: () => screen.classList.remove('show-messages') })),
     msgList, rawLog);
 
-  const workspace = el('div', { class: 'workspace' }, sidebar, editorPane, splitter, pdfPane, messagesPane);
+  // Tablet: con el panel izquierdo oculto queda una franja angosta con sus íconos, para volver a abrirlo.
+  const openSide = (name) => { setSideTab(name); screen.classList.add('show-sidebar'); setSettings({ sidebarHidden: false }); };
+  const sideRail = el('nav', { class: 'side-rail', 'aria-label': 'Panel lateral' },
+    el('button', { class: 'icon-btn', title: 'Mostrar el panel', 'aria-label': 'Mostrar el panel', html: icon('right'), onclick: () => openSide(sidebar.dataset.active || 'outline') }),
+    ...[['files', 'files', 'Archivos'], ['outline', 'outline', 'Estructura'], ['symbols', 'symbols', 'Símbolos']].map(([k, ic, t]) =>
+      el('button', { class: 'icon-btn', dataset: { section: k }, title: t, 'aria-label': t, html: icon(ic), onclick: () => openSide(k) })));
+  const workspace = el('div', { class: 'workspace' }, sideRail, sidebar, editorPane, splitter, pdfPane, messagesPane);
   const tabs = [
     ['files', 'Archivos', 'files'], ['outline', 'Estructura', 'outline'], ['code', 'Código', 'code'], ['pdf', 'PDF', 'pdf'], ['messages', 'Mensajes', 'log'],
   ];
@@ -144,9 +150,9 @@ export async function renderEditor(root, { id }, navigate) {
   }
   sideTabs.append(...[['files', 'files', 'Archivos'], ['outline', 'outline', 'Estructura'], ['symbols', 'symbols', 'Símbolos']].map(([k, ic, t]) =>
     el('button', { dataset: { section: k }, title: t, 'aria-label': t, html: icon(ic), onclick: () => setSideTab(k) })));
-  sideTabs.append(el('button', { class: 'side-collapse', title: 'Ocultar panel', 'aria-label': 'Ocultar panel', html: icon('left'), onclick: () => screen.classList.remove('show-sidebar') }));
+  sideTabs.append(el('button', { class: 'side-collapse', title: 'Ocultar panel', 'aria-label': 'Ocultar panel', html: icon('left'), onclick: () => { screen.classList.remove('show-sidebar'); setSettings({ sidebarHidden: true }); } }));
   setSideTab('outline');
-  if (WIDE.matches) screen.classList.add('show-sidebar');
+  if (WIDE.matches && !getSettings().sidebarHidden) screen.classList.add('show-sidebar');
   showPanel('code');
 
   // División ajustable editor | PDF (tablet).
@@ -155,7 +161,7 @@ export async function renderEditor(root, { id }, navigate) {
   splitter.addEventListener('pointerdown', (e) => {
     splitter.setPointerCapture(e.pointerId);
     const rect = workspace.getBoundingClientRect();
-    const side = screen.classList.contains('show-sidebar') ? sidebar.getBoundingClientRect().width : 0;
+    const side = screen.classList.contains('show-sidebar') ? sidebar.getBoundingClientRect().width : sideRail.getBoundingClientRect().width;
     const move = (ev) => {
       const r = Math.max(0.2, Math.min(0.8, (ev.clientX - rect.left - side) / (rect.width - side)));
       workspace.style.setProperty('--split', String(r));
@@ -830,7 +836,7 @@ export async function renderEditor(root, { id }, navigate) {
     if (prev.status === 'errors') setPdfBanner('errors', summarize(messages).errors);
     rawLog.textContent = prev.log || '';
   }
-  const onWide = () => { if (WIDE.matches) screen.classList.add('show-sidebar'); showPanel(WIDE.matches ? 'code' : screen.dataset.tab); };
+  const onWide = () => { if (WIDE.matches && !getSettings().sidebarHidden) screen.classList.add('show-sidebar'); showPanel(WIDE.matches ? 'code' : screen.dataset.tab); };
   WIDE.addEventListener('change', onWide);
   const onHide = () => { if (document.hidden) saveSoon.flush(); };
   document.addEventListener('visibilitychange', onHide);
