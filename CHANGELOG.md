@@ -17,6 +17,22 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.31] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 41
+
+### Mejorado: una llave sin cerrar en el preámbulo (visto en el celular con la plantilla Informe)
+- Con `\usepackage[T1]{fontenc` sin su `}`, la app mostraba 8 errores. El primero apuntaba a la línea 11, con «Párrafo terminado antes de completar \@fileswith@ptions». Los demás decían «falta amsmath», «falta booktabs» o «falta float», aunque esos paquetes sí estaban escritos.
+- Ahora:
+  - **1 error, en la línea correcta (3)**, con la explicación: «A esta línea le falta la llave de cierre }. Por eso los \usepackage que siguen no se cargaron».
+  - Botón **«Agregar la } que falta»**.
+  - Los «falta el paquete…» de paquetes que sí están en el preámbulo, y lo que se rompe en esas mismas líneas, se agrupan como **en cadena** (9 en el ejemplo).
+- Cualquier «Paragraph ended before…» o «File ended while scanning…» sin ubicación ahora busca hacia atrás la línea con una llave sin cerrar.
+- Nueva explicación: «Unknown float option H» → necesita `\usepackage{float}`.
+
+### Aclaración
+- La franja «PDF de la compilación anterior» aparece solo cuando la compilación **no** genera PDF. Si hay errores pero LaTeX termina el PDF («el PDF se generó igual»), lo que se ve es el PDF nuevo.
+
+---
+
 ## [0.2.30] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 40
 
 ### Corregido

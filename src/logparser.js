@@ -24,6 +24,7 @@ export const TRANSLATIONS = [
   [/LaTeX Error: \\begin\{(\S+)\} ended by \\end\{(\S+)\}/, '\\begin{$1} se cerró con \\end{$2} (revisa los entornos abiertos)'],
   [/LaTeX Error: Missing \\begin\{document\}/, 'Falta \\begin{document} o hay texto antes de él'],
   [/^Misplaced alignment tab character &/, 'Carácter & fuera de una tabla o alineación'],
+  [/Unknown float option `H'/, 'La opción [H] (figura o tabla «aquí exactamente») necesita el paquete float: agrega \\usepackage{float}'],
   [/^Paragraph ended before (.+) was complete/, 'Párrafo terminado antes de completar $1 (¿llave sin cerrar?)'],
   [/^Runaway argument/, 'Argumento sin cerrar (falta una llave })'],
   [/^Double superscript/, 'Doble superíndice: usa llaves, p. ej. x^{a^b}'],
@@ -309,6 +310,30 @@ function enrich(entry, head, sources, main, top = '') {
     }
     return;
   }
+  if (/Unknown float option `H'/.test(msg)) { entry.needPkg = 'float'; return; }
+  const runaway = msg.match(/^(?:Paragraph ended before|File ended while scanning use of) \\?(\S+?)(?: was complete)?\.?$/);
+  if (runaway && sources && sources[entry.file || main]) {
+    // Una llave sin cerrar: TeX lo nota recién al terminar el párrafo (una línea en blanco más abajo).
+    // Se busca hacia atrás la línea con más { que }.
+    const f = entry.file || main;
+    const ls = sources[f].split('\n');
+    const bal = (l) => { const t = l.replace(/\\[{}]/g, '').replace(/(^|[^\\])%.*$/, '$1'); return (t.match(/\{/g) || []).length - (t.match(/\}/g) || []).length; };
+    const from = Math.min((entry.line || ls.length) - 1, ls.length - 1);
+    for (let k = from; k >= 0 && k > from - 60; k--) {
+      if (bal(ls[k]) > 0) {
+        const raw = ls[k].replace(/\s+$/, '');
+        entry.file = f; entry.line = k + 1; entry.context = raw.trim();
+        const isPkg = /^(\\usepackage|\\RequirePackage|\\documentclass)/.test(raw.trim()) || /fileswith@ptions|@onefilewithoptions/.test(runaway[1]);
+        entry.hint = isPkg
+          ? 'A esta línea le falta la llave de cierre }. Por eso los \\usepackage que siguen (hasta la próxima línea en blanco) no se cargaron: los errores de «falta el paquete…» de abajo son consecuencia de este'
+          : 'A esta línea le falta cerrar una llave }: TeX recién lo notó al terminar el párrafo';
+        if (bal(ls[k]) === 1) entry.fix = { file: f, line: k + 1, find: raw.trim(), replace: raw.trim() + '}', label: 'Agregar la } que falta' };
+        if (isPkg) entry.swallow = true;
+        break;
+      }
+    }
+    if (entry.line) return;
+  }
   const theme = msg.match(/File `beamer(color|font|inner|outer)?theme([^']+)\.sty' not found/);
   if (theme) {
     const kind = theme[1] || '';
@@ -408,6 +433,7 @@ function enrich(entry, head, sources, main, top = '') {
       entry.hint = `\\${cmd} es propio de pdfLaTeX y no existe en XeLaTeX/LuaLaTeX: compila con pdfLaTeX (⋮ → Motor) o quítalo`;
     } else if (CMD_PKG[cmd]) {
       entry.hint = `\\${cmd} necesita el paquete ${CMD_PKG[cmd]}: agrega \\usepackage{${CMD_PKG[cmd]}}`;
+      entry.needPkg = CMD_PKG[cmd];
     } else {
       const sug = cmd.length > 2 ? closest(cmd, KNOWN_CMDS) : null;
       entry.hint = sug ? `El comando \\${cmd} no existe. ¿Quisiste decir \\${sug}?`
@@ -418,7 +444,7 @@ function enrich(entry, head, sources, main, top = '') {
   const env = msg.match(/Environment (\S+) undefined/);
   if (env) {
     const name = env[1];
-    if (ENV_PKG[name]) entry.hint = `El entorno ${name} necesita el paquete ${ENV_PKG[name]}: agrega \\usepackage{${ENV_PKG[name]}}`;
+    if (ENV_PKG[name]) { entry.hint = `El entorno ${name} necesita el paquete ${ENV_PKG[name]}: agrega \\usepackage{${ENV_PKG[name]}}`; entry.needPkg = ENV_PKG[name]; }
     else { const sug = closest(name, KNOWN_ENVS); if (sug) entry.hint = `El entorno «${name}» no existe. ¿Quisiste decir «${sug}»?`; }
     return;
   }
@@ -583,6 +609,15 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       out.push({ type: 'badbox', file: m[3] ? main : null, line: m[3] ? +m[3] : null, message: `${m[1] === 'Over' ? 'Desborde' : 'Caja poco llena'} (${m[2]})` });
     }
   }
+  // Un \usepackage sin cerrar se «traga» los siguientes: los «falta el paquete X» de esos
+  // paquetes (que sí están escritos) son consecuencia de ese error.
+  const swallow = out.find((e) => e.swallow);
+  if (swallow && sources && sources[swallow.file]) {
+    const pre = sources[swallow.file].split('\\begin{document}')[0].replace(/(^|[^\\])%.*$/gm, '$1');
+    const loaded = new Set();
+    for (const m of pre.matchAll(/\\usepackage\s*(?:\[[^\]]*\])?\s*\{([^}\n]*)\}?/g)) m[1].split(',').forEach((p) => loaded.add(p.trim()));
+    for (const e of out) if (e !== swallow && e.needPkg && loaded.has(e.needPkg)) { e.cascade = swallow.line; e.swallowed = true; }
+  }
   // Quita duplicados exactos.
   const seen = new Set();
   return markCascades(out.filter((e) => {
@@ -603,8 +638,16 @@ export function markCascades(entries) {
   let prevMissingDollar = null;
   const firstReal = errs.find((e) => !/^Emergency stop\.?$/.test(e.message));
   const prevReal = [];
+  const prevAll = [];
   for (const e of entries) {
     const m = e.message;
+    if (e.cascade != null) { prevAll.push(e); continue; }
+    // En la misma línea que un comando de un paquete «tragado»: también es consecuencia.
+    if (e.type === 'error' && e.line != null) {
+      const sameCascade = prevAll.find((x) => x.swallowed && x.line === e.line && x.file === e.file);
+      if (sameCascade) { e.cascade = sameCascade.cascade; e.swallowed = true; prevAll.push(e); continue; }
+    }
+    if (e.type === 'error') prevAll.push(e);
     if (e.type === 'error' && /^Emergency stop\.?$/.test(m) && firstReal && firstReal !== e) { e.cascade = firstReal.line ?? '?'; continue; }
     if (e.type === 'error' && /no legal \\end found/.test(m)) {
       const runaway = errs.find((x) => x !== e && /^File ended while scanning/.test(x.message));
