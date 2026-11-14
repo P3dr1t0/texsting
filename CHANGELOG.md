@@ -17,6 +17,17 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.32] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 42
+
+### Nuevo
+- **Aviso sobre un PDF que salió con errores.** Cuando hay errores pero LaTeX igual termina el PDF, ese PDF puede estar incompleto o verse mal. Por ejemplo, con un paquete sin cargar el índice sale en inglés y faltan tablas o figuras. Antes no había ninguna señal y parecía un PDF normal.
+  - Ahora aparece una franja roja arriba del PDF: «Este PDF salió con N errores: puede faltar o verse mal parte del contenido · Ver».
+  - Al tocarla se abren los Mensajes. Se ve también al volver a abrir el proyecto.
+- La franja del **PDF anterior** (cuando la compilación no genera PDF) es ahora ámbar, con el PDF atenuado y «Ver errores».
+- Las dos desaparecen al compilar bien. Funcionan igual en el celular y en la tablet.
+
+---
+
 ## [0.2.31] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 41
 
 ### Mejorado: una llave sin cerrar en el preámbulo (visto en el celular con la plantilla Informe)

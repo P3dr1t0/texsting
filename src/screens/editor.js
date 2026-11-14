@@ -69,7 +69,16 @@ export async function renderEditor(root, { id }, navigate) {
   const keybar = el('div', { class: 'keybar', role: 'toolbar', 'aria-label': 'Teclas LaTeX' });
   const editorPane = el('section', { class: 'pane editor-pane' }, editorHost, keybar);
   const pdfHost = el('div', { class: 'pdf-host' });
-  const pdfPane = el('section', { class: 'pane pdf-pane' }, pdfHost);
+  // Franja sobre el PDF: «es el PDF anterior» (no se generó uno nuevo) o «salió con errores».
+  const pdfBanner = el('button', { class: 'pdf-banner', hidden: true, onclick: () => openMessages() });
+  const pdfPane = el('section', { class: 'pane pdf-pane' }, pdfHost, pdfBanner);
+  function setPdfBanner(kind, errors = 0) {
+    pdfPane.classList.toggle('stale', kind === 'stale');
+    pdfBanner.hidden = !kind;
+    pdfBanner.className = 'pdf-banner' + (kind ? ' ' + kind : '');
+    if (kind === 'stale') pdfBanner.innerHTML = `${icon('log')}<span>Es el PDF de la compilación <b>anterior</b>: esta no generó PDF</span><u>Ver errores</u>`;
+    if (kind === 'errors') pdfBanner.innerHTML = `${icon('log')}<span>Este PDF salió con ${errors ? `<b>${errors} error${errors === 1 ? '' : 'es'}</b>` : '<b>errores</b>'}: puede faltar o verse mal parte del contenido</span><u>Ver</u>`;
+  }
   const splitter = el('div', { class: 'splitter', role: 'separator', 'aria-label': 'Ajustar división' });
 
   const msgCounts = el('span', { class: 'msg-counts' });
@@ -617,9 +626,11 @@ export async function renderEditor(root, { id }, navigate) {
       messages = [...logMsgs, ...parseBibOutput(r.output, srcMap, project.main, logMsgs)];
       renderMessages(r);
       rawLog.textContent = r.log || r.output || '';
-      // Si esta compilación no dio PDF, el que se ve es el anterior: se avisa con una franja.
+      // Si esta compilación no dio PDF, el que se ve es el anterior; si dio PDF pero con
+      // errores, puede estar incompleto. Las dos cosas se avisan con una franja sobre el PDF.
       const hadPdf = !!pdfPane.querySelector('.pdfv-page-el');
-      pdfPane.classList.toggle('stale', !r.pdf && hadPdf);
+      const nErr = summarize(messages).errors;
+      setPdfBanner(!r.pdf ? (hadPdf ? 'stale' : null) : (nErr || r.status === 'errors' ? 'errors' : null), nErr);
       if (r.pdf) {
         await viewer.load(r.pdf);
         syncBytes = r.synctex || null; syncData = null;
@@ -812,6 +823,7 @@ export async function renderEditor(root, { id }, navigate) {
     syncBytes = prev.synctex || null;
     messages = parseLog(prev.log, project.main);
     renderMessages({ status: prev.status });
+    if (prev.status === 'errors') setPdfBanner('errors', summarize(messages).errors);
     rawLog.textContent = prev.log || '';
   }
   const onWide = () => { if (WIDE.matches) screen.classList.add('show-sidebar'); showPanel(WIDE.matches ? 'code' : screen.dataset.tab); };
