@@ -1,6 +1,7 @@
 // Visor de PDF con pdf.js: páginas perezosas, zoom con pellizco, ajuste al ancho
 // y conservación de la posición al recompilar.
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { AppLauncher } from '@capacitor/app-launcher';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = './assets/pdf.worker.min.mjs';
 
@@ -9,6 +10,7 @@ export function createPdfViewer(root) {
   root.innerHTML = `
     <div class="pdfv-scroll" tabindex="0"><div class="pdfv-pages"></div>
       <div class="pdfv-empty">Compila para ver el PDF aquí</div></div>
+    <button class="pdfv-back" hidden>← Volver</button>
     <div class="pdfv-bar">
       <button class="icon-btn" data-act="out" title="Alejar" aria-label="Alejar">−</button>
       <button class="pdfv-zoom" data-act="fit" title="Ajustar al ancho">Ajustar</button>
@@ -20,6 +22,7 @@ export function createPdfViewer(root) {
   const emptyEl = root.querySelector('.pdfv-empty');
   const pageLabel = root.querySelector('.pdfv-page');
   const zoomLabel = root.querySelector('.pdfv-zoom');
+  const backBtn = root.querySelector('.pdfv-back');
 
   let doc = null;
   let pages = []; // {el, canvas, page, vp1, rendered, task}
@@ -58,6 +61,7 @@ export function createPdfViewer(root) {
   }
 
   async function renderPage(p) {
+    if (!p.links) addLinks(p);
     if (p.rendered || p.rendering) return;
     p.rendering = true;
     const s = scale;
@@ -81,6 +85,91 @@ export function createPdfViewer(root) {
       if (s !== scale && p.visible) renderPage(p);
     }
   }
+
+  // ---------- Enlaces del PDF (hyperref: \ref, \cite, índice, \url) ----------
+  // Se superponen como zonas tocables en porcentajes de la página, así sirven a cualquier zoom.
+  async function addLinks(p) {
+    p.links = true;
+    try { await addLinksInner(p); } catch (err) { console.warn('enlaces del PDF', err); }
+  }
+  async function addLinksInner(p) {
+    let annots = [];
+    try { annots = await p.page.getAnnotations({ intent: 'display' }); } catch { return; }
+    const owner = doc;
+    const layer = document.createElement('div');
+    layer.className = 'pdfv-links';
+    for (const a of annots) {
+      if (a.subtype !== 'Link' || !a.rect || (!a.dest && !a.url && !a.unsafeUrl)) continue;
+      const [x1, y1] = p.vp1.convertToViewportPoint(a.rect[0], a.rect[1]);
+      const [x2, y2] = p.vp1.convertToViewportPoint(a.rect[2], a.rect[3]);
+      const left = Math.min(x1, x2), top = Math.min(y1, y2);
+      const w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
+      if (w < 1 || h < 1) continue;
+      const link = document.createElement('a');
+      link.draggable = false;
+      link.className = 'pdfv-link' + (a.dest ? '' : ' ext');
+      const url = a.url || a.unsafeUrl;
+      if (url) { link.href = url; link.title = url; } else link.href = '#';
+      Object.assign(link.style, { left: (left / p.vp1.width * 100) + '%', top: (top / p.vp1.height * 100) + '%', width: (w / p.vp1.width * 100) + '%', height: (h / p.vp1.height * 100) + '%' });
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (e.ctrlKey || e.metaKey) return; // Ctrl + clic es para ir al código
+        if (a.dest) goToDest(a.dest);
+        else openExternal(url);
+      });
+      layer.appendChild(link);
+    }
+    if (owner === doc && layer.childElementCount) p.el.appendChild(layer);
+  }
+
+  async function goToDest(dest) {
+    try {
+      const explicit = typeof dest === 'string' ? await doc.getDestination(dest) : dest;
+      if (!Array.isArray(explicit)) return;
+      const ref = explicit[0];
+      const idx = typeof ref === 'number' ? ref : await doc.getPageIndex(ref);
+      const p = pages[idx];
+      if (!p) return;
+      const kind = explicit[1] && explicit[1].name;
+      let top = null, left = null;
+      if (kind === 'XYZ') { left = explicit[2]; top = explicit[3]; }
+      else if (kind === 'FitH' || kind === 'FitBH') top = explicit[2];
+      else if (kind === 'FitR') { left = explicit[2]; top = explicit[5]; }
+      const k = p.el.clientWidth / p.vp1.width;
+      const yPdf = top == null ? 0 : p.vp1.convertToViewportPoint(left || 0, top)[1];
+      // recordar dónde estabas para «← Volver»
+      backStack.push({ top: scroller.scrollTop, left: scroller.scrollLeft });
+      if (backStack.length > 20) backStack.shift();
+      showBack();
+      stopGlide();
+      scroller.scrollTo({ top: Math.max(0, p.el.offsetTop + yPdf * k - 12), behavior: 'smooth' });
+      // marca breve del destino
+      const mark = document.createElement('div');
+      mark.className = 'pdfv-dest';
+      mark.style.top = Math.max(0, yPdf * k - 2) + 'px';
+      p.el.appendChild(mark);
+      setTimeout(() => mark.classList.add('fade'), 900);
+      setTimeout(() => mark.remove(), 1900);
+    } catch (e) { console.warn('destino del enlace', e); }
+  }
+
+  function openExternal(url) {
+    if (!url) return;
+    AppLauncher.openUrl({ url }).then((r) => { if (r && r.completed === false) window.open(url, '_blank'); }).catch(() => window.open(url, '_blank'));
+  }
+
+  const backStack = [];
+  let backTimer = 0;
+  function showBack() {
+    backBtn.hidden = !backStack.length;
+    clearTimeout(backTimer);
+    if (backStack.length) backTimer = setTimeout(() => { backBtn.hidden = true; backStack.length = 0; }, 15000);
+  }
+  backBtn.addEventListener('click', () => {
+    const pos = backStack.pop();
+    if (pos) { stopGlide(); scroller.scrollTo({ top: pos.top, left: pos.left, behavior: 'smooth' }); }
+    showBack();
+  });
 
   function currentPage() {
     const mid = scroller.scrollTop + scroller.clientHeight / 3;
@@ -121,6 +210,7 @@ export function createPdfViewer(root) {
     pages = newPages;
     pagesEl.replaceChildren(...pages.map((p) => p.el));
     emptyEl.hidden = true;
+    backStack.length = 0; showBack();
     layout();
     pages.forEach((p) => io.observe(p.el));
     requestAnimationFrame(() => {
@@ -221,7 +311,7 @@ export function createPdfViewer(root) {
   scroller.addEventListener('pointerdown', (e) => {
     lastPointer = e.pointerType;
     if (e.pointerType !== 'mouse' || (e.button !== 0 && e.button !== 1)) return;
-    if (e.target.closest('.pdfv-bar, button, a, input')) return;
+    if (e.target.closest('.pdfv-bar, button, input, a:not(.pdfv-link)')) return;
     if (e.button === 0 && (e.ctrlKey || e.metaKey)) { // Ctrl + clic: ir al código
       e.preventDefault();
       requestSource(e.clientX, e.clientY);

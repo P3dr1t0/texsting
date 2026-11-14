@@ -17,6 +17,17 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.12] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 22
+
+### Nuevo: enlaces del PDF tocables (como en TeXstudio)
+- Con el paquete **hyperref**, ahora funcionan dentro del visor: las entradas del **índice**, las listas de figuras y tablas, los `\ref`/`\eqref` («Fig. 1», «ecuación (2)»), las citas `\cite` y las notas al pie.
+- Al saltar, una **línea dorada** marca dónde empieza el destino y aparece **«← Volver»** arriba del PDF para regresar a donde estabas leyendo (hasta 20 saltos atrás).
+- Los `\url{…}` y `\href{…}{…}` se abren en el **navegador**.
+- Con mouse, los enlaces se iluminan al pasar por encima. Arrastrar desde un enlace mueve el PDF (no lo abre), y **Ctrl + clic** sobre un enlace sigue llevando al código.
+- Las plantillas de TeXsting ya incluyen hyperref; en documentos propios agrega `\usepackage{hyperref}` (al final del preámbulo).
+
+---
+
 ## [0.2.11] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 21
 
 ### Nuevo: saltar entre el código y el PDF (SyncTeX, como en Overleaf)

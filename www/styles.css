@@ -359,3 +359,16 @@ a { color: inherit; }
 .pdfv-hl.fade { opacity: 0; }
 @keyframes pdfv-hl-in { from { transform: scale(1.06); opacity: 0; } to { transform: none; opacity: 1; } }
 .cm-line.cm-flash { background: color-mix(in srgb, var(--accent) 22%, transparent) !important; transition: background .6s ease; }
+
+/* Enlaces del PDF (hyperref) */
+.pdfv-links { position: absolute; inset: 0; }
+.pdfv-link { position: absolute; display: block; border-radius: 3px; -webkit-user-drag: none; -webkit-tap-highlight-color: transparent; }
+.pdfv-link:active { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  .pdfv-link { cursor: pointer; }
+  .pdfv-link:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); outline: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); }
+}
+.pdfv-dest { position: absolute; left: 0; right: 0; height: 4px; background: var(--accent); box-shadow: 0 0 12px var(--accent); border-radius: 2px; pointer-events: none; transition: opacity .9s ease; }
+.pdfv-dest.fade { opacity: 0; }
+.pdfv-back { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 3; padding: 8px 16px; border-radius: 999px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; font-size: 14px; border: 1px solid var(--border); }
+.pdfv-back[hidden] { display: none; }
