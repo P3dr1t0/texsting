@@ -195,6 +195,9 @@ a { color: inherit; }
 .msg.error .msg-type { background: var(--danger); color: #fff; }
 .msg.warning .msg-type { background: var(--warn); color: #fff; }
 .msg.badbox .msg-type { background: var(--surface-2); color: var(--muted); }
+.msg.info .msg-type { background: var(--accent); color: var(--on-accent); }
+.msg.info { border-left: 3px solid var(--accent); }
+.msg.info .btn { margin-top: 8px; }
 .msg-top { display: flex; align-items: center; gap: 8px; }
 .msg-loc { font-size: 12px; color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
 .msg-main { font-size: 15px; line-height: 1.4; word-break: break-word; }
@@ -343,7 +346,9 @@ a { color: inherit; }
 .tpl-more { position: absolute; top: 4px; right: 4px; background: var(--surface); }
 .tpl-empty { grid-column: 1 / -1; line-height: 1.45; font-size: 14px; }
 .server-chip.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
-.file-switch em.eng { background: var(--accent); color: var(--on-accent); }
+.file-switch em.eng { background: var(--accent); color: var(--on-accent); cursor: pointer; }
+.file-switch em.eng.plain { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+.file-switch em.eng.warn { background: var(--warn); color: #1b1b1b; }
 .msg.cascade { opacity: .62; }
 .msg.cascade .msg-type { background: var(--surface-2) !important; color: var(--muted) !important; }
 .msg-counts small { color: var(--muted); }
@@ -376,3 +381,17 @@ a { color: inherit; }
 .pdfv-dest.fade { opacity: 0; }
 .pdfv-back { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 3; padding: 8px 16px; border-radius: 999px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; font-size: 14px; border: 1px solid var(--border); }
 .pdfv-back[hidden] { display: none; }
+
+/* Inicio: pestañas Recientes / Todos */
+.home-tabs { display: flex; align-items: center; gap: 6px; margin: 14px 0 6px; flex-wrap: wrap; }
+.home-tabs .seg { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 3px; }
+.home-tabs .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; padding: 6px 14px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.home-tabs .seg button .ico { width: 16px; height: 16px; }
+.home-tabs .seg button.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.home-tabs .seg button small { font-weight: 500; opacity: .75; }
+.home-search { flex: 1; min-width: 150px; max-width: 320px; margin-left: auto; }
+.home-search input { width: 100%; }
+.home-hint { color: var(--muted); font-size: 12.5px; margin: 2px 2px 8px; }
+.home-more { width: 100%; margin-top: 4px; color: var(--accent-strong); }
+.msg .btn.small { padding: 5px 10px; font-size: 13px; min-height: 0; }
+@media (max-width: 599px) { .file-switch em.main-tag { display: none; } }

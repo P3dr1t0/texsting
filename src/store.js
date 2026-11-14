@@ -65,6 +65,15 @@ export async function saveProject(p) {
   return p;
 }
 
+/** Marca el proyecto como abierto ahora (para «Recientes») sin tocar la fecha de modificación. */
+export async function touchProject(id, patch = {}) {
+  await tx(['projects'], 'readwrite', (t) => {
+    const st = t.objectStore('projects');
+    const r = st.get(id);
+    r.onsuccess = () => { const p = r.result; if (p) { Object.assign(p, Object.keys(patch).length ? patch : { opened: Date.now() }); st.put(p); } };
+  });
+}
+
 export async function createProject({ name, files, main = 'main.tex', engine, source }) {
   engine = engine || getSettings().defaultEngine || 'pdflatex';
   const now = Date.now();

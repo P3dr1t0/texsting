@@ -285,6 +285,12 @@ function enrich(entry, head, sources, main, top = '') {
       const sug = closest(cmd, SI_UNITS);
       entry.hint = sug ? `La unidad \\${cmd} no existe en siunitx. ¿Quisiste decir \\${sug}? (los múltiplos van por partes: \\kilo\\ohm, \\milli\\ampere)`
         : `La unidad \\${cmd} no existe en siunitx: se escribe por partes, p. ej. \\kilo\\ohm, \\milli\\ampere, \\micro\\farad`;
+    } else if (/^(directlua|luaexec|luadirect|luaescapestring)$/.test(cmd)) {
+      entry.hint = `\\${cmd} solo existe en LuaLaTeX: escribe «% !TEX program = lualatex» en la primera línea o cambia el motor en ⋮ → Motor`;
+    } else if (/^XeTeX/.test(cmd)) {
+      entry.hint = `\\${cmd} solo existe en XeLaTeX: escribe «% !TEX program = xelatex» en la primera línea o cambia el motor en ⋮ → Motor`;
+    } else if (/^pdf[a-z]+$/.test(cmd) && !CMD_PKG[cmd]) {
+      entry.hint = `\\${cmd} es propio de pdfLaTeX y no existe en XeLaTeX/LuaLaTeX: compila con pdfLaTeX (⋮ → Motor) o quítalo`;
     } else if (CMD_PKG[cmd]) {
       entry.hint = `\\${cmd} necesita el paquete ${CMD_PKG[cmd]}: agrega \\usepackage{${CMD_PKG[cmd]}}`;
     } else {

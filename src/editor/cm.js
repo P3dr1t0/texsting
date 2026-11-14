@@ -170,6 +170,12 @@ export function createEditor(parent, { onChange, onSave, onCompile, getContext }
     },
     forget(key) { states.delete(key); if (key === currentKey) currentKey = null; },
     getText() { return view.state.doc.toString(); },
+    /** Reemplaza el texto de una línea (1 = primera) conservando el deshacer. */
+    replaceLine(n, text) {
+      if (n < 1 || n > view.state.doc.lines) return;
+      const ln = view.state.doc.line(n);
+      view.dispatch({ changes: { from: ln.from, to: ln.to, insert: text } });
+    },
     insertSnippet(tpl) { insertIn(view, tpl); },
     gotoLine(line) {
       const n = Math.max(1, Math.min(line, view.state.doc.lines));

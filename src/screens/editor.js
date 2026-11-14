@@ -1,11 +1,11 @@
 // Pantalla del editor: código + PDF lado a lado (tablet) o en pestañas (teléfono),
 // con archivos, estructura, símbolos, mensajes de compilación y asistentes.
 import { createEditor } from '#editor-impl';
-import { getProject, saveProject, listFiles, putFile, deleteFile, renameFile, getOutput, saveOutput, getSettings, setSettings, isTextPath } from '../store.js';
+import { getProject, saveProject, touchProject, listFiles, putFile, deleteFile, renameFile, getOutput, saveOutput, getSettings, setSettings, isTextPath } from '../store.js';
 import { el, icon, toast, sheet, panel, promptText, confirmDialog, dialog, pickFiles, esc } from '../ui.js';
 import { createPdfViewer } from '../pdfview.js';
 import { parseSynctex, forward, inverse } from '../synctex.js';
-import { compileProject, CompileError } from '../compiler.js';
+import { compileProject, CompileError, chooseEngine, engineExplanation, ENGINE_LABEL } from '../compiler.js';
 import { parseLog, parseBibOutput, summarize } from '../logparser.js';
 import { analyzeProject } from '../structure.js';
 import { SYMBOLS, KEYBAR, ENGINES, envSnippet } from '../latex-data.js';
@@ -23,6 +23,7 @@ const WIDE = window.matchMedia('(min-width: 900px)');
 export async function renderEditor(root, { id }, navigate) {
   const project = await getProject(id);
   if (!project) { navigate('home'); return {}; }
+  touchProject(id).catch(() => {});
   let files = await listFiles(id);
   let currentPath = project.current && files.some((f) => f.path === project.current && f.kind === 'text') ? project.current : project.main;
   let lastResult = null;
@@ -32,7 +33,7 @@ export async function renderEditor(root, { id }, navigate) {
   let dirty = false;
 
   // ---------- Estructura de la pantalla ----------
-  const fileBtn = el('button', { class: 'file-switch', onclick: () => showPanel('files') });
+  const fileBtn = el('button', { class: 'file-switch', onclick: (e) => (e.target.closest('.eng') ? engineMenu() : showPanel('files')) });
   const compileBtn = el('button', { class: 'compile-btn', title: 'Compilar (Ctrl+Enter / F5)', onclick: () => compile() });
   const topbar = el('header', { class: 'topbar' },
     el('button', { class: 'icon-btn', 'aria-label': 'Volver a proyectos', html: icon('back'), onclick: () => navigate('home') }),
@@ -152,9 +153,57 @@ export async function renderEditor(root, { id }, navigate) {
     return f.path.endsWith('.tex') ? 'code' : 'file';
   }
 
+  // Motor con el que se compilaría ahora (mira el texto sin guardar del archivo abierto).
+  function liveFiles() {
+    return files.map((f) => (f.path === currentPath && f.kind === 'text' ? { ...f, text: editor.getText() } : f));
+  }
+  function currentEngine() {
+    try { return chooseEngine(project, liveFiles()); } catch { return { engine: project.engine || 'pdflatex', reason: null }; }
+  }
+  let lastEngineShown = null;
+  function refreshEngineTag() {
+    const ch = currentEngine();
+    const key = ch.engine + ch.reason;
+    if (key !== lastEngineShown) {
+      lastEngineShown = key; renderFiles();
+      if (project.lastEngine !== ch.engine) { project.lastEngine = ch.engine; touchProject(project.id, { lastEngine: ch.engine }).catch(() => {}); }
+    }
+  }
+
+  async function engineMenu() {
+    const ch = currentEngine();
+    const DESC = {
+      pdflatex: 'El clásico y el más rápido. Sirve para casi todo documento.',
+      xelatex: 'Para usar fuentes con \\setmainfont (fontspec) o escribir en otros alfabetos.',
+      lualatex: 'Como XeLaTeX, y además permite programar con Lua (\\directlua). El más lento.',
+    };
+    const why = engineExplanation(ch, project.main);
+    const e = await sheet('Motor de compilación', [
+      ...ENGINES.map(([v, t]) => ({ label: t + (v === project.engine ? '  ✓' : ''), value: v, icon: 'play', hint: DESC[v] })),
+      why ? '-' : null,
+      why ? { label: 'Ahora se compila con ' + (ENGINE_LABEL[ch.engine] || ch.engine), hint: why, icon: 'info', value: 'why' } : null,
+    ].filter(Boolean));
+    if (!e || e === 'why') return;
+    project.engine = e;
+    await saveProject(project);
+    lastEngineShown = null;
+    renderFiles();
+    const after = currentEngine();
+    if (after.engine !== e) {
+      // Lo que eligió no es lo que se va a usar: hay que explicarlo, si no parece que no hizo caso.
+      const msg = after.reason === 'magic'
+        ? `Elegiste ${ENGINE_LABEL[e]}, pero la línea ${after.magic.line} («% !TEX program = ${after.magic.engine}») manda: se seguirá usando ${ENGINE_LABEL[after.engine]}. Bórrala o cámbiala si quieres ${ENGINE_LABEL[e]}.`
+        : `Elegiste ${ENGINE_LABEL[e]}, pero ${engineExplanation(after, project.main).replace(/^Se usa \S+ porque /, '').replace(/^La línea.*?pero /, '')}. Se usará ${ENGINE_LABEL[after.engine]}.`;
+      await dialog({ title: 'Ojo con el motor', body: el('p', {}, msg) });
+    } else {
+      toast('Motor del proyecto: ' + ENGINE_LABEL[e]);
+    }
+  }
+
   function renderFiles() {
-    const engineTag = project.engine && project.engine !== 'pdflatex' ? `<em class="eng">${(ENGINES.find((e) => e[0] === project.engine) || [0, project.engine])[1]}</em>` : '';
-    fileBtn.innerHTML = `<span>${esc(currentPath)}</span>${currentPath === project.main ? '<em>principal</em>' : ''}${engineTag}<svg viewBox="0 0 24 24" class="ico caret"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+    const ch = currentEngine();
+    const engineTag = `<em class="eng${ch.engine === 'pdflatex' ? ' plain' : ''}${ch.reason === 'conflict' ? ' warn' : ''}" title="Motor: toca para cambiarlo">${ENGINE_LABEL[ch.engine] || ch.engine}</em>`;
+    fileBtn.innerHTML = `<span>${esc(currentPath)}</span>${currentPath === project.main ? '<em class="main-tag">principal</em>' : ''}${engineTag}<svg viewBox="0 0 24 24" class="ico caret"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
     filesList.replaceChildren(...files.map((f) => el('div', { class: 'side-item file' + (f.path === currentPath ? ' active' : '') },
       el('button', { class: 'side-main', onclick: () => openFile(f.path) },
         el('span', { html: icon(fileIcon(f)) }),
@@ -281,6 +330,7 @@ export async function renderEditor(root, { id }, navigate) {
   function analyze() {
     const textFiles = files.filter((f) => f.kind === 'text').map((f) => (f.path === currentPath ? { path: f.path, text: editor.getText() } : f));
     analysis = analyzeProject(project.main, textFiles);
+    refreshEngineTag();
     const ICON = { section: 'outline', label: 'edit', input: 'file', figure: 'image', table: 'split', todo: 'star' };
     const items = analysis.outline.filter((i) => i.type !== 'label');
     if (!items.length) {
@@ -447,6 +497,14 @@ export async function renderEditor(root, { id }, navigate) {
   }
   setCompileState('idle');
 
+  async function fixMagicLine(ech) {
+    if (currentPath !== project.main) await openFile(project.main);
+    editor.replaceLine(ech.magic.line, `% !TEX program = ${ech.engine}`);
+    jumpTo(project.main, ech.magic.line);
+    refreshEngineTag();
+    toast(`Línea ${ech.magic.line} corregida: ahora pide ${ENGINE_LABEL[ech.engine]}`);
+  }
+
   async function compile() {
     if (compiling) return;
     compiling = true;
@@ -470,15 +528,20 @@ export async function renderEditor(root, { id }, navigate) {
         await saveOutput(project.id, { pdf: r.pdf, log: r.log, status: r.status, synctex: syncBytes });
       }
       const sm = summarize(messages);
-      if (r.engineReason === 'fontspec' && project.engine !== 'xelatex') {
-        project.engine = 'xelatex';
-        await saveProject(project);
+      // Aviso de motor: la primera vez que se cambia solo, y siempre que la línea «% !TEX program» pide uno que no sirve.
+      const ech = r.engineChoice;
+      let engineNote = null;
+      if (ech && project.lastEngine !== ech.engine) { project.lastEngine = ech.engine; touchProject(project.id, { lastEngine: ech.engine }).catch(() => {}); }
+      if (ech && ((ech.reason === 'auto' && project.engine !== ech.engine) || ech.reason === 'conflict')) {
+        if (ech.reason === 'auto') { project.engine = ech.engine; await saveProject(project); }
+        engineNote = { text: engineExplanation(ech, project.main), ...(ech.reason === 'conflict' ? { action: 'Corregir línea', onAction: () => fixMagicLine(ech) } : {}) };
+        lastEngineShown = null;
         renderFiles();
-        toast('El documento usa fontspec: se compiló con XeLaTeX y el proyecto queda con ese motor', { ms: 6000 });
       }
       if (r.installed && r.installed.length) toast('Paquetes instalados: ' + r.installed.join(', '), { ms: 5000 });
       if (r.status === 'success') {
-        toast(`Listo en ${r.elapsed} s${sm.warnings ? ` · ${sm.warnings} advertencia(s)` : ''}`, { kind: 'ok' });
+        if (engineNote) toast(`Listo en ${r.elapsed} s. ${engineNote.text}`, { kind: 'ok', ms: 9000, action: engineNote.action, onAction: engineNote.onAction });
+        else toast(`Listo en ${r.elapsed} s${sm.warnings ? ` · ${sm.warnings} advertencia(s)` : ''}`, { kind: 'ok' });
         if (!WIDE.matches) showPanel('pdf');
       } else if (r.status === 'timeout') {
         toast('La compilación tardó demasiado y se detuvo', { kind: 'error' });
@@ -520,8 +583,18 @@ export async function renderEditor(root, { id }, navigate) {
       head.push(el('div', { class: 'msg error' }, el('div', { class: 'msg-top' }, el('span', { class: 'msg-type' }, 'Error')), el('div', { class: 'msg-main' },
         empty ? 'El documento está vacío: escribe algo entre \\begin{document} y \\end{document}.' : 'No se generó el PDF. Revisa el log completo.')));
     }
-    if (!shown.length && !head.length) {
-      msgList.replaceChildren(el('p', { class: 'muted pad' }, r ? (r.status === 'success' ? '✔ Sin errores.' : 'Sin mensajes para mostrar.') : 'Compila para ver errores y advertencias aquí.'));
+    const failCard = head.length > 0;
+    const ech = r && r.engineChoice;
+    if (ech && (ech.reason === 'auto' || ech.reason === 'conflict')) {
+      const at = ech.reason === 'conflict' ? { file: project.main, line: ech.magic.line } : ech.need;
+      head.push(el('div', { class: 'msg info', role: 'button', onclick: () => jumpTo(at.file || project.main, at.line) },
+        el('div', { class: 'msg-top' }, el('span', { class: 'msg-type' }, 'Motor'), el('span', { class: 'msg-loc' }, 'línea ' + at.line)),
+        el('div', { class: 'msg-main' }, engineExplanation(ech, project.main) + '.'),
+        ech.reason === 'conflict' ? el('button', { class: 'btn small', onclick: (e) => { e.stopPropagation(); fixMagicLine(ech); } }, `Cambiar la línea ${ech.magic.line} a ${ENGINE_LABEL[ech.engine]}`) : null));
+    }
+    if (!shown.length) {
+      const note = el('p', { class: 'muted pad' }, r ? (r.status === 'success' ? '✔ Sin errores.' : 'Sin mensajes para mostrar.') : 'Compila para ver errores y advertencias aquí.');
+      msgList.replaceChildren(...head, failCard ? '' : note);
       return;
     }
     // Los errores «en cadena» se agrupan dentro del error que los causa.
@@ -576,11 +649,11 @@ export async function renderEditor(root, { id }, navigate) {
   }
 
   async function moreMenu() {
-    const engineName = (ENGINES.find((e) => e[0] === project.engine) || ENGINES[0])[1];
+    const engineName = ENGINE_LABEL[currentEngine().engine] || 'pdfLaTeX';
     const choice = await sheet(project.name, [
       { label: 'Compartir PDF', icon: 'share', value: 'pdf' },
       { label: 'Ver esta línea en el PDF', hint: WIDE.matches ? 'También: doble clic en el código' : 'Lleva al PDF la línea donde está el cursor', icon: 'pdf', value: 'sync' },
-      { label: 'Motor: ' + engineName, hint: 'pdfLaTeX, XeLaTeX o LuaLaTeX', icon: 'settings', value: 'engine' },
+      { label: 'Motor: ' + engineName, hint: engineExplanation(currentEngine(), project.main) || 'pdfLaTeX, XeLaTeX o LuaLaTeX', icon: 'settings', value: 'engine' },
       { label: 'Asistentes e inserciones', icon: 'wand', value: 'wizards' },
       { label: 'Buscar y reemplazar', icon: 'search', value: 'search' },
       { label: 'Archivos del proyecto', icon: 'files', value: 'files' },
@@ -604,9 +677,7 @@ export async function renderEditor(root, { id }, navigate) {
       await shareBytes(createZip(files.map((f) => ({ path: f.path, data: f.kind === 'binary' ? f.data : enc.encode(f.text) }))), slug(project.name) + '.zip', 'application/zip');
     }
     if (choice === 'engine') {
-      const e = await sheet('Motor de compilación', ENGINES.map(([v, t]) => ({ label: t + (v === project.engine ? '  ✓' : ''), value: v, icon: 'play',
-        hint: v === 'pdflatex' ? 'El clásico; el más rápido' : v === 'xelatex' ? 'Fuentes del sistema (fontspec)' : 'Moderno, con Lua' })));
-      if (e) { project.engine = e; await saveProject(project); renderFiles(); toast('Motor del proyecto: ' + (ENGINES.find((x) => x[0] === e) || [0, e])[1]); }
+      await engineMenu();
     }
   }
 

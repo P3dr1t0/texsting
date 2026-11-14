@@ -38,6 +38,12 @@ export function createEditor(parent, { onChange, onSave, onCompile }) {
     },
     forget(key) { docs.delete(key); },
     getText() { return ta.value; },
+    replaceLine(n, text) {
+      const lines = ta.value.split('\n');
+      if (n < 1 || n > lines.length) return;
+      lines[n - 1] = text; ta.value = lines.join('\n');
+      ta.dispatchEvent(new Event('input'));
+    },
     insertSnippet: insert,
     gotoLine(line) {
       const lines = ta.value.split('\n');

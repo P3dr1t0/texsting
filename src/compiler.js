@@ -68,22 +68,83 @@ export function ping() {
 }
 
 const ENGINE_NAMES = { pdflatex: 'pdflatex', xelatex: 'xelatex', lualatex: 'lualatex', xetex: 'xelatex', luatex: 'lualatex' };
+export const ENGINE_LABEL = { pdflatex: 'pdfLaTeX', xelatex: 'XeLaTeX', lualatex: 'LuaLaTeX' };
+
+// Cosas que solo funcionan con ciertos motores. «unicode»: XeLaTeX o LuaLaTeX.
+const NEEDS = [
+  { engine: 'lualatex', re: /\\(directlua|luaexec|luadirect)\b/, what: (m) => '\\' + m[1] },
+  { engine: 'lualatex', re: /\\begin\{(luacode\*?)\}/, what: (m) => 'el entorno ' + m[1] },
+  { engine: 'lualatex', re: /\\usepackage\s*(?:\[[^\]]*\])?\s*\{[^}]*?\b(luacode|luatexja[\w-]*|luacolor|lua-ul|luamplib|luaotfload|lua-visual-debug|lualatex-math)\b/, what: (m) => 'el paquete ' + m[1] },
+  { engine: 'xelatex', re: /\\usepackage\s*(?:\[[^\]]*\])?\s*\{[^}]*?\b(xeCJK|xltxtra|xunicode|xepersian|xgreek|mathspec|xecolor|ucharclasses)\b/, what: (m) => 'el paquete ' + m[1] },
+  { engine: 'xelatex', re: /\\(XeTeX\w+)/, what: (m) => '\\' + m[1] },
+  { engine: 'unicode', re: /\\usepackage\s*(?:\[[^\]]*\])?\s*\{[^}]*?\b(fontspec|unicode-math|polyglossia)\b/, what: (m) => 'el paquete ' + m[1] },
+  { engine: 'unicode', re: /\\(setmainfont|setsansfont|setmonofont|newfontfamily|setmathfont)\b/, what: (m) => '\\' + m[1] },
+];
+
+function stripComments(line) {
+  return line.replace(/(^|[^\\])%.*$/, '$1');
+}
+
+/** Busca en los archivos .tex lo que obliga a usar un motor. Devuelve { lua, xe, unicode } con { file, line, what }. */
+export function engineNeeds(files, main) {
+  const out = {};
+  const texs = files.filter((f) => f.kind !== 'binary' && /\.(tex|ltx)$/i.test(f.path) && typeof f.text === 'string');
+  texs.sort((a, b) => (a.path === main ? -1 : b.path === main ? 1 : 0));
+  for (const f of texs) {
+    const lines = f.text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const ln = stripComments(lines[i]);
+      if (!ln.includes('\\')) continue;
+      for (const n of NEEDS) {
+        const key = n.engine === 'lualatex' ? 'lua' : n.engine === 'xelatex' ? 'xe' : 'unicode';
+        if (out[key]) continue;
+        const m = ln.match(n.re);
+        if (m) out[key] = { file: f.path, line: i + 1, what: n.what(m) };
+      }
+    }
+  }
+  return out;
+}
 
 /**
- * Decide el motor: 1) comentario mágico "% !TEX program = xelatex" (como TeXstudio),
- * 2) si el documento carga fontspec/unicode-math/polyglossia y el motor es pdfLaTeX → XeLaTeX,
- * 3) el motor del proyecto.
+ * Decide el motor y explica por qué:
+ * - lo que el documento *necesita* manda (código Lua → LuaLaTeX; xeCJK… → XeLaTeX;
+ *   fontspec/unicode-math → XeLaTeX o LuaLaTeX, nunca pdfLaTeX),
+ * - si no, el comentario mágico «% !TEX program = …» (como TeXstudio),
+ * - si no, el motor del proyecto.
+ * reason: null | 'magic' | 'auto' (cambió por lo que usa el documento) | 'conflict' (la línea mágica pedía otro).
  */
 export function chooseEngine(project, files) {
   const base = project.engine || getSettings().defaultEngine || 'pdflatex';
   const main = files.find((f) => f.path === project.main && f.kind === 'text');
   if (!main) return { engine: base, reason: null };
-  const head = main.text.split('\n').slice(0, 30).join('\n');
-  const magic = head.match(/^%\s*!\s*T[eE]X\s+(?:TS-)?program\s*=\s*([A-Za-z]+)/m);
-  if (magic && ENGINE_NAMES[magic[1].toLowerCase()]) return { engine: ENGINE_NAMES[magic[1].toLowerCase()], reason: 'magic' };
-  const pre = main.text.split('\\begin{document}')[0].replace(/(^|[^\\])%.*$/gm, '$1');
-  if (base === 'pdflatex' && /\\usepackage(\[[^\]]*\])?\{[^}]*\b(fontspec|unicode-math|polyglossia)\b/.test(pre)) return { engine: 'xelatex', reason: 'fontspec' };
-  return { engine: base, reason: null };
+  const lines = main.text.split('\n');
+  let magic = null;
+  for (let i = 0; i < Math.min(lines.length, 30); i++) {
+    const m = lines[i].match(/^%\s*!\s*T[eE]X\s+(?:TS-)?program\s*=\s*([A-Za-z]+)/);
+    if (m && ENGINE_NAMES[m[1].toLowerCase()]) { magic = { engine: ENGINE_NAMES[m[1].toLowerCase()], line: i + 1 }; break; }
+  }
+  const needs = engineNeeds(files, project.main);
+  const wanted = magic ? magic.engine : base;
+  let need = null;
+  if (needs.lua) need = { engine: 'lualatex', ...needs.lua };
+  else if (needs.xe) need = { engine: 'xelatex', ...needs.xe };
+  else if (needs.unicode && wanted === 'pdflatex') need = { engine: base !== 'pdflatex' ? base : 'xelatex', ...needs.unicode };
+  const info = { magic, need, base };
+  if (need && need.engine !== wanted) return { engine: need.engine, reason: magic ? 'conflict' : 'auto', ...info };
+  if (magic) return { engine: magic.engine, reason: 'magic', ...info };
+  return { engine: base, reason: null, ...info };
+}
+
+/** Texto corto para explicar por qué se usa (o se usó) un motor. */
+export function engineExplanation(ch, main) {
+  if (!ch || !ch.reason) return '';
+  const where = (n) => (n.file && n.file !== main ? `${n.file}, línea ${n.line}` : `línea ${n.line}`);
+  const E = (e) => ENGINE_LABEL[e] || e;
+  if (ch.reason === 'magic') return `Lo pide la ${where({ ...ch.magic, file: main })}: «% !TEX program = ${ch.magic.engine}»`;
+  const why = `el documento usa ${ch.need.what} (${where(ch.need)}), que ${ch.need.engine === 'lualatex' ? 'solo funciona con LuaLaTeX' : ch.need.what.match(/fontspec|unicode-math|polyglossia|font/) ? 'no funciona con pdfLaTeX' : 'solo funciona con XeLaTeX'}`;
+  if (ch.reason === 'conflict') return `La línea ${ch.magic.line} pide ${E(ch.magic.engine)}, pero ${why}: se usa ${E(ch.engine)}`;
+  return `Se usa ${E(ch.engine)} porque ${why}`;
 }
 
 /**
@@ -107,6 +168,7 @@ export async function compileProject(project, files) {
   return {
     ...data,
     engineReason: chosen.reason,
+    engineChoice: chosen,
     pdf: data.pdf ? base64ToBytes(data.pdf) : null,
     synctex: data.synctex ? base64ToBytes(data.synctex) : null,
   };

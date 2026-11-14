@@ -1,8 +1,8 @@
 // Pantalla de inicio: lista de proyectos, estado de Termux, crear e importar.
-import { listProjects, createProject, deleteProject, duplicateProject, saveProject, listFiles, getOutput, isTextPath } from '../store.js';
+import { listProjects, createProject, deleteProject, duplicateProject, saveProject, listFiles, getOutput, isTextPath, getSettings, setSettings } from '../store.js';
 import { el, icon, logoSvg, brandName, toast, sheet, promptText, confirmDialog, pickFiles, esc } from '../ui.js';
 import { saveAsTemplate } from './newproject.js';
-import { ping, serverOutdated } from '../compiler.js';
+import { ping, serverOutdated, ENGINE_LABEL } from '../compiler.js';
 import { createZip, readZip } from '../zip.js';
 import { shareBytes } from '../share.js';
 import { timeAgo, sanitizeName, slug, readFileAsBytes } from '../util.js';
@@ -13,6 +13,17 @@ const enc = new TextEncoder();
 export async function renderHome(root, _params, navigate) {
   const status = el('button', { class: 'server-chip checking', onclick: () => navigate('termux') }, 'Buscando Termux…');
   const list = el('div', { class: 'project-list' });
+  const RECENT_MAX = 8;
+  let tab = getSettings().homeTab === 'all' ? 'all' : 'recent';
+  let query = '';
+  let projects = [];
+  const tabBtn = (key, ic, label) => el('button', { dataset: { key }, onclick: () => { tab = key; setSettings({ homeTab: key }); query = ''; searchInput.value = ''; draw(); } });
+  const recentBtn = tabBtn('recent');
+  const allBtn = tabBtn('all');
+  const searchInput = el('input', { class: 'input small', type: 'search', placeholder: 'Buscar por nombre…', 'aria-label': 'Buscar proyecto',
+    oninput: (e) => { query = e.target.value; draw(); } });
+  const searchBox = el('div', { class: 'home-search' }, searchInput);
+  const tabsRow = el('div', { class: 'home-tabs' }, el('div', { class: 'seg', role: 'tablist' }, recentBtn, allBtn), searchBox);
 
   const screen = el('div', { class: 'screen home' },
     el('header', { class: 'home-head' },
@@ -22,22 +33,50 @@ export async function renderHome(root, _params, navigate) {
     el('div', { class: 'home-actions' },
       el('button', { class: 'btn primary big', html: icon('plus') + '<span>Nuevo proyecto</span>', onclick: () => navigate('new') }),
       el('button', { class: 'btn big', html: icon('upload') + '<span>Importar</span>', onclick: importProject })),
-    el('h3', { class: 'section-title' }, 'Tus proyectos'),
+    tabsRow,
     list,
     el('p', { class: 'home-foot' }, `TeXsting ${__VERSION__} · Fase 1: Beta · software libre (GPL-3.0)`));
   root.append(screen);
 
+  const lastUse = (p) => Math.max(p.opened || 0, p.updated || 0);
+  const norm = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
   async function refresh() {
-    const projects = await listProjects();
+    projects = await listProjects();
+    draw();
+  }
+
+  function card(p) {
+    const when = tab === 'recent' && p.opened && p.opened > (p.updated || 0) ? 'abierto ' + timeAgo(p.opened) : timeAgo(p.updated);
+    return el('div', { class: 'project-card' },
+      el('button', { class: 'project-open', onclick: () => navigate('editor', { id: p.id }) },
+        el('span', { class: 'project-ico', html: icon('file') }),
+        el('span', { class: 'project-meta', html: `<strong>${esc(p.name)}</strong><small>${esc(p.main)} · ${ENGINE_LABEL[p.lastEngine || p.engine] || esc(p.engine)} · ${when}</small>` })),
+      el('button', { class: 'icon-btn', 'aria-label': 'Opciones', html: icon('more'), onclick: () => projectMenu(p) }));
+  }
+
+  function draw() {
+    recentBtn.innerHTML = `${icon('clock')}<span>Recientes</span>`;
+    allBtn.innerHTML = `${icon('files')}<span>Todos</span><small>${projects.length}</small>`;
+    recentBtn.classList.toggle('active', tab === 'recent');
+    allBtn.classList.toggle('active', tab === 'all');
+    searchBox.hidden = tab !== 'all' || projects.length < 6;
     if (!projects.length) {
       list.replaceChildren(el('div', { class: 'empty', html: `${icon('file', 'big')}<p>Aún no tienes proyectos.</p><p class="muted">Crea uno con una plantilla o importa un .zip (por ejemplo, descargado de Overleaf) o archivos .tex.</p>` }));
       return;
     }
-    list.replaceChildren(...projects.map((p) => el('div', { class: 'project-card' },
-      el('button', { class: 'project-open', onclick: () => navigate('editor', { id: p.id }) },
-        el('span', { class: 'project-ico', html: icon('file') }),
-        el('span', { class: 'project-meta', html: `<strong>${esc(p.name)}</strong><small>${esc(p.main)} · ${esc(p.engine)} · ${timeAgo(p.updated)}</small>` })),
-      el('button', { class: 'icon-btn', 'aria-label': 'Opciones', html: icon('more'), onclick: () => projectMenu(p) }))));
+    if (tab === 'recent') {
+      const recent = [...projects].sort((a, b) => lastUse(b) - lastUse(a)).slice(0, RECENT_MAX);
+      const rest = projects.length - recent.length;
+      list.replaceChildren(...recent.map(card),
+        rest > 0 ? el('button', { class: 'btn ghost home-more', onclick: () => allBtn.click() }, `Ver los ${projects.length} proyectos`) : '');
+      return;
+    }
+    const q = norm(query.trim());
+    const all = [...projects]
+      .filter((p) => !q || norm(p.name).includes(q) || norm(p.main).includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true, sensitivity: 'base' }));
+    list.replaceChildren(...(all.length ? all.map(card) : [el('p', { class: 'home-hint' }, `Ningún proyecto se llama «${query}».`)]));
   }
 
   async function projectMenu(p) {
