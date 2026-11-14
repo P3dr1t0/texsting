@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.30] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 40
+
+### Corregido
+- **En el celular, el PDF ocupaba solo la mitad izquierda de la pantalla** y la barra de zoom quedaba apretada («1 / 4» en vertical).
+  - Era un error de la 0.2.22: la regla de estilo de la franja «PDF de la compilación anterior» pisaba la del diseño de celular, y el visor tomaba la proporción de la pantalla dividida de la tablet.
+  - Ahora vuelve a ocupar toda la pantalla; la franja sigue funcionando en los dos diseños.
+  - La prueba automática que se corre antes de cada versión ahora mide el ancho del visor en el celular, para que no se repita.
+
+---
+
 ## [0.2.29] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 39
 
 ### Mejorado
