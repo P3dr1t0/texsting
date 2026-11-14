@@ -65,10 +65,11 @@ export async function saveProject(p) {
   return p;
 }
 
-export async function createProject({ name, files, main = 'main.tex', engine }) {
+export async function createProject({ name, files, main = 'main.tex', engine, source }) {
   engine = engine || getSettings().defaultEngine || 'pdflatex';
   const now = Date.now();
   const p = { id: newId(), name, main, engine, created: now, updated: now, openFiles: [main], current: main };
+  if (source) p.source = source; // de dónde vino («Abrir con»): uri, nombre real y huella del contenido
   await tx(['projects', 'files'], 'readwrite', (t) => {
     t.objectStore('projects').put(p);
     const fs = t.objectStore('files');

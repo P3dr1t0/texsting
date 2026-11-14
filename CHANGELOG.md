@@ -17,6 +17,20 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.9] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 19
+
+### Corregido (reporte de Pedro: un .tex distinto ofrecía «Actualizar» el proyecto anterior)
+- Causa: algunas apps mandan el archivo **sin su nombre**; TeXsting lo llamaba `documento.tex` y lo confundía con otro proyecto importado con ese mismo nombre por defecto.
+- **Nombre real del archivo**: un complemento nativo nuevo se lo pregunta a Android aunque la app que lo envía no lo incluya.
+- **Cada archivo se reconoce por su origen y su contenido**, no solo por el nombre:
+  - Mismo contenido → «Ya importaste este mismo archivo como «X»»: **Abrir «X»** o **Crear copia**.
+  - Mismo archivo de origen con cambios → **Actualizar…** (opción secundaria).
+  - Cualquier otro caso → solo **Crear proyecto**. Los proyectos importados antes de esta versión nunca se ofrecen para actualizar.
+- **Actualizar ya no es de un toque**: pide confirmación (muestra líneas actuales y nuevas) y guarda la versión anterior como `archivo.anterior.tex` dentro del proyecto.
+- El diálogo muestra el **título o la primera sección** del documento, las líneas y el tamaño, para reconocerlo aunque no traiga nombre; ese título se propone como nombre del proyecto.
+
+---
+
 ## [0.2.8] — 13 nov. 2026 · Fase 1: Beta con Termux · compilación 18
 
 ### Nuevo: «Abrir con → TeXsting» (issue [#7](https://github.com/P3dr1t0/texsting/issues/7), primera parte)

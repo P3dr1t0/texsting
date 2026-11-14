@@ -56,6 +56,64 @@ ${mimes.map((t) => `                <data android:mimeType="${t}" />`).join('\n'
 }
 writeFileSync(manifestPath, m);
 
+// Complemento nativo «OpenedFile»: nombre real y tamaño de un archivo recibido con «Abrir con»
+// (muchas apps mandan una dirección content:// que no incluye el nombre).
+const javaDir = path.join(app, 'src', 'main', 'java', 'io', 'github', 'texsting');
+mkdirSync(javaDir, { recursive: true });
+writeFileSync(path.join(javaDir, 'OpenedFilePlugin.java'), `package io.github.texsting;
+
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.OpenableColumns;
+import com.getcapacitor.JSObject;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
+
+@CapacitorPlugin(name = "OpenedFile")
+public class OpenedFilePlugin extends Plugin {
+    @PluginMethod
+    public void info(PluginCall call) {
+        String url = call.getString("url");
+        if (url == null) { call.reject("sin url"); return; }
+        JSObject ret = new JSObject();
+        try {
+            Uri uri = Uri.parse(url);
+            if ("file".equals(uri.getScheme())) {
+                ret.put("name", uri.getLastPathSegment());
+            } else {
+                try (Cursor c = getContext().getContentResolver().query(uri, null, null, null, null)) {
+                    if (c != null && c.moveToFirst()) {
+                        int i = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                        if (i >= 0 && !c.isNull(i)) ret.put("name", c.getString(i));
+                        int j = c.getColumnIndex(OpenableColumns.SIZE);
+                        if (j >= 0 && !c.isNull(j)) ret.put("size", c.getLong(j));
+                    }
+                }
+                ret.put("mime", getContext().getContentResolver().getType(uri));
+            }
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
+    }
+}
+`);
+writeFileSync(path.join(javaDir, 'MainActivity.java'), `package io.github.texsting;
+
+import android.os.Bundle;
+import com.getcapacitor.BridgeActivity;
+
+public class MainActivity extends BridgeActivity {
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(OpenedFilePlugin.class);
+        super.onCreate(savedInstanceState);
+    }
+}
+`);
+
 const gradlePath = path.join(app, 'build.gradle');
 let g = readFileSync(gradlePath, 'utf8');
 // Firma fija: sin esto cada compilación usa una llave nueva y Android no deja actualizar encima.

@@ -1,4 +1,7 @@
 // Simulación de los plugins de Capacitor para probar la app en un navegador.
+export function registerPlugin(name) {
+  return new Proxy({}, { get: (_, m) => async (arg) => { const f = window.__plugins && window.__plugins[name] && window.__plugins[name][m]; if (!f) throw new Error('no implementado'); return f(arg); } });
+}
 export const Capacitor = { isNativePlatform: () => false, getPlatform: () => 'web', convertFileSrc: (u) => u };
 export const Directory = { Cache: 'CACHE', Documents: 'DOCUMENTS' };
 export const Encoding = { UTF8: 'utf8' };
