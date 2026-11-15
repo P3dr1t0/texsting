@@ -187,13 +187,17 @@ const DEFAULTS = {
   autoinstall: true,
   defaultEngine: 'pdflatex',
   compileOnSave: false,
-  motorIntegrado: false,
+  // 'auto': motor integrado para pdfLaTeX y Termux solo si el documento necesita XeLaTeX/LuaLaTeX.
+  compilador: 'auto',
   splitRatio: 0.5,
 };
 
 export function getSettings() {
   try {
-    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') };
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    // Antes había un interruptor «motorIntegrado»; ahora todos pasan a «Automático» (motor integrado primero).
+    delete saved.motorIntegrado;
+    return { ...DEFAULTS, ...saved };
   } catch {
     return { ...DEFAULTS };
   }

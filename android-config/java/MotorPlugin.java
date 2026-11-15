@@ -26,12 +26,12 @@ public class MotorPlugin extends Plugin {
     private final ExecutorService bg = Executors.newSingleThreadExecutor(r -> new Thread(r, "texsting-bg"));
     private final Object work = new Object();
     private volatile int gen;
-    private volatile Process bgProc;
+    // Procesos en segundo plano (varias figuras se dibujan a la vez): se cortan todos al compilar.
+    private final Set<Process> bgProcs = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private void cancelBackground() {
         gen++;
-        Process p = bgProc;
-        if (p != null) p.destroyForcibly();
+        for (Process p : bgProcs) p.destroyForcibly();
     }
 
     private void background(Runnable task) {
@@ -39,7 +39,7 @@ public class MotorPlugin extends Plugin {
         bg.execute(() -> {
             synchronized (work) {
                 if (g != gen) return;
-                try { task.run(); } catch (Exception ignored) { } finally { bgProc = null; }
+                try { task.run(); } catch (Exception ignored) { }
             }
         });
     }
@@ -103,7 +103,8 @@ public class MotorPlugin extends Plugin {
         pb.environment().clear();
         pb.environment().putAll(env());
         Process p = pb.start();
-        if (Thread.currentThread().getName().startsWith("texsting-bg")) bgProc = p;
+        boolean bgp = Thread.currentThread().getName().startsWith("texsting-bg");
+        if (bgp) bgProcs.add(p);
         p.getOutputStream().close();
         final ByteArrayOutputStream buf = new ByteArrayOutputStream();
         Thread reader = new Thread(() -> {
@@ -118,6 +119,7 @@ public class MotorPlugin extends Plugin {
         reader.join(2000);
         r.code = r.timedOut ? -1 : p.exitValue();
         synchronized (buf) { r.out = buf.toString("UTF-8"); }
+        if (bgp) bgProcs.remove(p);
         return r;
     }
 
@@ -628,7 +630,7 @@ public class MotorPlugin extends Plugin {
             for (int attempt = 0; attempt < 3; attempt++) {
                 fmtFile.delete();
                 Run r = run(Arrays.asList(pdftex().getAbsolutePath(), "-ini", "-interaction=nonstopmode", "-jobname=" + PRE,
-                        "-progname=pdflatex", "&pdflatex", "mylatexformat.ltx", mainName), mainDir, 3 * 60 * 1000);
+                        "-progname=pdflatex", "&pdflatex", "mylatexformat.ltx", mainName.contains(" ") ? "\"" + mainName + "\"" : mainName), mainDir, 3 * 60 * 1000);
                 String lg = readText(new File(mainDir, PRE + ".log"));
                 bad = r.timedOut || !fmtFile.exists() || lg == null || Pattern.compile("^!", Pattern.MULTILINE).matcher(lg).find();
                 if (!bad || r.timedOut || lg == null) break;
@@ -658,8 +660,15 @@ public class MotorPlugin extends Plugin {
 
     /** Se agrega por la línea de comandos, sin tocar tu archivo. circuitikz y similares siguen dibujándose normal. */
     private static String figInject() {
+        // tcolorbox dibuja sus cajas con TikZ: «shield externalize» evita que se intenten guardar como figuras
+        // (si no, las cajas «breakable» rompen la compilación).
         return "\\AddToHook{begindocument/before}{\\IfPackageLoadedTF{tikz}{\\usetikzlibrary{external}"
-                + "\\tikzexternalize[mode=list and make,prefix=" + FIG + "/]}{}}";
+                + "\\tikzexternalize[mode=list and make,prefix=" + FIG + "/]"
+                + "\\IfPackageLoadedTF{tcolorbox}{\\tcbset{shield externalize}}{}}{}}";
+    }
+    static String safeJob(String name) {
+        String s = name.replaceAll("[^A-Za-z0-9._-]", "_");
+        return s.isEmpty() || s.startsWith("-") ? "doc" + s : s;
     }
     private static long readMs(File f) {
         try { return Long.parseLong(String.valueOf(readText(f)).trim()); } catch (Exception e) { return -1; }
@@ -705,6 +714,24 @@ public class MotorPlugin extends Plugin {
         return ok;
     }
 
+    /** Dibuja varias figuras a la vez (como «make -j» de TikZ): una por cada par de núcleos, hasta 3. */
+    private boolean makeFigs(File mainDir, String job, String mainName, List<String> figs, int g) {
+        if (figs.isEmpty()) return true;
+        int n = Math.max(1, Math.min(3, Runtime.getRuntime().availableProcessors() / 2));
+        n = Math.min(n, figs.size());
+        final String name = Thread.currentThread().getName() + "-fig";
+        ExecutorService pool = Executors.newFixedThreadPool(n, r -> new Thread(r, name));
+        final java.util.concurrent.atomic.AtomicBoolean fail = new java.util.concurrent.atomic.AtomicBoolean();
+        List<java.util.concurrent.Future<?>> pend = new ArrayList<>();
+        for (String f : figs) pend.add(pool.submit(() -> {
+            if (fail.get() || g != gen) return;
+            try { if (!makeFig(mainDir, job, mainName, f)) fail.set(true); } catch (Exception e) { fail.set(true); }
+        }));
+        for (java.util.concurrent.Future<?> x : pend) try { x.get(); } catch (Exception ignored) { }
+        pool.shutdown();
+        return !fail.get() && g == gen;
+    }
+
     private Run mainWithFigs(File mainDir, String job, String mainName) throws Exception {
         new File(mainDir, FIG).mkdirs();
         return run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode",
@@ -722,13 +749,10 @@ public class MotorPlugin extends Plugin {
         Run r = mainWithFigs(mainDir, job, mainName);
         if (g != gen || r.timedOut) return;
         if (figList(mainDir, job).isEmpty()) return;
-        for (String f : staleFigs(mainDir, job)) {
+        if (!makeFigs(mainDir, job, mainName, staleFigs(mainDir, job), g)) {
             if (g != gen) return;
-            if (!makeFig(mainDir, job, mainName, f)) {
-                if (g != gen) return;
-                try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + key).getBytes(StandardCharsets.UTF_8)); }
-                return;
-            }
+            try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + key).getBytes(StandardCharsets.UTF_8)); }
+            return;
         }
         long t = System.currentTimeMillis();
         r = mainWithFigs(mainDir, job, mainName);
@@ -737,6 +761,65 @@ public class MotorPlugin extends Plugin {
         String lg = readText(new File(mainDir, job + ".log"));
         boolean ok = lg != null && countMatches(ERR, lg) <= normalErrors && staleFigs(mainDir, job).isEmpty();
         try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(((ok ? "ok " : "no ") + key).getBytes(StandardCharsets.UTF_8)); }
+    }
+
+    // ───────────── BibTeX y makeindex (vienen en el APK junto a pdfTeX) ─────────────
+    private boolean auxTools(File mainDir, String job, StringBuilder output, boolean autoinstall) {
+        boolean ran = false;
+        try {
+            File bib = new File(libDir(), "libtx_bibtex.so");
+            String aux = readText(new File(mainDir, job + ".aux"));
+            if (bib.exists() && aux != null && aux.contains("\\bibdata{")) {
+                StringBuilder k = new StringBuilder();
+                for (String l : aux.split("\n"))
+                    if (l.startsWith("\\citation{") || l.startsWith("\\bibdata{") || l.startsWith("\\bibstyle{")) k.append(l).append('\n');
+                Matcher m = Pattern.compile("\\\\bibdata\\{([^}]*)\\}").matcher(aux);
+                while (m.find()) for (String b : m.group(1).split(",")) {
+                    String n = b.trim();
+                    String t = readText(new File(mainDir, n.endsWith(".bib") ? n : n + ".bib"));
+                    if (t != null) k.append('\u0000').append(t);
+                }
+                String key = sha1(k.toString());
+                File stamp = new File(mainDir, job + ".texsting-bib");
+                if (!key.equals(String.valueOf(readText(stamp)).trim()) || !new File(mainDir, job + ".bbl").exists()) {
+                    progress("Armando la bibliografía (BibTeX)…");
+                    List<String> cmd = Arrays.asList(bib.getAbsolutePath(), job);
+                    Run b = run(cmd, mainDir, 2 * 60 * 1000);
+                    // Estilo que no viene en el APK (p. ej. IEEEtran.bst): se baja y se repite.
+                    Matcher sm = Pattern.compile("I couldn't open style file (\\S+)").matcher(b.out);
+                    if (sm.find() && autoinstall) {
+                        String st = sm.group(1).endsWith(".bst") ? sm.group(1) : sm.group(1) + ".bst";
+                        loadIndex();
+                        String pkg = index.get(st);
+                        Set<String> have = installedPkgs();
+                        if (pkg != null && !have.contains(pkg)) {
+                            for (String q : withDeps(pkg, have, new ArrayList<>())) install(q);
+                            b = run(cmd, mainDir, 2 * 60 * 1000);
+                        }
+                    }
+                    output.append(b.out);
+                    try (OutputStream o = new FileOutputStream(stamp)) { o.write(key.getBytes(StandardCharsets.UTF_8)); }
+                    ran = true;
+                }
+            }
+            File mk = new File(libDir(), "libtx_makeindex.so"), idx = new File(mainDir, job + ".idx");
+            if (mk.exists() && idx.exists()) {
+                String key = sha1(String.valueOf(readText(idx)));
+                File stamp = new File(mainDir, job + ".texsting-idx");
+                if (!key.equals(String.valueOf(readText(stamp)).trim()) || !new File(mainDir, job + ".ind").exists()) {
+                    progress("Armando el índice alfabético…");
+                    output.append(run(Arrays.asList(mk.getAbsolutePath(), job + ".idx"), mainDir, 60 * 1000).out);
+                    try (OutputStream o = new FileOutputStream(stamp)) { o.write(key.getBytes(StandardCharsets.UTF_8)); }
+                    ran = true;
+                }
+            }
+            // biblatex con biber (lo normal en biblatex): biber todavía no viene en el motor integrado.
+            if (new File(mainDir, job + ".bcf").exists() && output.indexOf("biber: command not found") < 0)
+                output.append("\nbiber: command not found (el motor integrado todavía no trae biber; usa \\usepackage[backend=bibtex]{biblatex})\n");
+        } catch (Exception e) {
+            output.append("\n[TeXsting] BibTeX/makeindex: ").append(e.getMessage()).append('\n');
+        }
+        return ran;
     }
 
     @PluginMethod
@@ -774,7 +857,11 @@ public class MotorPlugin extends Plugin {
                 String oldList = readText(manifest);
                 if (oldList != null) for (String l : oldList.split("\n")) if (!l.isEmpty() && !keep.contains(l) && l.startsWith(rootPath + File.separator)) new File(l).delete();
                 try (OutputStream o = new FileOutputStream(manifest)) { o.write(String.join("\n", keep).getBytes(StandardCharsets.UTF_8)); }
-                String stem = main.replaceAll("\\.tex$", "");
+                // Nombres con espacios o paréntesis (p. ej. «fisica (1).tex») rompen el preámbulo guardado y las
+                // figuras: los archivos de salida usan un nombre seguro y se compila el archivo original.
+                String job = safeJob(new File(main).getName().replaceAll("\\.tex$", ""));
+                String parentDir = new File(main).getParent();
+                String stem = parentDir == null ? job : parentDir + "/" + job;
                 File pdf = new File(dir, stem + ".pdf");
                 pdf.delete();
                 File mainDir = new File(dir, main).getParentFile();
@@ -806,7 +893,6 @@ public class MotorPlugin extends Plugin {
                 String preInfo = String.valueOf(readText(new File(mainDir, PRE + ".txt"))).trim();
                 boolean usePre = preKey != null && new File(mainDir, PRE + ".fmt").exists()
                         && (preInfo.equals("ok " + preKey) || preInfo.equals("verificado " + preKey));
-                String job = new File(main).getName().replaceAll("\\.tex$", "");
                 boolean useFigs = autoinstall && figsReady(mainDir, job, figKey);
                 // Con las dos cosas listas, se usa la que dio la compilación más rápida en este proyecto.
                 long preMs = readMs(new File(mainDir, PRE + "-ms.txt")), figMs = readMs(new File(mainDir, FIG + "-ms.txt"));
@@ -822,7 +908,7 @@ public class MotorPlugin extends Plugin {
                         long tRun = System.currentTimeMillis();
                         r = useFigs ? mainWithFigs(mainDir, job, mainName)
                                 : run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=" + (usePre ? PRE : "pdflatex"),
-                                "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", mainName),
+                                "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainName),
                                 mainDir, 10 * 60 * 1000);
                         if (firstRunMs < 0) firstRunMs = System.currentTimeMillis() - tRun;
                         p++; passes++;
@@ -830,6 +916,8 @@ public class MotorPlugin extends Plugin {
                         if (r.timedOut) { timedOut = true; break; }
                         String lg = readText(new File(dir, stem + ".log"));
                         if (lg != null && (lg.contains("Emergency stop") || lg.contains("not found") || lg.contains("not loadable") || lg.contains("cannot open"))) break;
+                        // Bibliografía (BibTeX) e índice alfabético (makeindex), como latexmk: si cambiaron, se arman y se repite.
+                        if (p < 4 && auxTools(mainDir, job, output, autoinstall)) continue;
                         boolean rerunMsg = lg != null && (lg.contains("Rerun to get") || lg.contains("Label(s) may have changed"));
                         if (!rerunMsg && before.equals(digest(dir, stem))) break;
                     }
@@ -881,15 +969,14 @@ public class MotorPlugin extends Plugin {
                     List<String> stale = staleFigs(mainDir, job);
                     if (!stale.isEmpty()) {
                         progress(stale.size() == 1 ? "Dibujando la figura que cambió…" : "Dibujando las " + stale.size() + " figuras que cambiaron…");
-                        boolean ok = true;
-                        for (String f : stale) if (!makeFig(mainDir, job, mainName, f)) { ok = false; break; }
+                        boolean ok = makeFigs(mainDir, job, mainName, stale, gen);
                         if (ok) { r = mainWithFigs(mainDir, job, mainName); passes++; }
                         else {
                             // Esta figura no se puede guardar aparte: el proyecto vuelve a compilar como siempre.
                             try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + figKey).getBytes(StandardCharsets.UTF_8)); }
                             usedFigs = false;
                             r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex",
-                                    "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", mainName), mainDir, 10 * 60 * 1000);
+                                    "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainName), mainDir, 10 * 60 * 1000);
                             passes++;
                         }
                         output.append(r.out);
@@ -903,7 +990,7 @@ public class MotorPlugin extends Plugin {
                 if (usePre && preInfo.startsWith("ok ") && !timedOut && errPat.matcher(log).find()) {
                     int withPre = countMatches(errPat, log);
                     r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex",
-                            "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", mainName), mainDir, 10 * 60 * 1000);
+                            "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainName), mainDir, 10 * 60 * 1000);
                     passes++;
                     String normal = readText(new File(dir, stem + ".log"));
                     int without = normal == null ? Integer.MAX_VALUE : countMatches(errPat, normal);

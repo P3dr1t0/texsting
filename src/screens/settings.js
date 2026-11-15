@@ -71,6 +71,8 @@ export async function renderSettings(root, _p, navigate) {
   const url = el('input', { class: 'input', value: s.serverUrl, autocapitalize: 'off', onchange: (e) => setSettings({ serverUrl: e.target.value.trim() || 'http://127.0.0.1:8765' }) });
   const token = el('input', { class: 'input mono', value: ensureToken(), autocapitalize: 'off', onchange: (e) => setSettings({ token: e.target.value.trim() }) });
   const result = el('p', { class: 'muted' });
+  const compilador = el('select', { class: 'input small', onchange: (e) => setSettings({ compilador: e.target.value }) },
+    ...[['auto', 'Automático'], ['motor', 'Solo motor integrado'], ['termux', 'Solo Termux']].map(([v, t]) => el('option', { value: v, selected: s.compilador === v }, t)));
   const motorResult = el('div', { class: 'muted motor-result' });
   const seg = (ms) => (ms / 1000).toFixed(1).replace('.', ',') + ' s';
   async function probarMotor() {
@@ -96,11 +98,17 @@ export async function renderSettings(root, _p, navigate) {
   root.append(el('div', { class: 'screen settings' },
     header('Ajustes', navigate),
     el('div', { class: 'settings-body' },
-      el('h3', { class: 'section-title' }, 'Compilación (Termux)'),
-      el('button', { class: 'btn primary', html: icon('terminal') + '<span>Instalar o reparar TeX en Termux</span>', onclick: () => navigate('termux') }),
+      el('h3', { class: 'section-title' }, 'Compilación'),
+      row('Compilar con', compilador, 'Automático: el motor integrado de TeXsting; Termux solo si un documento necesita XeLaTeX o LuaLaTeX'),
       row('Motor para proyectos nuevos', engine, 'Cada proyecto puede cambiarlo en ⋮ → Motor'),
-      row('Instalar paquetes faltantes', toggle('autoinstall'), 'Como MiKTeX: si falta un paquete, se descarga al compilar'),
+      row('Instalar paquetes faltantes', toggle('autoinstall'), 'Si falta un paquete, se descarga solo al compilar (necesita internet esa vez)'),
       row('Compilar al guardar (Ctrl+S)', toggle('compileOnSave')),
+      el('p', { class: 'muted' }, 'El motor integrado compila dentro de TeXsting, sin instalar nada más: pdfLaTeX con los paquetes más comunes, y los que falten (TikZ, pgfplots, circuitikz…) se descargan solos de CTAN la primera vez que los uses.'),
+      el('button', { class: 'btn', onclick: probarMotor }, 'Probar motor integrado'),
+      motorResult,
+      el('h3', { class: 'section-title' }, 'Termux (opcional)'),
+      el('p', { class: 'muted' }, 'Solo hace falta para XeLaTeX y LuaLaTeX, mientras llegan al motor integrado.'),
+      el('button', { class: 'btn', html: icon('terminal') + '<span>Instalar o reparar TeX en Termux</span>', onclick: () => navigate('termux') }),
       row('Dirección del servidor', url),
       row('Token', token, 'Debe coincidir con el de Termux'),
       el('button', { class: 'btn', onclick: async () => {
@@ -111,11 +119,6 @@ export async function renderSettings(root, _p, navigate) {
         } catch (e) { result.textContent = '✘ ' + e.message; }
       } }, 'Probar conexión'),
       result,
-      el('h3', { class: 'section-title' }, 'Motor integrado (experimental)'),
-      el('p', { class: 'muted' }, 'Compila dentro de TeXsting, sin Termux. Es una prueba: por ahora solo pdfLaTeX. Trae los paquetes más comunes (amsmath, graphicx, babel en español, hyperref, siunitx, booktabs…) y los que falten (TikZ, circuitikz, pgfplots…) se descargan solos de CTAN la primera vez que los uses (necesita internet esa vez).'),
-      row('Usar el motor integrado', toggle('motorIntegrado'), 'Si un documento necesita algo que no trae, desactívalo para usar Termux'),
-      el('button', { class: 'btn', onclick: probarMotor }, 'Probar motor integrado'),
-      motorResult,
       el('h3', { class: 'section-title' }, 'Apariencia'),
       appearance(),
       el('h3', { class: 'section-title' }, 'Editor'),
@@ -123,7 +126,7 @@ export async function renderSettings(root, _p, navigate) {
       row('Números de línea', toggle('lineNumbers')),
       row('Autocompletado', toggle('autocomplete')),
       el('h3', { class: 'section-title' }, 'Acerca de'),
-      el('p', { class: 'muted', html: `TeXsting ${__VERSION__} (Fase 1: Beta con Termux) — editor LaTeX libre para Android (GPL-3.0).<br><a href="https://github.com/P3dr1t0/texsting/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Ver novedades de cada versión</a><br>Inspirado en la forma de trabajar de TeXstudio; no usa su código, nombre ni logo.<br>Compila con TeX Live dentro de Termux, en tu propio teléfono.` }))));
+      el('p', { class: 'muted', html: `TeXsting ${__VERSION__} (Fase 2: Beta con motor integrado) — editor LaTeX libre para Android (GPL-3.0).<br><a href="https://github.com/P3dr1t0/texsting/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Ver novedades de cada versión</a><br>Inspirado en la forma de trabajar de TeXstudio; no usa su código, nombre ni logo.<br>Compila con TeX Live (pdfTeX) dentro de la app, en tu propio teléfono o tablet.` }))));
   return {};
 }
 

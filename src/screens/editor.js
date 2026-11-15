@@ -629,7 +629,7 @@ export async function renderEditor(root, { id }, navigate) {
     setCompileState('busy');
     const tick = setInterval(() => setCompileState('busy', Math.round((Date.now() - t0) / 1000) + ' s'), 1000);
     // Motor integrado: avisa cuando baja un paquete que falta (solo la primera vez).
-    const stopProgress = getSettings().motorIntegrado ? await motorAlProgresar((t) => t && toast(t, { ms: 6000 })) : () => {};
+    const stopProgress = getSettings().compilador !== 'termux' ? await motorAlProgresar((t) => t && toast(t, { ms: 6000 })) : () => {};
     try {
       files = await listFiles(project.id);
       const r = await compileProject(project, files);
@@ -664,7 +664,7 @@ export async function renderEditor(root, { id }, navigate) {
       // ⚡: se usó el preámbulo guardado (los \usepackage ya estaban cargados).
       const via = r.integrado ? ` (motor integrado${r.preambuloGuardado ? ' ⚡' : ''})` : '';
       if (r.integrado && r.missing && r.missing.length && /File `[^']+\.(sty|cls)' not found/.test(r.log || '')) {
-        toast('No se pudo descargar: ' + r.missing.join(', ') + '. Revisa tu conexión a internet, o desactiva el motor integrado en Ajustes para usar Termux.', { kind: 'error', ms: 9000 });
+        toast('No se pudo descargar: ' + r.missing.join(', ') + '. Revisa tu conexión a internet y vuelve a compilar.', { kind: 'error', ms: 9000 });
       }
       if (r.status === 'success') {
         if (engineNote) toast(`Listo en ${r.elapsed} s${via}. ${engineNote.text}`, { kind: 'ok', ms: 9000, action: engineNote.action, onAction: engineNote.onAction });

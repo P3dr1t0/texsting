@@ -1,7 +1,7 @@
-// Cliente del servidor de compilación que corre en Termux.
+// Compilación: motor integrado (dentro del APK) y, como respaldo opcional, el servidor de Termux.
 import { getSettings } from './store.js';
 import { bytesToBase64, base64ToBytes } from './util.js';
-import { motorCompilar } from './motor.js';
+import { motorCompilar, motorEstado } from './motor.js';
 
 export class CompileError extends Error {
   constructor(message, kind) {
@@ -153,24 +153,29 @@ export function engineExplanation(ch, main) {
  * Devuelve { status, pdf: Uint8Array|null, synctex, log, output, installed, missing, elapsed }.
  */
 export async function compileProject(project, files) {
-  if (getSettings().motorIntegrado) {
-    // Motor integrado (experimental): por ahora solo pdfLaTeX y los paquetes que trae el APK.
-    const chosen = chooseEngine(project, files);
-    if (chosen.engine !== 'pdflatex') {
-      throw new CompileError(`El motor integrado (experimental) por ahora solo tiene pdfLaTeX y este documento necesita ${ENGINE_LABEL[chosen.engine]}. Desactívalo en Ajustes para compilar con Termux.`, 'server');
+  const mode = getSettings().compilador || 'auto';
+  const chosen = chooseEngine(project, files);
+  if (mode !== 'termux' && (await motorEstado())) {
+    if (chosen.engine === 'pdflatex') {
+      try {
+        const data = await motorCompilar(project, files, { autoinstall: getSettings().autoinstall });
+        return { ...data, engineReason: chosen.reason, engineChoice: chosen };
+      } catch (e) {
+        throw new CompileError('Motor integrado: ' + (e.message || e), 'server');
+      }
     }
-    try {
-      const data = await motorCompilar(project, files, { autoinstall: getSettings().autoinstall });
-      return { ...data, engineReason: chosen.reason, engineChoice: chosen };
-    } catch (e) {
-      throw new CompileError('Motor integrado: ' + (e.message || e), 'server');
+    if (mode === 'motor') {
+      throw new CompileError(`Este documento necesita ${ENGINE_LABEL[chosen.engine]} y el motor integrado por ahora solo tiene pdfLaTeX. En Ajustes → Compilar con, elige «Automático» para usar Termux en estos casos.`, 'server');
+    }
+    // Automático: XeLaTeX/LuaLaTeX siguen en Termux por ahora.
+    if (!(await quickCheck())) {
+      throw new CompileError(`Este documento necesita ${ENGINE_LABEL[chosen.engine]}, que por ahora solo está en Termux: ábrelo un momento y vuelve a compilar (o cambia el motor del proyecto a pdfLaTeX en ⋮ → Motor).`, 'offline');
     }
   }
   if (!(await quickCheck())) {
     throw new CompileError('Termux no está abierto: ábrelo un momento para iniciar el servidor y vuelve a compilar.', 'offline');
   }
   const s = getSettings();
-  const chosen = chooseEngine(project, files);
   const payload = {
     project: project.id,
     main: project.main,

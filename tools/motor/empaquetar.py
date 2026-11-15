@@ -65,6 +65,12 @@ for name in ["texlive-bin", "libandroid-complex-math", "libc++", "libpng", "zlib
 usr = os.path.join(root, "data/data/com.termux/files/usr")
 libdir = os.path.join(usr, "lib")
 pdftex = os.path.realpath(os.path.join(usr, "bin", "texlive", "pdftex"))
+# BibTeX y makeindex: pequeños, usan las mismas bibliotecas que pdfTeX.
+extras = {}
+for b in ["bibtex", "makeindex"]:
+    pb = os.path.join(usr, "bin", "texlive", b)
+    if os.path.exists(pb): extras[b] = os.path.realpath(pb)
+    else: print("Aviso: Termux no trae", b)
 texlive_bin_version = pkgs["texlive-bin"]["Version"]
 
 def needed(path):
@@ -72,7 +78,7 @@ def needed(path):
     return re.findall(r"\(NEEDED\)\s+Shared library: \[(.+?)\]", out)
 
 SYSTEM = {"libc.so", "libm.so", "libdl.so", "liblog.so"}  # las pone Android
-closure, todo = {}, [pdftex]
+closure, todo = {}, [pdftex] + list(extras.values())
 while todo:
     for n in needed(todo.pop()):
         if n in SYSTEM or n in closure: continue
@@ -85,6 +91,7 @@ print("pdftex necesita:", ", ".join(closure))
 ok_name = re.compile(r"^lib[A-Za-z0-9_+\-]+\.so$")
 rename = {n: (n if ok_name.match(n) else "libtx_" + re.sub(r"\W", "", n.split(".so")[0][3:]) + ".so") for n in closure}
 shutil.copy(pdftex, os.path.join(JNI, "libtx_pdftex.so"))
+for b, real in extras.items(): shutil.copy(real, os.path.join(JNI, f"libtx_{b}.so"))
 for n, real in closure.items():
     shutil.copy(real, os.path.join(JNI, rename[n]))
 for f in os.listdir(JNI):
@@ -181,6 +188,10 @@ for rel in keep:
     if os.path.isfile(os.path.join(TL, rel)): by[os.path.dirname(rel)] += os.path.getsize(os.path.join(TL, rel))
 for d, n in by.most_common(20): print(f"  {n/1e6:6.2f} MB  {d}")
 keep |= {"texmf-dist/web2c/texmf.cnf", "texmf-dist/web2c/fmtutil.cnf"}
+# Estilos de BibTeX básicos (plain, alpha, abbrv, unsrt…); los demás (IEEEtran.bst, apalike…) se bajan al vuelo.
+for d in ["texmf-dist/bibtex/bst/base"]:
+    if os.path.isdir(os.path.join(TL, d)):
+        for f in os.listdir(os.path.join(TL, d)): keep.add(d + "/" + f)
 # mylatexformat: para guardar el preámbulo de cada proyecto ya cargado (compilar más rápido)
 for f in os.listdir(os.path.join(TL, "texmf-dist/tex/latex/mylatexformat")):
     keep.add("texmf-dist/tex/latex/mylatexformat/" + f)
@@ -231,9 +242,25 @@ for d in docs:
     if not os.path.exists(pdf) or errs:
         print(r.stdout[-3000:]); raise SystemExit("La prueba con los datos reducidos falló: " + d)
 
+# BibTeX y makeindex con los datos reducidos (con los binarios del runner; en el APK van los de Termux).
+bt = os.path.join(check, "bib"); os.makedirs(bt)
+open(os.path.join(bt, "b.bib"), "w").write("@book{knuth,author={Donald Knuth},title={The {\\TeX}book},year={1984},publisher={Addison-Wesley}}\n")
+open(os.path.join(bt, "b.tex"), "w").write("\\documentclass{article}\\usepackage{makeidx}\\makeindex\\begin{document}"
+    "Ver \\cite{knuth}.\\index{TeX}\\index{LaTeX}\\bibliographystyle{plain}\\bibliography{b}\\printindex\\end{document}\n")
+def corre(cmd):
+    return subprocess.run(cmd, cwd=bt, env=env, capture_output=True, text=True, errors="replace")
+pdfl = [os.path.join(fake, "libtx_pdftex.so"), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode", "b.tex"]
+corre(pdfl)
+rb = corre([os.path.join(BIN, "bibtex"), "b"]); rm = corre([os.path.join(BIN, "makeindex"), "b.idx"])
+corre(pdfl); corre(pdfl)
+lg = open(os.path.join(bt, "b.log"), errors="replace").read()
+ok = os.path.exists(os.path.join(bt, "b.bbl")) and os.path.exists(os.path.join(bt, "b.ind")) and "undefined" not in lg
+print("Prueba BibTeX/makeindex:", "OK" if ok else "FALLÓ")
+if not ok: print(rb.stdout[-1500:], rm.stdout[-800:], lg[-1500:]); raise SystemExit("BibTeX/makeindex no funcionan con los datos reducidos")
+
 # ───────────────────────── 3b. Índice archivo → paquete (para bajar paquetes al vuelo) ─────────────────────────
 INDEX_EXT = (".sty", ".cls", ".def", ".fd", ".cfg", ".clo", ".ldf", ".tfm", ".bbx", ".cbx", ".lbx", ".dbx",
-             ".tex", ".pfb", ".map", ".enc", ".vf")
+             ".tex", ".pfb", ".map", ".enc", ".vf", ".bst", ".ist")
 tlpdb = lzma.decompress(open(get(f"{CTAN}/tlpkg/texlive.tlpdb.xz", os.path.join(WORK, "tlpdb.xz")), "rb").read()).decode("utf-8", "replace")
 index, sizes = {}, {}
 for block in tlpdb.split("\n\n"):

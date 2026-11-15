@@ -1,8 +1,9 @@
-// Pantalla de inicio: lista de proyectos, estado de Termux, crear e importar.
+// Pantalla de inicio: lista de proyectos, estado del compilador, crear e importar.
 import { listProjects, createProject, deleteProject, duplicateProject, saveProject, touchProject, listFiles, getOutput, isTextPath, getSettings, setSettings } from '../store.js';
 import { el, icon, logoSvg, brandName, toast, sheet, promptText, confirmDialog, pickFiles, esc, pushBack } from '../ui.js';
 import { saveAsTemplate } from './newproject.js';
 import { ping, serverOutdated, ENGINE_LABEL } from '../compiler.js';
+import { motorEstado } from '../motor.js';
 import { createZip, readZip } from '../zip.js';
 import { shareBytes } from '../share.js';
 import { timeAgo, sanitizeName, slug, readFileAsBytes } from '../util.js';
@@ -11,7 +12,7 @@ const dec = new TextDecoder();
 const enc = new TextEncoder();
 
 export async function renderHome(root, _params, navigate) {
-  const status = el('button', { class: 'server-chip checking', onclick: () => navigate('termux') }, 'Buscando Termux…');
+  const status = el('button', { class: 'server-chip checking', onclick: () => navigate('termux') }, 'Comprobando el compilador…');
   const list = el('div', { class: 'project-list' });
   const RECENT_MAX = 8;
   let tab = getSettings().homeTab === 'all' ? 'all' : 'recent';
@@ -313,6 +314,14 @@ export async function renderHome(root, _params, navigate) {
   }
 
   async function checkServer() {
+    // Con el motor integrado no hace falta Termux: el aviso dice que está listo y lleva a Ajustes.
+    if ((getSettings().compilador || 'auto') !== 'termux' && (await motorEstado())) {
+      status.className = 'server-chip ok';
+      status.onclick = () => navigate('settings');
+      status.innerHTML = `${icon('check')}<span>Motor integrado listo · pdfLaTeX${getSettings().autoinstall ? ' · paquetes al vuelo' : ''}</span>`;
+      return;
+    }
+    status.onclick = () => navigate('termux');
     try {
       const info = await ping();
       if (serverOutdated(info)) {

@@ -17,6 +17,24 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.3.0] — 15 nov. 2026 · Fase 2: Beta con motor integrado · compilación 62
+
+### Nuevo: el motor integrado pasa a ser el principal
+- **Ya no hace falta Termux para compilar con pdfLaTeX.** En Ajustes → Compilación, la nueva opción **«Compilar con»** viene en **Automático**: usa el motor integrado de TeXsting y solo recurre a Termux si un documento necesita XeLaTeX o LuaLaTeX. También se puede elegir «Solo motor integrado» o «Solo Termux».
+- **El aviso de la pantalla de inicio** ahora dice «Motor integrado listo» y ya no pide abrir Termux. Ajustes separa la sección **Termux (opcional)**.
+- **BibTeX y makeindex dentro del APK.** Las bibliografías con `\bibliography{…}` y los índices alfabéticos con `\makeindex` se arman solos al compilar, como latexmk. Los estilos más comunes (plain, alpha, abbrv, unsrt…) vienen incluidos, y los demás (IEEEtran.bst, apalike…) se descargan solos.
+  - **Limitación:** biblatex con biber todavía no funciona en el motor integrado. Usa `\usepackage[backend=bibtex]{biblatex}`.
+
+### Más rápido
+- **Documentos con cajas de tcolorbox y muchas figuras (p. ej. Física Moderna): de 31 s a unos pocos segundos.** Las figuras guardadas fallaban cuando el documento usaba cajas de `tcolorbox`, así que cada compilación volvía a dibujarlo todo. Arreglado: en la prueba bajó de 6,2 s a 1,4 s por compilación (unas 4 veces más rápido).
+- **Las figuras se dibujan en paralelo:** varias a la vez, según los núcleos del equipo. Las 31 figuras de Física Moderna tardan la mitad.
+
+### Corregido
+- **Archivos con espacios o paréntesis en el nombre** (p. ej. `fisica_moderna (1).tex`): el preámbulo guardado y las figuras no funcionaban con esos nombres. Ahora sí.
+
+### Nota
+- La primera vez tras actualizar, el motor se prepara de nuevo (unos segundos), porque ahora trae BibTeX y makeindex. Los paquetes que ya habías descargado se conservan.
+
 ## [0.2.50] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 61
 
 ### Corregido
