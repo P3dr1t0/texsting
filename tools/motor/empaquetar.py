@@ -286,15 +286,19 @@ for tree in ("texmf-dist", "texmf-var"):
     for l in open(os.path.join(sub, tree, "ls-R"), errors="replace").read().split("\n"):
         if l and not l.startswith("%") and not l.endswith(":"): bundled.add(l)
 PATS = [r"LaTeX Error: File `([^']+)' not found", r"! I can't find file `([^']+)'",
-        r"Font \\[^=\s]+=([A-Za-z0-9_\-]+)(?: at [^ ]+| scaled \d+)? not loadable: Metric \(TFM\) file not found",
+        r"Font \\?[^=\s]+=([A-Za-z0-9_\-]+)(?: at [^ ]+| scaled \d+)? not loadable: Metric \(TFM\) file not found",
         r"I did not find the tikz library '([^']+)'", r"\(file ([^)\s]+\.pf[ab])\): cannot open Type 1 font file",
         r"\(file ([^)\s]+\.enc)\): cannot open encoding file"]
 def faltantes(txt):
+    # TeX corta las líneas a 79 caracteres (igual que unwrap() en MotorPlugin.java)
+    txt = "".join(l + ("" if len(l) == 79 else "\n") for l in txt.split("\n"))
     out = []
     for k, pat in enumerate(PATS):
         for m in re.finditer(pat, txt):
             n = m.group(1)
-            if k == 2: n += ".tfm"
+            if k == 2:
+                if n == "nullfont": continue
+                n += ".tfm"
             if k == 3: n = "tikzlibrary" + n + ".code.tex"
             if k == 1 and "." not in n: n += ".tex"
             out.append(n)

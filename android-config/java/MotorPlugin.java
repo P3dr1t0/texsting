@@ -179,7 +179,7 @@ public class MotorPlugin extends Plugin {
     private static final Pattern[] MISSING = {
         Pattern.compile("LaTeX Error: File `([^']+)' not found"),
         Pattern.compile("! I can't find file `([^']+)'"),
-        Pattern.compile("Font \\\\[^=\\s]+=([A-Za-z0-9_\\-]+)(?: at [^ ]+| scaled \\d+)? not loadable: Metric \\(TFM\\) file not found"),
+        Pattern.compile("Font \\\\?[^=\\s]+=([A-Za-z0-9_\\-]+)(?: at [^ ]+| scaled \\d+)? not loadable: Metric \\(TFM\\) file not found"),
         Pattern.compile("I did not find the tikz library '([^']+)'"),
         Pattern.compile("\\(file ([^)\\s]+\\.pf[ab])\\): cannot open Type 1 font file"),
         Pattern.compile("\\(file ([^)\\s]+\\.enc)\\): cannot open encoding file"),
@@ -206,6 +206,7 @@ public class MotorPlugin extends Plugin {
 
     /** Descripciones de fuentes (.fd) que LaTeX buscó y no encontró. */
     static List<String> findShapes(String log) {
+        log = unwrap(log);
         List<String> found = new ArrayList<>();
         Matcher m = SHAPE.matcher(log);
         while (m.find()) {
@@ -242,14 +243,22 @@ public class MotorPlugin extends Plugin {
         index = idx; sizes = sz;
     }
 
+    /** TeX corta las líneas del registro a 79 caracteres: se vuelven a unir para buscar los mensajes. */
+    static String unwrap(String log) {
+        StringBuilder b = new StringBuilder(log.length());
+        for (String l : log.split("\n", -1)) { b.append(l); if (l.length() != 79) b.append('\n'); }
+        return b.toString();
+    }
+
     static List<String> findMissing(String log) {
+        log = unwrap(log);
         List<String> found = new ArrayList<>();
         for (int i = 0; i < MISSING.length; i++) {
             Matcher m = MISSING[i].matcher(log);
             while (m.find()) {
                 String name = m.group(1).trim().replace("\"", "");
                 if (name.contains("/")) continue;
-                if (i == 2) name += ".tfm";
+                if (i == 2) { if (name.equals("nullfont")) continue; name += ".tfm"; }
                 if (i == 3) name = "tikzlibrary" + name + ".code.tex";
                 if (i == 1 && !name.contains(".")) name += ".tex";
                 boolean ok = false;
