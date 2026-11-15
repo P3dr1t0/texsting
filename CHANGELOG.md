@@ -17,6 +17,19 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.48] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 59
+
+### Corregido
+- **«xpdf: reading PDF image failed» con figuras de TikZ (motor integrado).** Si una figura se quedaba a medio guardar (por ejemplo, al compilar mientras se preparaban las figuras en segundo plano), el PDF quedaba roto y la compilación fallaba.
+  - Ahora cada figura se verifica al terminar y, si no salió completa, se borra.
+  - Si aun así aparece una figura dañada, la app la detecta, la vuelve a dibujar y compila de nuevo sola.
+- **«Giving up on this path. Did you forget a semicolon?» cuando el «;» sí está.** Pasa con `\underline{…}` dentro de un `\node` de TikZ: la versión de LaTeX de noviembre de 2026 (la del motor integrado y Termux actualizado) cambió `\underline`. Overleaf aún usa la versión anterior, por eso allí no falla.
+  - La pantalla de errores ahora explica la causa real y ofrece el botón **«Poner \underline entre llaves»**, que lo cambia por `{\underline{…}}`.
+
+### Más rápido
+- **Primera compilación del cuaderno: de ~150 s a mucho menos.** Las letras de cm-super (letras con tildes en T1) ya no se bajan como paquete completo (~60 MB): solo se descarga cada letra que el documento usa (~100–150 KB cada una).
+- Todas las letras que faltan se piden juntas en una sola vuelta, en lugar de una compilación por letra.
+
 ## [0.2.47] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 58
 
 ### Nuevo

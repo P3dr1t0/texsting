@@ -437,6 +437,22 @@ function enrich(entry, head, sources, main, top = '') {
     }
     return;
   }
+  if (/Giving up on this path/.test(msg) && sources && entry.line) {
+    // LaTeX de nov. 2026 cambió \underline (ahora arma cajas con \hrule) y, dentro del texto de
+    // un \node de TikZ, a veces rompe la lectura del camino aunque el «;» sí esté. Con llaves
+    // extra alrededor queda aislado y funciona igual que antes (Overleaf aún usa la versión vieja).
+    const l = (sources[entry.file || main] || '').split('\n')[entry.line - 1] || '';
+    const i = l.indexOf('\\underline{');
+    if (i >= 0 && l.slice(i - 2, i) !== '{{' && /;\s*(%.*)?$/.test(codePart(l) || l)) {
+      let d = 0, j = i + 10;
+      for (; j < l.length; j++) { if (l[j] === '{') d++; else if (l[j] === '}' && --d === 0) break; }
+      if (d === 0 && j < l.length) {
+        const u = l.slice(i, j + 1);
+        entry.hint = `El «;» sí está: es ${u} dentro del nodo. LaTeX (versión de nov. 2026) cambió \\underline y TikZ se confunde; ponlo entre llaves extra: {${u}}`;
+        entry.fix = { file: entry.file || main, line: entry.line, find: u, replace: '{' + u + '}', label: 'Poner \\underline entre llaves' };
+      }
+    }
+  }
   if (/language@active@arg/.test(msg) && sources) {
     // babel en español y TikZ: se ofrece agregar \usetikzlibrary{babel} debajo de \usepackage{tikz/circuitikz/pgfplots}.
     const f = main;
