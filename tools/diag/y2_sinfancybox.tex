@@ -22,7 +22,7 @@
 % ---------- Listas, columnas, cajas ----------
 \usepackage{enumitem}
 \usepackage{multicol}
-\usepackage{fancybox}      % \ovalbox (cajas ovaladas como en el cuaderno)
+      % \ovalbox (cajas ovaladas como en el cuaderno)
 
 % ---------- Colores ----------
 \usepackage[dvipsnames]{xcolor}
@@ -117,7 +117,6 @@
   \draw[thick,#3] ({#1-0.6},{#2-0.6}) -- ({#1+1},{#2+1}) -- ({#1+2.2},{#2+1});}
 
 % ============================================================
-\makeatletter\DeclareRobustCommand\underline[1]{\relax\ifmmode\@@underline{#1}\else$\@@underline{\hbox{#1}}\m@th$\fi}\makeatother
 \begin{document}
 
 \begin{center}
