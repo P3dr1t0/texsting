@@ -244,7 +244,7 @@ for block in tlpdb.split("\n\n"):
     if not name or "." in name or name.startswith(("00texlive", "collection-", "scheme-", "texlive-")): continue
     sizes[name] = csize
     for f in files:
-        if f.startswith("texmf-dist/") and f.lower().endswith(INDEX_EXT):
+        if f.startswith(("texmf-dist/", "RELOC/")) and f.lower().endswith(INDEX_EXT):  # tlnet usa RELOC/
             index.setdefault(os.path.basename(f), name)
 with gzip.open(os.path.join(ASSETS, "indice.txt.gz"), "wt", encoding="utf-8", compresslevel=9) as z:
     for k in sorted(index): z.write(f"{k}\t{index[k]}\n")
