@@ -88,3 +88,13 @@ Compilar en una computadora (opcional): `npm install && npm run build && npm run
 - Motor integrado (sin Termux) para documentos simples.
 - Revisión ortográfica en español.
 - Marcar en el editor las líneas con error.
+
+## Licencia, nombre y créditos
+
+- **Código de TeXsting:** GPL-3.0-or-later (ver `LICENSE`). Puedes estudiarlo, modificarlo y compartirlo; si publicas una versión modificada, debe seguir siendo GPL, con su código abierto y los créditos originales.
+- **Nombre y logo:** «TeXsting» y su ícono identifican la app oficial de Pedro de la Cruz Castillo. Las versiones modificadas deben usar otro nombre y otro ícono para no confundirse con la oficial.
+- **Componentes de terceros** (cada uno con su propia licencia):
+  - Motor integrado: pdfTeX y paquetes de [TeX Live](https://tug.org/texlive/) (GPL, LPPL y otras licencias libres), compilados por [Termux](https://github.com/termux/termux-packages); los paquetes extra se descargan de [CTAN](https://ctan.org/).
+  - Editor: [CodeMirror 6](https://codemirror.net/) y Lezer (MIT).
+  - Visor de PDF: [PDF.js](https://mozilla.github.io/pdf.js/) (Apache-2.0).
+  - App Android: [Capacitor](https://capacitorjs.com/) (MIT) y [XZ for Java](https://tukaani.org/xz/java.html) (dominio público).
