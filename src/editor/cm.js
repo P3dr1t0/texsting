@@ -7,6 +7,7 @@ import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, s
 import { StreamLanguage, syntaxHighlighting, HighlightStyle, bracketMatching, foldGutter, indentOnInput, foldKeymap, indentUnit } from '@codemirror/language';
 import { stex } from '@codemirror/legacy-modes/mode/stex';
 import { tags as t } from '@lezer/highlight';
+import { createSearchPanel } from './searchpanel.js';
 import { COMMANDS, ENVIRONMENTS, envSnippet } from '../latex-data.js';
 
 // CodeMirror interpreta \{ y \} en plantillas como llaves escapadas: los duplicamos.
@@ -41,8 +42,6 @@ const baseTheme = EditorView.theme({
   '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: 'var(--accent) !important', color: 'var(--on-accent) !important' },
   '.cm-completionDetail': { fontFamily: 'var(--ui)', opacity: 0.7, marginLeft: '10px', fontStyle: 'normal' },
   '.cm-panels': { backgroundColor: 'var(--surface)', color: 'var(--text)' },
-  '.cm-panel.cm-search': { padding: '8px', fontFamily: 'var(--ui)' },
-  '.cm-panel.cm-search input, .cm-panel.cm-search button': { fontSize: '15px', minHeight: '34px' },
   '.cm-textfield': { borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' },
   '.cm-button': { borderRadius: '8px', backgroundImage: 'none', background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border)' },
   '.cm-foldGutter span': { padding: '0 4px' },
@@ -116,7 +115,7 @@ export function createEditor(parent, { onChange, onSave, onCompile, getContext }
         highlightActiveLine(),
         highlightActiveLineGutter(),
         highlightSelectionMatches(),
-        search({ top: true }),
+        search({ top: true, createPanel: createSearchPanel }),
         indentUnit.of('  '),
         StreamLanguage.define(stex),
         EditorState.languageData.of(() => [{ closeBrackets: { brackets: ['(', '[', '{'] }, commentTokens: { line: '%' } }]),

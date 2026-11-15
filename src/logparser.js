@@ -791,8 +791,15 @@ const INFO_WARNINGS = [
 export function parseLog(log, main = 'main.tex', sources = null) {
   const out = [];
   if (!log) return out;
-  // Une líneas cortadas a 79 caracteres por TeX (heurística simple).
-  const lines = log.split(/\r?\n/);
+  // TeX corta cada línea del registro a 79 caracteres: se vuelven a unir (si no, un mensaje como
+  // «Giving up on this path. Did you forge|t a semicolon?» quedaba partido y sin traducir).
+  const raw = log.split(/\r?\n/);
+  const lines = [];
+  for (let k = 0; k < raw.length; k++) {
+    let l = raw[k];
+    while (l.length > 0 && raw[k].length === 79 && k + 1 < raw.length) { k++; l += raw[k]; if (raw[k].length !== 79) break; }
+    lines.push(l);
+  }
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     let m = line.match(RE_FILE_LINE_ERROR);

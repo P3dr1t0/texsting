@@ -37,6 +37,8 @@ const ICONS = {
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.5v.5"/>',
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   left: '<path d="M14 6l-6 6 6 6"/>',
+  up: '<path d="M6 14l6-6 6 6"/>',
+  down: '<path d="M6 10l6 6 6-6"/>',
   right: '<path d="M10 6l6 6-6 6"/>',
   split: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M12 4.5v15"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
