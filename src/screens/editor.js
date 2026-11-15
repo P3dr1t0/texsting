@@ -661,7 +661,8 @@ export async function renderEditor(root, { id }, navigate) {
         renderFiles();
       }
       if (r.installed && r.installed.length) toast('Paquetes instalados: ' + r.installed.join(', '), { ms: 5000 });
-      const via = r.integrado ? ' (motor integrado)' : '';
+      // ⚡: se usó el preámbulo guardado (los \usepackage ya estaban cargados).
+      const via = r.integrado ? ` (motor integrado${r.preambuloGuardado ? ' ⚡' : ''})` : '';
       if (r.integrado && r.missing && r.missing.length && /File `[^']+\.(sty|cls)' not found/.test(r.log || '')) {
         toast('No se pudo descargar: ' + r.missing.join(', ') + '. Revisa tu conexión a internet, o desactiva el motor integrado en Ajustes para usar Termux.', { kind: 'error', ms: 9000 });
       }

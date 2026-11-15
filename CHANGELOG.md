@@ -17,6 +17,18 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.43] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 54
+
+### Mejorado (optimización, #8): motor integrado más rápido
+- **Preámbulo guardado:** después de compilar, el motor guarda en segundo plano tu preámbulo ya cargado, con todos los `\usepackage`, TikZ, pgfplots y las letras.
+  - Desde la siguiente compilación, TeX se salta esa parte. Cuando pasa, el aviso dice «Listo en … s (motor integrado ⚡)».
+  - En la prueba IEEE del servidor de compilación, una pasada bajó de 0,81 s a 0,30 s (−63 %). En tu Informe, lo que se ahorra es la parte de cargar paquetes. Lo que tarda dibujar las gráficas de pgfplots sigue igual.
+  - Si cambias el preámbulo, se vuelve a guardar solo. Si un proyecto no se lleva bien con esto (algunos paquetes no se pueden «congelar»), la app lo detecta y en ese proyecto compila como siempre.
+- **La primera compilación baja todo de una vez:** el APK trae una tabla con lo que piden los paquetes y clases más usados. Por ejemplo, IEEEtran → Times; circuitikz y pgfplots → pgf (TikZ); beamer → pgf.
+  - Esa tabla cubre 42 de ellos y se calcula al armar el APK, compilando cada uno desde cero.
+  - Con eso, antes de compilar se bajan juntos los paquetes y sus dependencias. En la prueba IEEE pasaron de 7 compilaciones extra a **ninguna**.
+- Al guardar el preámbulo de IEEEtran también se bajan, en silencio, las letras que la clase deja listas (Courier y Helvetica).
+
 ## [0.2.42] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 53
 
 ### Corregido
