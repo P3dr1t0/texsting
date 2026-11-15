@@ -13,7 +13,7 @@ con pdfLaTeX SIN Termux.
 Uso: python3 tools/motor/empaquetar.py <salida>
   <salida>/jniLibs/arm64-v8a/*.so   y   <salida>/assets/motor/{tl.zip,version.txt}
 """
-import hashlib, os, re, shutil, subprocess, sys, tarfile, urllib.request, zipfile
+import collections, hashlib, os, re, shutil, subprocess, sys, tarfile, urllib.request, zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "motor-out/paquete")
@@ -169,12 +169,16 @@ for rel in list(keep):
     if d in expanded or not rel.startswith("texmf-dist/") or "/web2c" in d: continue
     full = os.path.join(TL, d)
     if dir_size(full) > 12e6:
-        print("  carpeta grande, solo lo usado:", d, round(dir_size(full) / 1e6, 1), "MB"); continue
+        continue  # p. ej. cm-super (60 MB): solo lo usado
     expanded.add(d)
     for f in os.listdir(full):
         if os.path.isfile(os.path.join(full, f)) and not f.endswith((".log", ".fmt")):
             keep.add(os.path.join(d, f))
 print(f"Carpetas completas: {len(expanded)}")
+by = collections.Counter()
+for rel in keep:
+    if os.path.isfile(os.path.join(TL, rel)): by[os.path.dirname(rel)] += os.path.getsize(os.path.join(TL, rel))
+for d, n in by.most_common(20): print(f"  {n/1e6:6.2f} MB  {d}")
 keep |= {"texmf-dist/web2c/texmf.cnf", "texmf-dist/web2c/fmtutil.cnf"}
 for name in ["cp227.tcx", "pdftexconfig.tex", "language.dat", "language.def", "pdftex.map"]:
     p = subprocess.run([os.path.join(BIN, "kpsewhich"), name], capture_output=True, text=True, env=envtl).stdout.strip()
