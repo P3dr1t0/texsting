@@ -17,7 +17,7 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
-## [0.2.41] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 51
+## [0.2.41] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 52
 
 ### Nuevo
 - **Motor integrado: los paquetes que faltan se descargan solos**, como en MiKTeX o con Termux. Ya no hace falta Termux para usar TikZ, circuitikz, pgfplots y el resto de CTAN.

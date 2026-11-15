@@ -201,7 +201,7 @@ public class MotorPlugin extends Plugin {
         if (index != null) return;
         Map<String, String> idx = new HashMap<>();
         Map<String, Long> sz = new HashMap<>();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(getContext().getAssets().open("motor/indice.txt.gz")), StandardCharsets.UTF_8))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(getContext().getAssets().open("motor/indice.idx")), StandardCharsets.UTF_8))) {
             String l;
             while ((l = br.readLine()) != null) {
                 int t = l.indexOf('\t');

@@ -246,10 +246,11 @@ for block in tlpdb.split("\n\n"):
     for f in files:
         if f.startswith(("texmf-dist/", "RELOC/")) and f.lower().endswith(INDEX_EXT):  # tlnet usa RELOC/
             index.setdefault(os.path.basename(f), name)
-with gzip.open(os.path.join(ASSETS, "indice.txt.gz"), "wt", encoding="utf-8", compresslevel=9) as z:
+# .idx y no .txt.gz: Android quita el .gz de los assets al empaquetar.
+with gzip.open(os.path.join(ASSETS, "indice.idx"), "wt", encoding="utf-8", compresslevel=9) as z:
     for k in sorted(index): z.write(f"{k}\t{index[k]}\n")
     for k in sorted(sizes): z.write(f"@{k}\t{sizes[k]}\n")
-print(f"Índice: {len(index)} archivos de {len(sizes)} paquetes, {os.path.getsize(os.path.join(ASSETS, 'indice.txt.gz'))/1e6:.2f} MB")
+print(f"Índice: {len(index)} archivos de {len(sizes)} paquetes, {os.path.getsize(os.path.join(ASSETS, 'indice.idx'))/1e6:.2f} MB")
 
 # Prueba de «paquete al vuelo»: circuitikz no viene en el APK; se baja de CTAN como lo hará la app
 # (archive/<paquete>.tar.xz → TEXMFHOME, sin ls-R) y se compila con el mismo ambiente.
