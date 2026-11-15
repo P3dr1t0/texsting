@@ -514,6 +514,55 @@ public class MotorPlugin extends Plugin {
         return pkgs;
     }
 
+
+    // ───────────── Fuentes Type 1 que faltan ─────────────
+    // pdfTeX se detiene en la PRIMERA .pfb que no encuentra: para no hacer una compilación por cada letra,
+    // se miran todas las fuentes que usó el documento (.fls) y se buscan sus .pfb en el mapa de fuentes.
+    private List<String> fontsNeeded(File dir, String stem) {
+        List<String> out = new ArrayList<>();
+        String fls = readText(new File(dir, stem + ".fls"));
+        if (fls == null) return out;
+        Set<String> tfms = new HashSet<>();
+        for (String l : fls.split("\n")) if (l.startsWith("INPUT ") && l.endsWith(".tfm")) { String n = new File(l.substring(6).trim()).getName(); tfms.add(n.substring(0, n.length() - 4)); }
+        if (tfms.isEmpty()) return out;
+        File vmap = new File(var(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map");
+        String map = readText(vmap.exists() ? vmap : new File(tl(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map"));
+        if (map == null) return out;
+        Set<String> have = new HashSet<>(bundledNames());
+        Deque<File> todo = new ArrayDeque<>();
+        todo.add(new File(home(), "fonts"));
+        while (!todo.isEmpty()) { File[] l = todo.pop().listFiles(); if (l != null) for (File f : l) { if (f.isDirectory()) todo.add(f); else have.add(f.getName()); } }
+        for (String line : map.split("\n")) {
+            String t = line.trim();
+            if (t.isEmpty() || t.charAt(0) == '%') continue;
+            int sp = t.indexOf(' ');
+            if (sp < 0 || !tfms.contains(t.substring(0, sp))) continue;
+            for (String tok : t.split("\\s+")) {
+                String f = tok.replaceAll("^<+\\[?", "");
+                if ((f.endsWith(".pfb") || f.endsWith(".pfa")) && !have.contains(f) && !out.contains(f)) out.add(f);
+            }
+        }
+        return out;
+    }
+
+    // Paquetes enormes de los que basta bajar un archivo suelto desde CTAN (cm-super pesa ~60 MB;
+    // cada una de sus letras, ~100 KB).
+    private static final Map<String, String> SINGLE = new HashMap<>();
+    static { SINGLE.put("cm-super", "fonts/ps-type1/cm-super/pfb/"); }
+
+    private boolean downloadSingle(String pkg, String file) {
+        String dirOnCtan = SINGLE.get(pkg);
+        if (dirOnCtan == null) return false;
+        File out = new File(home(), "fonts/type1/public/" + pkg + "/" + file);
+        out.getParentFile().mkdirs();
+        progress("Descargando la letra «" + file.replaceAll("\\.pf[ab]$", "") + "»…");
+        for (String base : new String[] { "https://mirror.ctan.org/", "https://mirrors.mit.edu/CTAN/" }) {
+            try { download(base + dirOnCtan + file, out); if (out.length() > 0) return true; } catch (Exception ignored) { }
+        }
+        out.delete();
+        return false;
+    }
+
     @PluginMethod
     public void paquetes(PluginCall call) {
         JSObject r = new JSObject();
@@ -645,7 +694,11 @@ public class MotorPlugin extends Plugin {
         Run r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=batchmode",
                 "-halt-on-error", "-jobname=" + fig, figInject() + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"),
                 mainDir, 3 * 60 * 1000);
-        return !r.timedOut && new File(mainDir, fig + ".pdf").exists();
+        // Si se cortó (llegó una compilación) o falló, el PDF puede quedar a medias: se borra.
+        String lg = readText(new File(mainDir, fig + ".log"));
+        boolean ok = !r.timedOut && r.code == 0 && new File(mainDir, fig + ".pdf").exists() && lg != null && lg.contains("Output written");
+        if (!ok) new File(mainDir, fig + ".pdf").delete();
+        return ok;
     }
 
     private Run mainWithFigs(File mainDir, String job, String mainName) throws Exception {
@@ -794,8 +847,13 @@ public class MotorPlugin extends Plugin {
                         if (pkg == null || have.contains(pkg) || installedNow.contains(pkg)) { skipped.add(m); continue; }
                         miss.add(m);
                     }
+                    if (all.contains("Type 1 font file")) for (String f : fontsNeeded(dir, stem)) if (!miss.contains(f) && !failed.contains(f)) miss.add(f);
                     for (String m : miss) {
                         String pkg = index.get(m);
+                        if (pkg != null && SINGLE.containsKey(pkg)) {
+                            if (downloadSingle(pkg, m)) progressed = true; else failed.add(m);
+                            continue;
+                        }
                         if (pkg == null || have.contains(pkg) || installedNow.contains(pkg)) { if (!skipped.contains(m)) failed.add(m); continue; }
                         for (String q : withDeps(pkg, have, installedNow)) {
                             try { install(q); installedNow.add(q); progressed = true; }
@@ -811,6 +869,11 @@ public class MotorPlugin extends Plugin {
                     progress("Compilando de nuevo con " + String.join(", ", installedNow) + "…");
                 }
                 if (useFigs && !timedOut) {
+                    // Una figura guardada dañada (p. ej. de una versión anterior que se cortaba a medias):
+                    // se borra para dibujarla de nuevo.
+                    String lgf = String.valueOf(readText(new File(dir, stem + ".log")));
+                    Matcher bad = Pattern.compile("\\(file \\./(" + FIG + "/[^)]+)\\.pdf\\): [^\\n]*(failed|cannot|not)").matcher(unwrap(lgf));
+                    while (bad.find()) new File(mainDir, bad.group(1) + ".pdf").delete();
                     List<String> stale = staleFigs(mainDir, job);
                     if (!stale.isEmpty()) {
                         progress(stale.size() == 1 ? "Dibujando la figura que cambió…" : "Dibujando las " + stale.size() + " figuras que cambiaron…");

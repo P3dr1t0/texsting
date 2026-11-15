@@ -11,7 +11,7 @@ jobs:
           cd /tmp && curl -sL https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz | tar xz && cd install-tl-2*
           printf "selected_scheme scheme-basic\nTEXDIR /tmp/tl\nTEXMFLOCAL /tmp/tl/texmf-local\nTEXMFSYSVAR /tmp/tl/texmf-var\nTEXMFSYSCONFIG /tmp/tl/texmf-config\nTEXMFVAR /tmp/tl/texmf-var\nTEXMFHOME /tmp/tl/home\nbinary_x86_64-linux 1\ninstopt_adjustpath 0\ntlpdbopt_install_docfiles 0\ntlpdbopt_install_srcfiles 0\n" > p.txt
           ./install-tl -profile p.txt -no-interaction > /dev/null
-          /tmp/tl/bin/x86_64-linux/tlmgr install babel-spanish hyphen-spanish pgf fancybox titlesec enumitem multicol geometry mylatexformat cm-super xcolor amsmath tools ec > /dev/null
+          /tmp/tl/bin/x86_64-linux/tlmgr install babel-spanish hyphen-spanish pgf fancybox titlesec enumitem geometry mylatexformat cm-super xcolor amsmath tools ec hyperref > /dev/null || true
           /tmp/tl/bin/x86_64-linux/tex --version | head -1
       - name: Probar
         shell: bash {0}
