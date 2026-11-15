@@ -17,6 +17,15 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.44] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 55
+
+### Corregido
+- **Al actualizar la app, el motor integrado borraba los paquetes ya descargados** y había que volver a bajarlos todos. Por eso la primera compilación después de instalar la 0.2.43 tardó 57,3 s.
+  - Ahora, al actualizar, solo se renuevan TeX y su formato. Los paquetes descargados se conservan y sus fuentes se vuelven a registrar solas.
+
+### Medido en el Poco X7 Pro (Informe IEEE de 8 páginas)
+- Motor integrado con preámbulo guardado (⚡): **12,3 s**. Termux: **13,87 s**. El motor integrado ya es ~11 % más rápido que Termux.
+
 ## [0.2.43] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 54
 
 ### Mejorado (optimización, #8): motor integrado más rápido

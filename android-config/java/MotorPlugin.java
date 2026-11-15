@@ -107,7 +107,10 @@ public class MotorPlugin extends Plugin {
         if (v == null) throw new Exception("Faltan los datos de TeX en el APK.");
         long t0 = System.currentTimeMillis();
         if (!v.equals(String.valueOf(readText(marker())).trim()) || !fmt().exists()) {
-            delete(tl()); delete(var());
+            // Al actualizar la app se cambia TeX y el formato, pero NO los paquetes ya descargados (var/texmf):
+            // antes se borraban y había que volver a bajarlos todos.
+            delete(tl()); delete(new File(var(), "texmf-var"));
+            bundled = null;
             tl().mkdirs();
             try (ZipInputStream z = new ZipInputStream(new BufferedInputStream(getContext().getAssets().open("motor/tl.zip")))) {
                 ZipEntry e; byte[] b = new byte[65536];
@@ -130,6 +133,7 @@ public class MotorPlugin extends Plugin {
                 String o = fr.out;
                 throw new Exception("No se pudo crear el formato (código " + fr.code + "): " + (o.length() > 1500 ? o.substring(o.length() - 1500) : o));
             }
+            rebuildMap();
             try (OutputStream o = new FileOutputStream(marker())) { o.write(v.getBytes(StandardCharsets.UTF_8)); }
             r.put("primeraVez", true);
         } else {
@@ -137,6 +141,48 @@ public class MotorPlugin extends Plugin {
         }
         r.put("version", v);
         return r;
+    }
+
+
+    /** Como updmap: las fuentes nuevas se agregan a una copia propia de pdftex.map (tiene prioridad). */
+    private void appendMaps(List<File> maps) throws IOException {
+                // Como updmap: las fuentes nuevas se agregan a una copia propia de pdftex.map (tiene prioridad).
+                File vmap = new File(var(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map");
+                if (!vmap.exists()) {
+                    vmap.getParentFile().mkdirs();
+                    byte[] base = readBytes(new File(tl(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map"));
+                    try (OutputStream o = new FileOutputStream(vmap)) { if (base != null) o.write(base); }
+                }
+                // Solo las fuentes que el mapa todavía no tiene (si no, pdfTeX avisa «already exists» por cada una).
+                Set<String> known = new HashSet<>();
+                String cur = readText(vmap);
+                if (cur != null) for (String l : cur.split("\n")) { String t = l.trim(); if (!t.isEmpty() && t.charAt(0) != '%') known.add(t.split("\\s+")[0]); }
+                StringBuilder add = new StringBuilder();
+                for (File m : maps) {
+                    String t = readText(m);
+                    if (t == null) continue;
+                    for (String l : t.split("\n")) {
+                        String x = l.trim();
+                        if (x.isEmpty() || x.charAt(0) == '%') continue;
+                        String name = x.split("\\s+")[0];
+                        if (known.add(name)) add.append(x).append('\n');
+                    }
+                }
+                try (OutputStream o = new FileOutputStream(vmap, true)) { o.write(("\n" + add).getBytes(StandardCharsets.UTF_8)); }
+                }
+
+    /** Tras actualizar: vuelve a sumar al mapa de fuentes las de los paquetes ya descargados. */
+    private void rebuildMap() {
+        List<File> maps = new ArrayList<>();
+        Deque<File> todo = new ArrayDeque<>();
+        todo.add(new File(home(), "fonts/map"));
+        while (!todo.isEmpty()) {
+            File d = todo.pop();
+            File[] l = d.listFiles();
+            if (l == null) continue;
+            for (File f : l) { if (f.isDirectory()) todo.add(f); else if (f.getName().endsWith(".map")) maps.add(f); }
+        }
+        if (!maps.isEmpty()) try { appendMaps(maps); } catch (IOException ignored) { }
     }
 
     @PluginMethod
@@ -398,31 +444,7 @@ public class MotorPlugin extends Plugin {
             try (InputStream in = new org.tukaani.xz.XZInputStream(new BufferedInputStream(new FileInputStream(tmp), 65536))) {
                 maps = untar(in, home());
             }
-            if (!maps.isEmpty()) {
-                // Como updmap: las fuentes nuevas se agregan a una copia propia de pdftex.map (tiene prioridad).
-                File vmap = new File(var(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map");
-                if (!vmap.exists()) {
-                    vmap.getParentFile().mkdirs();
-                    byte[] base = readBytes(new File(tl(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map"));
-                    try (OutputStream o = new FileOutputStream(vmap)) { if (base != null) o.write(base); }
-                }
-                // Solo las fuentes que el mapa todavía no tiene (si no, pdfTeX avisa «already exists» por cada una).
-                Set<String> known = new HashSet<>();
-                String cur = readText(vmap);
-                if (cur != null) for (String l : cur.split("\n")) { String t = l.trim(); if (!t.isEmpty() && t.charAt(0) != '%') known.add(t.split("\\s+")[0]); }
-                StringBuilder add = new StringBuilder();
-                for (File m : maps) {
-                    String t = readText(m);
-                    if (t == null) continue;
-                    for (String l : t.split("\n")) {
-                        String x = l.trim();
-                        if (x.isEmpty() || x.charAt(0) == '%') continue;
-                        String name = x.split("\\s+")[0];
-                        if (known.add(name)) add.append(x).append('\n');
-                    }
-                }
-                try (OutputStream o = new FileOutputStream(vmap, true)) { o.write(("\n" + add).getBytes(StandardCharsets.UTF_8)); }
-            }
+            if (!maps.isEmpty()) appendMaps(maps);
             try (OutputStream o = new FileOutputStream(installedFile(), true)) { o.write((pkg + "\n").getBytes(StandardCharsets.UTF_8)); }
         } finally {
             tmp.delete();
