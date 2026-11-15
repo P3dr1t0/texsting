@@ -1,0 +1,17 @@
+name: Motor integrado — exploración (#1)
+on:
+  workflow_dispatch:
+jobs:
+  explorar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Explorar binarios de TeX Live para Android (Termux aarch64)
+        run: mkdir -p motor-out && python3 tools/motor/explorar.py | tee motor-out/informe.txt || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: motor-exploracion
+          path: |
+            motor-out/informe.txt
+            motor-out/cierre-aarch64.tar.xz
+          if-no-files-found: warn
