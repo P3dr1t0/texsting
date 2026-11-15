@@ -54,8 +54,15 @@ for n in order:
     subprocess.run(["dpkg-deb", "-x", deb, root], check=True)
 
 usr = os.path.join(root, "data/data/com.termux/files/usr")
-bindir, libdir = os.path.join(usr, "bin"), os.path.join(usr, "lib")
+libdir = os.path.join(usr, "lib")
+# Termux instala los programas de TeX Live en usr/bin/texlive/ (no en usr/bin)
+bindir = os.path.join(usr, "bin", "texlive")
+if not os.path.isdir(bindir): bindir = os.path.join(usr, "bin")
 bins = sorted(os.listdir(bindir))
+print("Contenido de texlive-bin (lista del .deb):")
+r = subprocess.run(["dpkg-deb", "-c", os.path.join(OUT, "texlive-bin.deb")], capture_output=True, text=True).stdout
+dirs = collections.Counter("/".join(l.split()[-1].split("/")[:8]) for l in r.splitlines())
+for d, c in dirs.most_common(25): print(f"  {c:5d}  {d}")
 print(f"\nProgramas en texlive-bin ({len(bins)}):", " ".join(bins)[:3000])
 
 def needed(path):
