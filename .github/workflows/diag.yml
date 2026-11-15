@@ -18,5 +18,4 @@ jobs:
         run: |
           export PATH=/tmp/tl/bin/x86_64-linux:$PATH
           cd tools/diag
-          ./modos.sh fisica
-          ./modos.sh "fisica (1)"
+          ./figs.sh
