@@ -258,8 +258,11 @@ def bajar(pkg):
     arch = get(f"{CTAN}/archive/{pkg}.tar.xz", os.path.join(WORK, pkg + ".tar.xz"))
     with tarfile.open(arch) as t:
         for m in t.getmembers():
-            if m.isfile() and m.name.startswith("texmf-dist/"):
-                dst = os.path.join(home_dir, m.name[len("texmf-dist/"):]); os.makedirs(os.path.dirname(dst), exist_ok=True)
+            # Los paquetes «reubicables» de tlnet guardan las rutas sin texmf-dist/ (tex/latex/…).
+            rel = m.name[2:] if m.name.startswith("./") else m.name
+            rel = rel[len("texmf-dist/"):] if rel.startswith("texmf-dist/") else rel
+            if m.isfile() and not rel.startswith(("tlpkg/", "bin/")):
+                dst = os.path.join(home_dir, rel); os.makedirs(os.path.dirname(dst), exist_ok=True)
                 with t.extractfile(m) as src, open(dst, "wb") as out: shutil.copyfileobj(src, out)
 open(os.path.join(proj, "circuito.tex"), "w").write(r"""\documentclass{article}
 \usepackage[spanish]{babel}

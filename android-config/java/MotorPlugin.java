@@ -280,7 +280,7 @@ public class MotorPlugin extends Plugin {
         return v;
     }
 
-    /** Descomprime un .tar.xz de TeX Live: lo de texmf-dist/ va a TEXMFHOME. Devuelve los .map de fuentes. */
+    /** Descomprime un .tar.xz de TeX Live en TEXMFHOME (sin tlpkg/). Devuelve los .map de fuentes. */
     static List<File> untar(InputStream in, File root) throws IOException {
         List<File> maps = new ArrayList<>();
         byte[] h = new byte[512];
@@ -307,15 +307,17 @@ public class MotorPlugin extends Plugin {
             }
             if (next != null) { name = next; next = null; } else if (!prefix.isEmpty()) name = prefix + "/" + name;
             if (name.startsWith("./")) name = name.substring(2);
-            if ((type == '0' || type == 0) && name.startsWith("texmf-dist/")) {
-                File out = new File(root, name.substring("texmf-dist/".length()));
+            // Los paquetes «reubicables» de tlnet guardan las rutas sin texmf-dist/ (tex/latex/…).
+            if (name.startsWith("texmf-dist/")) name = name.substring("texmf-dist/".length());
+            if ((type == '0' || type == 0) && !name.startsWith("tlpkg/") && !name.startsWith("bin/") && !name.isEmpty()) {
+                File out = new File(root, name);
                 if (out.getCanonicalPath().startsWith(rootPath + File.separator)) {
                     out.getParentFile().mkdirs();
                     try (OutputStream o = new FileOutputStream(out)) {
                         byte[] b = new byte[65536]; long left = size;
                         while (left > 0) { int r = in.read(b, 0, (int) Math.min(b.length, left)); if (r < 0) throw new EOFException(); o.write(b, 0, r); left -= r; }
                     }
-                    if (name.endsWith(".map") && name.contains("/fonts/map/")) maps.add(out);
+                    if (name.endsWith(".map") && ("/" + name).contains("/fonts/map/")) maps.add(out);
                     skip(in, pad);
                     continue;
                 }
