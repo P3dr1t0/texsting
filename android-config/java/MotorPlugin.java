@@ -413,6 +413,47 @@ public class MotorPlugin extends Plugin {
         }
     }
 
+    private static final Pattern USES = Pattern.compile("\\\\(documentclass|usepackage|RequirePackage)\\s*(?:\\[[^\\]]*\\])?\\s*\\{([^}]*)\\}");
+
+    /** Antes de compilar: los \\documentclass y \\usepackage del proyecto que no estén se bajan juntos
+     *  (así no hace falta una compilación completa por cada paquete que falta). */
+    private List<String> prefetch(File dir, JSArray files, List<String> installedNow) throws Exception {
+        List<String> want = new ArrayList<>();
+        Set<String> projectFiles = new HashSet<>();
+        for (int i = 0; files != null && i < files.length(); i++) projectFiles.add(new File(files.getJSONObject(i).getString("path")).getName());
+        for (int i = 0; files != null && i < files.length(); i++) {
+            JSONObject f = files.getJSONObject(i);
+            if (!f.has("text")) continue;
+            String path = f.getString("path");
+            if (!path.endsWith(".tex") && !path.endsWith(".sty") && !path.endsWith(".cls")) continue;
+            StringBuilder code = new StringBuilder();
+            for (String l : f.optString("text", "").split("\n")) {
+                int c = -1;
+                for (int k = 0; k < l.length(); k++) { if (l.charAt(k) == '\\') { k++; continue; } if (l.charAt(k) == '%') { c = k; break; } }
+                code.append(c >= 0 ? l.substring(0, c) : l).append('\n');
+            }
+            Matcher m = USES.matcher(code);
+            while (m.find()) {
+                String ext = m.group(1).equals("documentclass") ? ".cls" : ".sty";
+                for (String n : m.group(2).split(",")) {
+                    n = n.trim();
+                    if (n.isEmpty() || n.contains("/") || n.contains("\\")) continue;
+                    String file = n + ext;
+                    if (!want.contains(file) && !projectFiles.contains(file) && !bundledNames().contains(file)) want.add(file);
+                }
+            }
+        }
+        if (want.isEmpty()) return want;
+        loadIndex();
+        Set<String> have = installedPkgs();
+        List<String> pkgs = new ArrayList<>();
+        for (String w : want) { String p = index.get(w); if (p != null && !have.contains(p) && !pkgs.contains(p)) pkgs.add(p); }
+        for (String p : pkgs) {
+            try { install(p); installedNow.add(p); } catch (Exception e) { /* se reintenta al compilar */ }
+        }
+        return pkgs;
+    }
+
     @PluginMethod
     public void paquetes(PluginCall call) {
         JSObject r = new JSObject();
@@ -463,6 +504,7 @@ public class MotorPlugin extends Plugin {
                 boolean timedOut = false;
                 boolean autoinstall = call.getBoolean("autoinstall", true);
                 List<String> installedNow = new ArrayList<>(), failed = new ArrayList<>(), skipped = new ArrayList<>();
+                if (autoinstall) prefetch(dir, files, installedNow);
                 while (true) {
                     // Como latexmk: se repite mientras cambien los archivos auxiliares (índice, referencias), hasta 4 veces.
                     int p = 0;
@@ -512,7 +554,7 @@ public class MotorPlugin extends Plugin {
                 String log = readText(new File(dir, stem + ".log"));
                 if (log == null) log = "";
                 byte[] pdfBytes = readBytes(pdf);
-                boolean hasErrors = java.util.regex.Pattern.compile("^(! |.*:\\d+: )", java.util.regex.Pattern.MULTILINE).matcher(log).find();
+                boolean hasErrors = java.util.regex.Pattern.compile("^(!|.*:\\d+: )", java.util.regex.Pattern.MULTILINE).matcher(log).find();
                 String status = timedOut ? "timeout" : pdfBytes == null ? "failed" : (hasErrors || r.code != 0) ? "errors" : "success";
                 byte[] sync = readBytes(new File(dir, stem + ".synctex.gz"));
                 JSObject res = new JSObject();

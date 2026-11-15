@@ -17,6 +17,20 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.42] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 53
+
+### Corregido
+- **Motor integrado: tu Informe IEEE salía con la letra equivocada.**
+  - **Prueba en el Poco X7 Pro:** el Informe compiló sin Termux. La primera vez tardó 50,6 s porque bajó 7 paquetes; desde la segunda, 13,4 s.
+  - **Las 14 advertencias** («la fuente no tiene esa combinación de estilos») venían de que IEEEtran usa Times. LaTeX no encontró su descripción (`ot1ptm.fd`) y, sin dar error, puso Computer Modern en su lugar.
+  - **Ahora el motor también reconoce ese aviso** y baja lo necesario para Times: psnfss, times y la codificación 8r. Comprobado: el PDF lleva Times (utmr8a, utmb8a…) y no queda ninguna advertencia de fuentes.
+  - **Lo que hacía fallar la detección:** TeX corta el registro a 79 caracteres, y eso partía el mensaje «Metric (TFM) file not found» en dos líneas. Ahora las líneas se vuelven a unir antes de buscar.
+  - Cuando una fuente nueva ya estaba en el mapa de fuentes, pdfTeX avisaba «already exists» por cada una. Ya no se duplican.
+
+### Mejorado (optimización, #8)
+- **Antes de compilar, el motor lee los `\documentclass` y `\usepackage` del proyecto** y baja de una vez los que faltan. Antes hacía una compilación completa por cada paquete que faltaba (7 rondas en tu Informe).
+- Los errores de pdfTeX al armar el PDF («!pdfTeX error … cannot open Type 1 font file») ahora aparecen en Mensajes, explicados en español.
+
 ## [0.2.41] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 52
 
 ### Nuevo

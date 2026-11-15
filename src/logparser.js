@@ -822,6 +822,15 @@ export function parseLog(log, main = 'main.tex', sources = null) {
       out.push(sysEntry);
       continue;
     }
+    // Errores de pdfTeX al armar el PDF (fuentes): «!pdfTeX error: pdflatex (file utmr8a.pfb): cannot open Type 1 font file…»
+    const pe = line.match(/^!\s?pdfTeX error:?\s*\S*\s*(?:\(file ([^)]+)\))?:?\s*(.*)$/);
+    if (pe) {
+      const f = pe[1] ? pe[1].split('/').pop() : '';
+      const what = /Type 1 font file/.test(pe[2]) ? `el archivo de la fuente ${f}` : /encoding file/.test(pe[2]) ? `la codificación de fuente ${f}` : f ? `el archivo ${f}` : '';
+      out.push({ type: 'error', file: null, line: null, message: line.replace(/^!\s?/, ''),
+        hint: what ? `pdfTeX no pudo abrir ${what} al armar el PDF: falta el paquete de esa fuente (con «Instalar paquetes faltantes» activado se descarga solo al compilar de nuevo)` : 'pdfTeX no pudo terminar el PDF: revisa el mensaje en inglés' });
+      continue;
+    }
     if (line.startsWith('! ')) {
       const bj = joinContinuation(lines, i, line.slice(2));
       const msg = bj.msg;
