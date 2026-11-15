@@ -181,10 +181,39 @@ public class MotorPlugin extends Plugin {
         Pattern.compile("! I can't find file `([^']+)'"),
         Pattern.compile("Font \\\\[^=\\s]+=([A-Za-z0-9_\\-]+)(?: at [^ ]+| scaled \\d+)? not loadable: Metric \\(TFM\\) file not found"),
         Pattern.compile("I did not find the tikz library '([^']+)'"),
+        Pattern.compile("\\(file ([^)\\s]+\\.pf[ab])\\): cannot open Type 1 font file"),
+        Pattern.compile("\\(file ([^)\\s]+\\.enc)\\): cannot open encoding file"),
     };
+    // «Font shape `OT1/ptm/m/n' undefined»: LaTeX no encontró la descripción de la fuente (ot1ptm.fd)
+    // y usó otra sin error. Pasa con IEEEtran (Times): hay que bajar el .fd y sus fuentes.
+    private static final Pattern SHAPE = Pattern.compile("Font shape `([A-Za-z0-9]+)/([^/']+)/[^']*' undefined");
     private static final String[] INSTALLABLE = { ".sty", ".cls", ".def", ".fd", ".cfg", ".clo", ".ldf", ".tfm", ".bbx", ".cbx",
         ".lbx", ".dbx", ".code.tex", ".tex", ".pfb", ".map", ".enc", ".vf" };
     private Map<String, String> index;
+    private Set<String> bundled;
+
+    /** Nombres de los archivos que ya trae el APK (de los ls-R): para no volver a bajar sus paquetes. */
+    private synchronized Set<String> bundledNames() {
+        if (bundled != null) return bundled;
+        Set<String> s = new HashSet<>();
+        for (String tree : new String[] { "texmf-dist", "texmf-var" }) {
+            String t = readText(new File(tl(), tree + "/ls-R"));
+            if (t == null) continue;
+            for (String l : t.split("\n")) if (!l.isEmpty() && l.charAt(0) != '%' && !l.endsWith(":")) s.add(l);
+        }
+        return bundled = s;
+    }
+
+    /** Descripciones de fuentes (.fd) que LaTeX buscó y no encontró. */
+    static List<String> findShapes(String log) {
+        List<String> found = new ArrayList<>();
+        Matcher m = SHAPE.matcher(log);
+        while (m.find()) {
+            String fd = (m.group(1) + m.group(2)).toLowerCase(Locale.ROOT) + ".fd";
+            if (!found.contains(fd)) found.add(fd);
+        }
+        return found;
+    }
     private Map<String, Long> sizes;
 
     private File home() { return new File(var(), "texmf"); }
@@ -411,7 +440,7 @@ public class MotorPlugin extends Plugin {
                 int passes = 0, rounds = 0;
                 boolean timedOut = false;
                 boolean autoinstall = call.getBoolean("autoinstall", true);
-                List<String> installedNow = new ArrayList<>(), failed = new ArrayList<>();
+                List<String> installedNow = new ArrayList<>(), failed = new ArrayList<>(), skipped = new ArrayList<>();
                 while (true) {
                     // Como latexmk: se repite mientras cambien los archivos auxiliares (índice, referencias), hasta 4 veces.
                     int p = 0;
@@ -424,22 +453,31 @@ public class MotorPlugin extends Plugin {
                         output.append(r.out);
                         if (r.timedOut) { timedOut = true; break; }
                         String lg = readText(new File(dir, stem + ".log"));
-                        if (lg != null && (lg.contains("Emergency stop") || lg.contains("not found") || lg.contains("not loadable"))) break;
+                        if (lg != null && (lg.contains("Emergency stop") || lg.contains("not found") || lg.contains("not loadable") || lg.contains("cannot open"))) break;
                         boolean rerunMsg = lg != null && (lg.contains("Rerun to get") || lg.contains("Label(s) may have changed"));
                         if (!rerunMsg && before.equals(digest(dir, stem))) break;
                     }
                     if (timedOut || !autoinstall || rounds >= 8) break;
                     String lg = readText(new File(dir, stem + ".log"));
                     List<String> miss = new ArrayList<>();
-                    for (String m : findMissing((lg == null ? "" : lg) + "\n" + r.out))
+                    String all = (lg == null ? "" : lg) + "\n" + r.out;
+                    for (String m : findMissing(all))
                         if (!failed.contains(m) && !new File(mainDir, m).exists() && !new File(dir, m).exists()) miss.add(m);
-                    if (miss.isEmpty()) break;
+                    // Las .fd solo si no vienen en el APK (si vienen, es una variante que de verdad no existe).
+                    List<String> soft = new ArrayList<>();
+                    for (String fd : findShapes(all)) if (!bundledNames().contains(fd) && !failed.contains(fd) && !skipped.contains(fd)) soft.add(fd);
+                    if (miss.isEmpty() && soft.isEmpty()) break;
                     loadIndex();
                     Set<String> have = installedPkgs();
                     boolean progressed = false;
+                    for (String m : soft) {
+                        String pkg = index.get(m);
+                        if (pkg == null || have.contains(pkg) || installedNow.contains(pkg)) { skipped.add(m); continue; }
+                        miss.add(m);
+                    }
                     for (String m : miss) {
                         String pkg = index.get(m);
-                        if (pkg == null || have.contains(pkg) || installedNow.contains(pkg)) { failed.add(m); continue; }
+                        if (pkg == null || have.contains(pkg) || installedNow.contains(pkg)) { if (!skipped.contains(m)) failed.add(m); continue; }
                         try { install(pkg); installedNow.add(pkg); progressed = true; }
                         catch (Exception e) { failed.add(m); output.append("\n[TeXsting] No se pudo descargar ").append(pkg).append(": ").append(e.getMessage()).append('\n'); }
                     }

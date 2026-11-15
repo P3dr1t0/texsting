@@ -265,28 +265,70 @@ def bajar(pkg):
             if m.isfile() and not rel.startswith(("tlpkg/", "bin/")):
                 dst = os.path.join(home_dir, rel); os.makedirs(os.path.dirname(dst), exist_ok=True)
                 with t.extractfile(m) as src, open(dst, "wb") as out: shutil.copyfileobj(src, out)
-open(os.path.join(proj, "circuito.tex"), "w").write(r"""\documentclass{article}
-\usepackage[spanish]{babel}
-\usepackage{circuitikz}
+open(os.path.join(proj, "circuito.tex"), "w").write(r"""\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{algorithmic}
+\usepackage[american]{circuitikz}
+\usetikzlibrary{calc,arrows.meta,positioning}
 \usepackage{pgfplots}\pgfplotsset{compat=1.18}
 \begin{document}
+\title{Prueba IEEE}\author{TeXsting}\maketitle
+\begin{abstract}Resumen con \textbf{negrita}, \textit{cursiva} y \textsc{versalitas}, 25\textdegree.\end{abstract}
+\section{Circuito}
 \begin{circuitikz} \draw (0,0) to[R=$R_1$] (2,0) to[C=$C$] (2,-2) -- (0,-2) to[V=$V$] (0,0); \end{circuitikz}
 \begin{tikzpicture}\begin{axis}[width=5cm]\addplot {x^2};\end{axis}\end{tikzpicture}
 \end{document}
 """)
+# Lo que ya trae el APK (como bundledNames() en MotorPlugin.java)
+bundled = set()
+for tree in ("texmf-dist", "texmf-var"):
+    for l in open(os.path.join(sub, tree, "ls-R"), errors="replace").read().split("\n"):
+        if l and not l.startswith("%") and not l.endswith(":"): bundled.add(l)
+PATS = [r"LaTeX Error: File `([^']+)' not found", r"! I can't find file `([^']+)'",
+        r"Font \\[^=\s]+=([A-Za-z0-9_\-]+)(?: at [^ ]+| scaled \d+)? not loadable: Metric \(TFM\) file not found",
+        r"I did not find the tikz library '([^']+)'", r"\(file ([^)\s]+\.pf[ab])\): cannot open Type 1 font file",
+        r"\(file ([^)\s]+\.enc)\): cannot open encoding file"]
+def faltantes(txt):
+    out = []
+    for k, pat in enumerate(PATS):
+        for m in re.finditer(pat, txt):
+            n = m.group(1)
+            if k == 2: n += ".tfm"
+            if k == 3: n = "tikzlibrary" + n + ".code.tex"
+            if k == 1 and "." not in n: n += ".tex"
+            out.append(n)
+    for m in re.finditer(r"Font shape `([A-Za-z0-9]+)/([^/']+)/[^']*' undefined", txt):
+        fd = (m.group(1) + m.group(2)).lower() + ".fd"
+        if fd not in bundled: out.append(fd)
+    return list(dict.fromkeys(out))
 instalados = []
-for ronda in range(8):
+for ronda in range(10):
     r = subprocess.run([os.path.join(fake, "libtx_pdftex.so"), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode",
                         "-file-line-error", "circuito.tex"], cwd=proj, env=env, capture_output=True, text=True)
     logtxt = open(os.path.join(proj, "circuito.log"), errors="replace").read()
-    miss = re.findall(r"File `([^']+)' not found", logtxt)
-    nuevos = [index.get(m) for m in miss if index.get(m) and index.get(m) not in instalados]
+    miss = faltantes(logtxt + "\n" + r.stdout)
+    nuevos = list(dict.fromkeys(index.get(m) for m in miss if index.get(m) and index.get(m) not in instalados))
     print(f"  ronda {ronda}: faltan {miss} → {nuevos}")
     if not nuevos: break
-    for p_ in nuevos: bajar(p_); instalados.append(p_)
+    for p_ in nuevos:
+        bajar(p_); instalados.append(p_)
+        # .map de las fuentes nuevas → copia propia de pdftex.map (como install() en MotorPlugin.java)
+        vmap = os.path.join(var, "texmf-var", "fonts", "map", "pdftex", "updmap", "pdftex.map")
+        if not os.path.exists(vmap):
+            os.makedirs(os.path.dirname(vmap), exist_ok=True)
+            shutil.copy(os.path.join(sub, "texmf-var", "fonts", "map", "pdftex", "updmap", "pdftex.map"), vmap)
+        for dp, _, fs in os.walk(os.path.join(home_dir, "fonts", "map")):
+            for f in fs:
+                if f.endswith(".map") and f"/{p_}" in dp + "/":
+                    with open(vmap, "a") as o: o.write("\n" + open(os.path.join(dp, f), errors="replace").read())
 errs = re.findall(r"^(?:! .*|.*:\d+: .*)$", logtxt, re.M)
-ok = os.path.exists(os.path.join(proj, "circuito.pdf")) and not errs
+shapes = re.findall(r"Font shape `[^']+' undefined", logtxt)
+pdfp = os.path.join(proj, "circuito.pdf")
+fonts = sorted(set(re.findall(rb"/BaseFont\s*/(?:[A-Z]{6}\+)?([A-Za-z0-9\-]+)", open(pdfp, "rb").read()))) if os.path.exists(pdfp) else []
+ok = os.path.exists(pdfp) and not errs
 print("Prueba de paquetes al vuelo:", "PDF OK" if ok else "FALLÓ", "| instalados:", instalados, "| errores:", errs[:5])
+print("  avisos de fuente:", shapes[:6], "| fuentes en el PDF:", [f.decode() for f in fonts])
 if not ok: raise SystemExit("La prueba de paquetes al vuelo falló")
 
 # ───────────────────────── 4. Empaquetar ─────────────────────────
