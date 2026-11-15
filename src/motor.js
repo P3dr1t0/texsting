@@ -20,10 +20,21 @@ export function motorPreparar() {
   return Motor.preparar();
 }
 
-export async function motorCompilar(project, files) {
+/** Avisos mientras compila (p. ej. «Descargando el paquete…»). Devuelve una función para dejar de escuchar. */
+export async function motorAlProgresar(cb) {
+  try {
+    const h = await Motor.addListener('progreso', (e) => cb(e && e.texto));
+    return () => { try { h.remove(); } catch { /* nada */ } };
+  } catch {
+    return () => {};
+  }
+}
+
+export async function motorCompilar(project, files, { autoinstall = true } = {}) {
   const data = await Motor.compilar({
     project: project.id,
     main: project.main,
+    autoinstall,
     files: files.map((f) => (f.kind === 'binary' ? { path: f.path, base64: bytesToBase64(f.data) } : { path: f.path, text: f.text })),
   });
   return {

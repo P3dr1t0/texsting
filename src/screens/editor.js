@@ -5,6 +5,7 @@ import { getProject, saveProject, touchProject, listFiles, putFile, deleteFile, 
 import { el, icon, toast, sheet, panel, promptText, confirmDialog, dialog, pickFiles, esc } from '../ui.js';
 import { createPdfViewer } from '../pdfview.js';
 import { parseSynctex, forward, inverse } from '../synctex.js';
+import { motorAlProgresar } from '../motor.js';
 import { compileProject, CompileError, chooseEngine, engineExplanation, ENGINE_LABEL } from '../compiler.js';
 import { parseLog, parseBibOutput, summarize } from '../logparser.js';
 import { analyzeProject } from '../structure.js';
@@ -627,6 +628,8 @@ export async function renderEditor(root, { id }, navigate) {
     document.querySelector('.toast')?.classList.remove('show');
     setCompileState('busy');
     const tick = setInterval(() => setCompileState('busy', Math.round((Date.now() - t0) / 1000) + ' s'), 1000);
+    // Motor integrado: avisa cuando baja un paquete que falta (solo la primera vez).
+    const stopProgress = getSettings().motorIntegrado ? await motorAlProgresar((t) => t && toast(t, { ms: 6000 })) : () => {};
     try {
       files = await listFiles(project.id);
       const r = await compileProject(project, files);
@@ -659,8 +662,8 @@ export async function renderEditor(root, { id }, navigate) {
       }
       if (r.installed && r.installed.length) toast('Paquetes instalados: ' + r.installed.join(', '), { ms: 5000 });
       const via = r.integrado ? ' (motor integrado)' : '';
-      if (r.integrado && r.status !== 'success' && /File `[^']+\.(sty|cls)' not found/.test(r.log || '')) {
-        toast('El motor integrado de prueba todavía no trae ese paquete. Para este documento usa Termux (Ajustes → Motor integrado).', { kind: 'error', ms: 9000 });
+      if (r.integrado && r.missing && r.missing.length && /File `[^']+\.(sty|cls)' not found/.test(r.log || '')) {
+        toast('No se pudo descargar: ' + r.missing.join(', ') + '. Revisa tu conexión a internet, o desactiva el motor integrado en Ajustes para usar Termux.', { kind: 'error', ms: 9000 });
       }
       if (r.status === 'success') {
         if (engineNote) toast(`Listo en ${r.elapsed} s${via}. ${engineNote.text}`, { kind: 'ok', ms: 9000, action: engineNote.action, onAction: engineNote.onAction });
@@ -688,6 +691,7 @@ export async function renderEditor(root, { id }, navigate) {
       }
     } finally {
       clearInterval(tick);
+      stopProgress();
       compiling = false;
       setCompileState('idle');
     }

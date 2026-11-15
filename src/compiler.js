@@ -160,7 +160,7 @@ export async function compileProject(project, files) {
       throw new CompileError(`El motor integrado (experimental) por ahora solo tiene pdfLaTeX y este documento necesita ${ENGINE_LABEL[chosen.engine]}. Desactívalo en Ajustes para compilar con Termux.`, 'server');
     }
     try {
-      const data = await motorCompilar(project, files);
+      const data = await motorCompilar(project, files, { autoinstall: getSettings().autoinstall });
       return { ...data, engineReason: chosen.reason, engineChoice: chosen };
     } catch (e) {
       throw new CompileError('Motor integrado: ' + (e.message || e), 'server');

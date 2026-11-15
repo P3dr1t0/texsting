@@ -13,7 +13,7 @@ con pdfLaTeX SIN Termux.
 Uso: python3 tools/motor/empaquetar.py <salida>
   <salida>/jniLibs/arm64-v8a/*.so   y   <salida>/assets/motor/{tl.zip,version.txt}
 """
-import collections, hashlib, os, re, shutil, subprocess, sys, tarfile, urllib.request, zipfile
+import collections, gzip, hashlib, lzma, os, re, shutil, subprocess, sys, tarfile, urllib.request, zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "motor-out/paquete")
@@ -227,6 +227,63 @@ for d in docs:
     print(f"Prueba {d}: {'PDF OK' if os.path.exists(pdf) else 'SIN PDF'}  errores={errs[:5]}")
     if not os.path.exists(pdf) or errs:
         print(r.stdout[-3000:]); raise SystemExit("La prueba con los datos reducidos falló: " + d)
+
+# ───────────────────────── 3b. Índice archivo → paquete (para bajar paquetes al vuelo) ─────────────────────────
+INDEX_EXT = (".sty", ".cls", ".def", ".fd", ".cfg", ".clo", ".ldf", ".tfm", ".bbx", ".cbx", ".lbx", ".dbx",
+             ".tex", ".pfb", ".map", ".enc", ".vf")
+tlpdb = lzma.decompress(open(get(f"{CTAN}/tlpkg/texlive.tlpdb.xz", os.path.join(WORK, "tlpdb.xz")), "rb").read()).decode("utf-8", "replace")
+index, sizes = {}, {}
+for block in tlpdb.split("\n\n"):
+    name, in_run, files, csize = None, False, [], 0
+    for line in block.split("\n"):
+        if line.startswith("name "): name = line[5:].strip()
+        elif line.startswith("containersize "): csize = int(line.split()[1])
+        elif line.startswith("runfiles "): in_run = True
+        elif line.startswith(" ") and in_run: files.append(line.strip().split(" ")[0])
+        else: in_run = False
+    if not name or "." in name or name.startswith(("00texlive", "collection-", "scheme-", "texlive-")): continue
+    sizes[name] = csize
+    for f in files:
+        if f.startswith("texmf-dist/") and f.lower().endswith(INDEX_EXT):
+            index.setdefault(os.path.basename(f), name)
+with gzip.open(os.path.join(ASSETS, "indice.txt.gz"), "wt", encoding="utf-8", compresslevel=9) as z:
+    for k in sorted(index): z.write(f"{k}\t{index[k]}\n")
+    for k in sorted(sizes): z.write(f"@{k}\t{sizes[k]}\n")
+print(f"Índice: {len(index)} archivos de {len(sizes)} paquetes, {os.path.getsize(os.path.join(ASSETS, 'indice.txt.gz'))/1e6:.2f} MB")
+
+# Prueba de «paquete al vuelo»: circuitikz no viene en el APK; se baja de CTAN como lo hará la app
+# (archive/<paquete>.tar.xz → TEXMFHOME, sin ls-R) y se compila con el mismo ambiente.
+home_dir = os.path.join(var, "texmf")
+def bajar(pkg):
+    arch = get(f"{CTAN}/archive/{pkg}.tar.xz", os.path.join(WORK, pkg + ".tar.xz"))
+    with tarfile.open(arch) as t:
+        for m in t.getmembers():
+            if m.isfile() and m.name.startswith("texmf-dist/"):
+                dst = os.path.join(home_dir, m.name[len("texmf-dist/"):]); os.makedirs(os.path.dirname(dst), exist_ok=True)
+                with t.extractfile(m) as src, open(dst, "wb") as out: shutil.copyfileobj(src, out)
+open(os.path.join(proj, "circuito.tex"), "w").write(r"""\documentclass{article}
+\usepackage[spanish]{babel}
+\usepackage{circuitikz}
+\usepackage{pgfplots}\pgfplotsset{compat=1.18}
+\begin{document}
+\begin{circuitikz} \draw (0,0) to[R=$R_1$] (2,0) to[C=$C$] (2,-2) -- (0,-2) to[V=$V$] (0,0); \end{circuitikz}
+\begin{tikzpicture}\begin{axis}[width=5cm]\addplot {x^2};\end{axis}\end{tikzpicture}
+\end{document}
+""")
+instalados = []
+for ronda in range(8):
+    r = subprocess.run([os.path.join(fake, "libtx_pdftex.so"), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode",
+                        "-file-line-error", "circuito.tex"], cwd=proj, env=env, capture_output=True, text=True)
+    logtxt = open(os.path.join(proj, "circuito.log"), errors="replace").read()
+    miss = re.findall(r"File `([^']+)' not found", logtxt)
+    nuevos = [index.get(m) for m in miss if index.get(m) and index.get(m) not in instalados]
+    print(f"  ronda {ronda}: faltan {miss} → {nuevos}")
+    if not nuevos: break
+    for p_ in nuevos: bajar(p_); instalados.append(p_)
+errs = re.findall(r"^(?:! .*|.*:\d+: .*)$", logtxt, re.M)
+ok = os.path.exists(os.path.join(proj, "circuito.pdf")) and not errs
+print("Prueba de paquetes al vuelo:", "PDF OK" if ok else "FALLÓ", "| instalados:", instalados, "| errores:", errs[:5])
+if not ok: raise SystemExit("La prueba de paquetes al vuelo falló")
 
 # ───────────────────────── 4. Empaquetar ─────────────────────────
 zpath = os.path.join(ASSETS, "tl.zip")

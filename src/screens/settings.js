@@ -112,7 +112,7 @@ export async function renderSettings(root, _p, navigate) {
       } }, 'Probar conexión'),
       result,
       el('h3', { class: 'section-title' }, 'Motor integrado (experimental)'),
-      el('p', { class: 'muted' }, 'Compila dentro de TeXsting, sin Termux. Es una prueba: por ahora solo pdfLaTeX y los paquetes más comunes (amsmath, graphicx, babel en español, hyperref, siunitx, booktabs, geometry, xcolor…).'),
+      el('p', { class: 'muted' }, 'Compila dentro de TeXsting, sin Termux. Es una prueba: por ahora solo pdfLaTeX. Trae los paquetes más comunes (amsmath, graphicx, babel en español, hyperref, siunitx, booktabs…) y los que falten (TikZ, circuitikz, pgfplots…) se descargan solos de CTAN la primera vez que los uses (necesita internet esa vez).'),
       row('Usar el motor integrado', toggle('motorIntegrado'), 'Si un documento necesita algo que no trae, desactívalo para usar Termux'),
       el('button', { class: 'btn', onclick: probarMotor }, 'Probar motor integrado'),
       motorResult,
