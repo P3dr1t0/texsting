@@ -8,11 +8,15 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq texlive-latex-extra texlive-lang-spanish texlive-pictures > /dev/null
       - name: Probar
+        shell: bash {0}
         run: |
           cd tools/motor/diag
-          for b in ul; do
-            pdflatex -interaction=nonstopmode $b.tex > /dev/null; echo "== $b normal"; grep -A6 "^!" $b.log | head -30
-            sed 's/es-noshorthands,//' $b.tex > ${b}2.tex; pdflatex -interaction=nonstopmode ${b}2.tex > /dev/null; echo "== $b sin noshorthands"; grep -A3 "^!" ${b}2.log | head -12
-            sed 's/\\underline{Son funciones}/Son funciones/' $b.tex > ${b}3.tex; pdflatex -interaction=nonstopmode ${b}3.tex > /dev/null; echo "== $b sin underline"; grep -A3 "^!" ${b}3.log | head -12
-            sed 's/\\usepackage{fancybox}//' $b.tex > ${b}4.tex; pdflatex -interaction=nonstopmode ${b}4.tex > /dev/null; echo "== $b sin fancybox"; grep -A3 "^!" ${b}4.log | head -12
-          done
+          b=ul
+          pdflatex -interaction=nonstopmode $b.tex > /dev/null; echo "== normal: $(grep -c '^!' $b.log)"
+          pdftex -ini -interaction=nonstopmode -jobname=texsting-pre "&pdflatex" mylatexformat.ltx $b.tex > /dev/null; echo "== armar pre: $(grep -c '^!' texsting-pre.log)"; grep -A4 "^!" texsting-pre.log | head -10
+          pdflatex -fmt=texsting-pre -interaction=nonstopmode $b.tex > /dev/null; echo "== con pre: $(grep -c '^!' $b.log)"; grep -A6 "^!" $b.log | head -16
+          INJ='\AddToHook{begindocument/before}{\IfPackageLoadedTF{tikz}{\usetikzlibrary{external}\tikzexternalize[mode=list and make,prefix=texsting-fig/]}{}}'
+          mkdir -p texsting-fig
+          pdflatex -interaction=nonstopmode -jobname=$b "${INJ}\input{$b.tex}" > /dev/null; echo "== lista: $(grep -c '^!' $b.log)"; grep -A6 "^!" $b.log | head -16
+          for f in $(cat $b.figlist); do pdflatex -interaction=batchmode -halt-on-error -jobname="$f" "${INJ}\def\tikzexternalrealjob{$b}\input{$b.tex}" > /dev/null; echo "== fig $f: $(grep -c '^!' $f.log)"; grep -A6 "^!" $f.log | head -16; done
+          pdflatex -interaction=nonstopmode -jobname=$b "${INJ}\input{$b.tex}" > /dev/null; echo "== con figuras: $(grep -c '^!' $b.log)"; grep -A6 "^!" $b.log | head -16
