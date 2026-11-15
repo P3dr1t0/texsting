@@ -18,13 +18,6 @@ jobs:
         run: |
           export PATH=/tmp/tl/bin/x86_64-linux:$PATH
           cd tools/diag
-          b=cuaderno
-          T(){ t0=$(date +%s.%N); "$@" > /dev/null 2>&1; echo "$(echo "$(date +%s.%N)-$t0"|bc)"; }
-          echo "== normal: $(T pdflatex -interaction=nonstopmode -file-line-error $b.tex) s, $(grep -c '^!\|:[0-9]*: ' $b.log) err"; grep -A8 "^!\|:[0-9]*: " $b.log | head -40
-          echo "== armar pre: $(T pdftex -ini -interaction=nonstopmode -jobname=texsting-pre '&pdflatex' mylatexformat.ltx $b.tex) s, $(grep -c '^!' texsting-pre.log) err"
-          echo "== con pre: $(T pdflatex -fmt=texsting-pre -interaction=nonstopmode -file-line-error $b.tex) s"; grep -A8 "^!\|:[0-9]*: " $b.log | head -40
-          INJ='\AddToHook{begindocument/before}{\IfPackageLoadedTF{tikz}{\usetikzlibrary{external}\tikzexternalize[mode=list and make,prefix=texsting-fig/]}{}}'
-          mkdir -p texsting-fig
-          echo "== lista: $(T pdflatex -interaction=nonstopmode -file-line-error -jobname=$b "${INJ}\input{$b.tex}") s"; grep -A8 "^!\|:[0-9]*: " $b.log | grep -v "tikz Warning" | head -30
-          for f in $(cat $b.figlist); do pdflatex -interaction=batchmode -halt-on-error -jobname="$f" "${INJ}\def\tikzexternalrealjob{$b}\input{$b.tex}" > /dev/null 2>&1; [ -f "$f.pdf" ] || { echo "-- falló $f"; grep -A6 "^!" $f.log | head -10; }; done
-          echo "== con figuras: $(T pdflatex -interaction=nonstopmode -file-line-error -jobname=$b "${INJ}\input{$b.tex}") s"; grep -A8 "^!\|:[0-9]*: " $b.log | head -30
+          for f in v*_*.tex; do b=${f%.tex}; pdflatex -interaction=nonstopmode $f > /dev/null 2>&1; echo "== $b: $(grep -c '^!' $b.log) errores"; done
+          grep -m1 "pgf.revision\|Package: pgf " v1_base.log; grep "underline" /tmp/tl/texmf-dist/tex/latex/base/latex.ltx | head -5; grep -rn "def\\underline\|underline" /tmp/tl/texmf-dist/tex/latex/base/ltfntcmd.dtx 2>/dev/null | head -3
+          grep -n "underline" /tmp/tl/texmf-dist/tex/latex/base/*.ltx | head -10
