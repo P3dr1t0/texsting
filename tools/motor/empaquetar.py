@@ -157,6 +157,7 @@ for f in used:
     rel = os.path.relpath(f, TL)
     if not os.path.isfile(f) or rel.startswith(("bin/", "tlpkg/", "texmf-var/web2c/")) or rel.endswith((".fmt", ".log")):
         continue
+    if rel.startswith("texmf-var/fonts/map/dvips/"): continue  # solo para dvips
     if rel.split("/")[0] in ("texmf-dist", "texmf-var"): keep.add(rel)
 # strace solo ve lo que usaron estos documentos (p. ej. solo los tamaños de letra de 11 pt).
 # Para no quedarse corto, cada carpeta usada entra completa: todas las fuentes de una familia
@@ -166,7 +167,7 @@ def dir_size(d):
 expanded = set()
 for rel in list(keep):
     d = os.path.dirname(rel)
-    if d in expanded or not rel.startswith("texmf-dist/") or "/web2c" in d: continue
+    if d in expanded or not d.startswith(("texmf-dist/fonts/", "texmf-dist/tex/latex/")): continue
     full = os.path.join(TL, d)
     if dir_size(full) > 12e6:
         continue  # p. ej. cm-super (60 MB): solo lo usado
