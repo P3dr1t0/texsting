@@ -17,6 +17,13 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.50] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 61
+
+### Corregido
+- **«Font esint10 at 657 not found» con el motor integrado.** Pasaba con `\usepackage{esint}` (integrales cerradas `\oint`): el paquete trae la medida de las letras, pero su dibujo viene aparte, en `esint-type1`. El motor no reconocía este mensaje y no bajaba nada.
+  - Ahora lo reconoce, descarga la letra que falta (unos 30 KB) y vuelve a compilar solo.
+  - Sirve para cualquier paquete de símbolos con el mismo problema.
+
 ## [0.2.49] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 60
 
 ### Mejorado

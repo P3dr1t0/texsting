@@ -251,6 +251,9 @@ public class MotorPlugin extends Plugin {
         Pattern.compile("I did not find the tikz library '([^']+)'"),
         Pattern.compile("\\(file ([^)\\s]+\\.pf[ab])\\): cannot open Type 1 font file"),
         Pattern.compile("\\(file ([^)\\s]+\\.enc)\\): cannot open encoding file"),
+        // La fuente tiene métrica (.tfm) pero no está en pdftex.map: pdfTeX busca un mapa de bits y falla
+        // («Font esint10 at 657 not found»). Hay que bajar su versión Type 1 (.pfb), que trae el .map.
+        Pattern.compile("\\(file ([A-Za-z0-9_\\-]+)\\): Font \\1 at \\d+ not found"),
     };
     // «Font shape `OT1/ptm/m/n' undefined»: LaTeX no encontró la descripción de la fuente (ot1ptm.fd)
     // y usó otra sin error. Pasa con IEEEtran (Times): hay que bajar el .fd y sus fuentes.
@@ -332,6 +335,7 @@ public class MotorPlugin extends Plugin {
                 if (i == 2) { if (name.equals("nullfont")) continue; name += ".tfm"; }
                 if (i == 3) name = "tikzlibrary" + name + ".code.tex";
                 if (i == 1 && !name.contains(".")) name += ".tex";
+                if (i == 6) name += ".pfb";
                 boolean ok = false;
                 for (String ext : INSTALLABLE) if (name.toLowerCase(Locale.ROOT).endsWith(ext)) ok = true;
                 if (ok && !found.contains(name)) found.add(name);
