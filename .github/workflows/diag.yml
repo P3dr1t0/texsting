@@ -6,22 +6,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq texlive-latex-extra texlive-lang-spanish texlive-pictures cm-super > /dev/null
+      - name: TeX Live 2026 (tlnet, como el motor integrado)
+        run: |
+          cd /tmp && curl -sL https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz | tar xz && cd install-tl-2*
+          printf "selected_scheme scheme-basic\nTEXDIR /tmp/tl\nTEXMFLOCAL /tmp/tl/texmf-local\nTEXMFSYSVAR /tmp/tl/texmf-var\nTEXMFSYSCONFIG /tmp/tl/texmf-config\nTEXMFVAR /tmp/tl/texmf-var\nTEXMFHOME /tmp/tl/home\nbinary_x86_64-linux 1\ninstopt_adjustpath 0\ntlpdbopt_install_docfiles 0\ntlpdbopt_install_srcfiles 0\n" > p.txt
+          ./install-tl -profile p.txt -no-interaction > /dev/null
+          /tmp/tl/bin/x86_64-linux/tlmgr install babel-spanish hyphen-spanish pgf fancybox titlesec enumitem multicol geometry mylatexformat cm-super xcolor amsmath tools ec > /dev/null
+          /tmp/tl/bin/x86_64-linux/tex --version | head -1
       - name: Probar
         shell: bash {0}
         run: |
+          export PATH=/tmp/tl/bin/x86_64-linux:$PATH
           cd tools/diag
           b=cuaderno
           T(){ t0=$(date +%s.%N); "$@" > /dev/null 2>&1; echo "$(echo "$(date +%s.%N)-$t0"|bc)"; }
-          echo "== normal: $(T pdflatex -interaction=nonstopmode $b.tex) s, $(grep -c '^!' $b.log) err"
-          echo "== armar pre: $(T pdftex -ini -interaction=nonstopmode -jobname=texsting-pre '&pdflatex' mylatexformat.ltx $b.tex) s, $(grep -c '^!' texsting-pre.log) err"; grep -A6 "^!" texsting-pre.log | head -20
-          echo "== con pre: $(T pdflatex -fmt=texsting-pre -interaction=nonstopmode $b.tex) s, $(grep -c '^!' $b.log) err"; grep -A8 "^!" $b.log | head -30
+          echo "== normal: $(T pdflatex -interaction=nonstopmode -file-line-error $b.tex) s, $(grep -c '^!\|:[0-9]*: ' $b.log) err"; grep -A8 "^!\|:[0-9]*: " $b.log | head -40
+          echo "== armar pre: $(T pdftex -ini -interaction=nonstopmode -jobname=texsting-pre '&pdflatex' mylatexformat.ltx $b.tex) s, $(grep -c '^!' texsting-pre.log) err"
+          echo "== con pre: $(T pdflatex -fmt=texsting-pre -interaction=nonstopmode -file-line-error $b.tex) s"; grep -A8 "^!\|:[0-9]*: " $b.log | head -40
           INJ='\AddToHook{begindocument/before}{\IfPackageLoadedTF{tikz}{\usetikzlibrary{external}\tikzexternalize[mode=list and make,prefix=texsting-fig/]}{}}'
           mkdir -p texsting-fig
-          echo "== lista: $(T pdflatex -interaction=nonstopmode -jobname=$b "${INJ}\input{$b.tex}") s, $(grep -c '^!' $b.log) err, $(wc -l < $b.figlist) figuras"; grep -A8 "^!" $b.log | grep -v "tikz Warning" | head -30
-          t0=$(date +%s.%N); n=0; fallos=0
-          for f in $(cat $b.figlist); do pdflatex -interaction=batchmode -halt-on-error -jobname="$f" "${INJ}\def\tikzexternalrealjob{$b}\input{$b.tex}" > /dev/null 2>&1; n=$((n+1)); [ -f "$f.pdf" ] || { fallos=$((fallos+1)); echo "-- falló $f"; grep -A6 "^!" $f.log | head -10; }; done
-          echo "== figuras: $n en $(echo "$(date +%s.%N)-$t0"|bc) s, fallos $fallos"
-          echo "== con figuras: $(T pdflatex -interaction=nonstopmode -jobname=$b "${INJ}\input{$b.tex}") s, $(grep -c '^!' $b.log) err"; grep -A8 "^!" $b.log | head -30
-          for f in $(head -3 $b.figlist); do echo "fig $f: $(T pdflatex -interaction=batchmode -halt-on-error -jobname="$f" "${INJ}\def\tikzexternalrealjob{$b}\input{$b.tex}") s"; done
-          for f in $(tail -2 $b.figlist); do echo "fig $f: $(T pdflatex -interaction=batchmode -halt-on-error -jobname="$f" "${INJ}\def\tikzexternalrealjob{$b}\input{$b.tex}") s"; done
+          echo "== lista: $(T pdflatex -interaction=nonstopmode -file-line-error -jobname=$b "${INJ}\input{$b.tex}") s"; grep -A8 "^!\|:[0-9]*: " $b.log | grep -v "tikz Warning" | head -30
+          for f in $(cat $b.figlist); do pdflatex -interaction=batchmode -halt-on-error -jobname="$f" "${INJ}\def\tikzexternalrealjob{$b}\input{$b.tex}" > /dev/null 2>&1; [ -f "$f.pdf" ] || { echo "-- falló $f"; grep -A6 "^!" $f.log | head -10; }; done
+          echo "== con figuras: $(T pdflatex -interaction=nonstopmode -file-line-error -jobname=$b "${INJ}\input{$b.tex}") s"; grep -A8 "^!\|:[0-9]*: " $b.log | head -30
