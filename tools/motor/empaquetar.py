@@ -328,7 +328,10 @@ for ronda in range(10):
                     with open(vmap, "a") as o: o.write("\n" + open(os.path.join(dp, f), errors="replace").read())
 errs = re.findall(r"^(?:!.*|.*:\d+: .*)$", logtxt, re.M)
 shapes = re.findall(r"Font shape `[^']+' undefined", logtxt)
-embebidas = sorted(set(os.path.basename(x) for x in re.findall(r"<([^<>\s]+\.pf[ab])>", r.stdout)))
+plano = "".join(l + ("" if len(l) == 79 else "\n") for l in r.stdout.split("\n"))
+embebidas = sorted(set(os.path.basename(x) for x in re.findall(r"<([^<>\s]+\.pf[ab])>", plano)))
+print("  final de la salida:", r.stdout[-700:].replace("\n", " | "))
+print("  avisos pdfTeX:", re.findall(r"pdfTeX warning.*", plano)[:5])
 print("  fuentes incrustadas:", embebidas)
 pdfp = os.path.join(proj, "circuito.pdf")
 fonts = sorted(set(re.findall(rb"/BaseFont\s*/(?:[A-Z]{6}\+)?([A-Za-z0-9\-]+)", open(pdfp, "rb").read()))) if os.path.exists(pdfp) else []
