@@ -390,9 +390,22 @@ public class MotorPlugin extends Plugin {
                     byte[] base = readBytes(new File(tl(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map"));
                     try (OutputStream o = new FileOutputStream(vmap)) { if (base != null) o.write(base); }
                 }
-                try (OutputStream o = new FileOutputStream(vmap, true)) {
-                    for (File m : maps) { byte[] b = readBytes(m); if (b != null) { o.write('\n'); o.write(b); } }
+                // Solo las fuentes que el mapa todavía no tiene (si no, pdfTeX avisa «already exists» por cada una).
+                Set<String> known = new HashSet<>();
+                String cur = readText(vmap);
+                if (cur != null) for (String l : cur.split("\n")) { String t = l.trim(); if (!t.isEmpty() && t.charAt(0) != '%') known.add(t.split("\\s+")[0]); }
+                StringBuilder add = new StringBuilder();
+                for (File m : maps) {
+                    String t = readText(m);
+                    if (t == null) continue;
+                    for (String l : t.split("\n")) {
+                        String x = l.trim();
+                        if (x.isEmpty() || x.charAt(0) == '%') continue;
+                        String name = x.split("\\s+")[0];
+                        if (known.add(name)) add.append(x).append('\n');
+                    }
                 }
+                try (OutputStream o = new FileOutputStream(vmap, true)) { o.write(("\n" + add).getBytes(StandardCharsets.UTF_8)); }
             }
             try (OutputStream o = new FileOutputStream(installedFile(), true)) { o.write((pkg + "\n").getBytes(StandardCharsets.UTF_8)); }
         } finally {

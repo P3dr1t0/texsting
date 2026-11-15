@@ -322,10 +322,15 @@ for ronda in range(10):
         if not os.path.exists(vmap):
             os.makedirs(os.path.dirname(vmap), exist_ok=True)
             shutil.copy(os.path.join(sub, "texmf-var", "fonts", "map", "pdftex", "updmap", "pdftex.map"), vmap)
+        known = {l.split()[0] for l in open(vmap, errors="replace") if l.strip() and not l.lstrip().startswith("%")}
         for dp, _, fs in os.walk(os.path.join(home_dir, "fonts", "map")):
             for f in fs:
                 if f.endswith(".map") and f"/{p_}" in dp + "/":
-                    with open(vmap, "a") as o: o.write("\n" + open(os.path.join(dp, f), errors="replace").read())
+                    with open(vmap, "a") as o:
+                        for l in open(os.path.join(dp, f), errors="replace"):
+                            x = l.strip()
+                            if x and not x.startswith("%") and x.split()[0] not in known:
+                                known.add(x.split()[0]); o.write(x + "\n")
 errs = re.findall(r"^(?:!.*|.*:\d+: .*)$", logtxt, re.M)
 shapes = re.findall(r"Font shape `[^']+' undefined", logtxt)
 plano = "".join(l + ("" if len(l) == 79 else "\n") for l in r.stdout.split("\n"))
