@@ -15,6 +15,7 @@ export const TRANSLATIONS = [
   [/unicode-math.*requires|polyglossia.*(XeTeX|LuaTeX)/, 'Este documento necesita XeLaTeX o LuaLaTeX: cambia el motor en ⋮ → Motor'],
   [/^Undefined control sequence/, 'Comando no definido (¿falta un paquete o hay un error de tipeo?)'],
   [/^Missing \$ inserted/, 'Falta un $: hay símbolos matemáticos fuera de modo matemático'],
+  [/^Please use \\mathaccent for accents in math mode/, 'Hay una letra con tilde dentro de una fórmula: si es texto, cierra antes la fórmula con $ o escríbelo con \\text{…}'],
   [/^Missing \} inserted/, 'Falta cerrar una llave }'],
   [/^Missing \{ inserted/, 'Falta abrir una llave {'],
   [/^Extra \}, or forgotten/, 'Sobra una llave } o falta un \\begin'],
@@ -310,6 +311,54 @@ const BEAMER_THEMES = {
   outer: ['default', 'infolines', 'miniframes', 'shadow', 'sidebar', 'smoothbars', 'smoothtree', 'split', 'tree'],
 };
 
+/** La parte de una línea antes de un comentario % (sin contar \%). */
+function codePart(l) {
+  for (let c = 0; c < l.length; c++) {
+    if (l[c] === '\\') { c++; continue; }
+    if (l[c] === '%') return l.slice(0, c);
+  }
+  return l;
+}
+/** Primera línea (índice) del párrafo que termina en `idx`: sube hasta una línea en blanco. */
+function paragraphStart(ls, idx) {
+  let k = idx;
+  while (k > 0 && ls[k - 1].trim() !== '') k--;
+  return k;
+}
+/** Llaves { que quedan abiertas al leer las líneas from..to como TeX (\x escapa, % comenta). */
+function unclosedBraces(ls, from, to) {
+  const stack = [];
+  for (let k = from; k <= to && k < ls.length; k++) {
+    const l = ls[k];
+    for (let c = 0; c < l.length; c++) {
+      const ch = l[c];
+      if (ch === '\\') { c++; continue; }
+      if (ch === '%') break;
+      if (ch === '{') stack.push({ line: k, col: c });
+      else if (ch === '}') stack.pop();
+    }
+  }
+  return stack;
+}
+/** El $ (o $$) que abre una fórmula y no se cierra en las líneas from..to, o null. */
+function unclosedDollar(ls, from, to) {
+  let open = null;
+  for (let k = from; k <= to && k < ls.length; k++) {
+    const l = ls[k];
+    for (let c = 0; c < l.length; c++) {
+      const ch = l[c];
+      if (ch === '\\') { c++; continue; }
+      if (ch === '%') break;
+      if (ch === '$') {
+        const dbl = l[c + 1] === '$';
+        if (dbl) c++;
+        open = open ? null : { line: k, col: c, dbl };
+      }
+    }
+  }
+  return open;
+}
+
 function enrich(entry, head, sources, main, top = '') {
   const msg = entry.message;
   const font = msg.match(/The font "([^"]+)" cannot be found/);
@@ -483,28 +532,45 @@ function enrich(entry, head, sources, main, top = '') {
     }
     return;
   }
-  const runaway = msg.match(/^(?:Paragraph ended before|File ended while scanning use of) \\?(\S+?)(?: was complete)?\.?$/);
+  const runaway = msg.match(/^(?:Paragraph ended before|File ended while scanning use of) \\?(\S+?)(?: was complete)?\s*\.?$/);
   if (runaway && sources && sources[entry.file || main]) {
-    // Una llave sin cerrar: TeX lo nota recién al terminar el párrafo (una línea en blanco más abajo).
-    // Se busca hacia atrás la línea con más { que }.
+    // Una llave sin cerrar: TeX lo nota recién al terminar el párrafo (una línea en blanco más abajo)
+    // o el archivo. Se recorre el párrafo como lo lee TeX y se marca la PRIMERA llave que nunca se cerró
+    // (no la última línea con más { que }: un \def repartido en dos líneas engañaba a esa regla).
     const f = entry.file || main;
     const ls = sources[f].split('\n');
-    const bal = (l) => { const t = l.replace(/\\[{}]/g, '').replace(/(^|[^\\])%.*$/, '$1'); return (t.match(/\{/g) || []).length - (t.match(/\}/g) || []).length; };
-    const from = Math.min((entry.line || ls.length) - 1, ls.length - 1);
-    for (let k = from; k >= 0 && k > from - 60; k--) {
-      if (bal(ls[k]) > 0) {
-        const raw = ls[k].replace(/\s+$/, '');
-        entry.file = f; entry.line = k + 1; entry.context = raw.trim();
-        const isPkg = /^(\\usepackage|\\RequirePackage|\\documentclass)/.test(raw.trim()) || /fileswith@ptions|@onefilewithoptions/.test(runaway[1]);
-        entry.hint = isPkg
-          ? 'A esta línea le falta la llave de cierre }. Por eso los \\usepackage que siguen (hasta la próxima línea en blanco) no se cargaron: los errores de «falta el paquete…» de abajo son consecuencia de este'
-          : 'A esta línea le falta cerrar una llave }: TeX recién lo notó al terminar el párrafo';
-        if (bal(ls[k]) === 1) entry.fix = { file: f, line: k + 1, find: raw.trim(), replace: raw.trim() + '}', label: 'Agregar la } que falta' };
-        if (isPkg) entry.swallow = true;
-        break;
-      }
+    let end, start;
+    if (/^File ended/.test(msg)) { start = 0; end = ls.length - 1; } else {
+      end = Math.min((entry.line || ls.length) - 1, ls.length - 1);
+      while (end > 0 && !ls[end].trim()) end--;
+      start = paragraphStart(ls, end);
     }
-    if (entry.line) return;
+    const open = unclosedBraces(ls, start, end);
+    let k = open.length ? open[0].line : -1;
+    if (k < 0) {
+      // Respaldo: la línea más cercana con más { que }.
+      const bal = (l) => { const t = codePart(l).replace(/\\[{}]/g, ''); return (t.match(/\{/g) || []).length - (t.match(/\}/g) || []).length; };
+      for (let q = end; q >= 0 && q > end - 60; q--) if (bal(ls[q]) > 0) { k = q; break; }
+    }
+    if (k >= 0) {
+      const raw = ls[k].replace(/\s+$/, '');
+      // Lo que TeX leyó «dentro» del argumento sin cerrar depende de este error (ver más abajo).
+      const defs = [];
+      for (let q = k; q <= end; q++) for (const m of codePart(ls[q]).matchAll(/\\(?:def|gdef|edef|let|(?:re)?newcommand\*?\s*\{?|providecommand\*?\s*\{?|DeclareMathOperator\*?\s*\{?)\s*\\([A-Za-z@]+)/g)) defs.push(m[1]);
+      entry.covers = { from: k + 1, to: /^File ended/.test(msg) ? Infinity : end + 1, defs };
+      entry.file = f; entry.line = k + 1; entry.context = raw.trim();
+      const isPkg = /^(\\usepackage|\\RequirePackage|\\documentclass)/.test(raw.trim()) || /fileswith@ptions|@onefilewithoptions/.test(runaway[1]);
+      entry.hint = isPkg
+        ? 'A esta línea le falta la llave de cierre }. Por eso los \\usepackage que siguen (hasta la próxima línea en blanco) no se cargaron: los errores de «falta el paquete…» de abajo son consecuencia de este'
+        : /^File ended/.test(msg)
+          ? 'Aquí se abre una llave { que nunca se cierra: TeX recién lo notó al llegar al final del archivo'
+          : 'Aquí se abre una llave { que nunca se cierra: TeX recién lo notó al terminar el párrafo' + (end + 1 !== k + 1 ? ` (línea ${end + 1})` : '');
+      const onLine = open.filter((o) => o.line === k).length;
+      const code = codePart(ls[k]).replace(/\s+$/, '');
+      if ((onLine === 1 || (!open.length)) && code.trim()) entry.fix = { file: f, line: k + 1, find: code.trim(), replace: code.trim() + '}', label: 'Agregar la } que falta al final de la línea' };
+      if (isPkg) entry.swallow = true;
+      return;
+    }
   }
   const theme = msg.match(/File `beamer(color|font|inner|outer)?theme([^']+)\.sty' not found/);
   if (theme) {
@@ -566,8 +632,12 @@ function enrich(entry, head, sources, main, top = '') {
   }
   if (/scanning use of \\@xverbatim|scanning use of \\lst@/.test(msg)) {
     const isBeamer = sources && sources[main] && /\\documentclass(\[[^\]]*\])?\{beamer\}/.test(sources[main]);
-    const ln = findInSources(/\\begin\{(verbatim|lstlisting|minted)\}/, sources, main);
-    if (ln && entry.line == null) { entry.file = main; entry.line = ln; }
+    // El bloque que empieza en (o justo antes de) la línea que mostró TeX; si no, el primero.
+    const ls = sources && sources[entry.file || main] ? sources[entry.file || main].split('\n') : [];
+    let ln = null;
+    if (entry.line) for (let q = Math.min(entry.line, ls.length) - 1; q >= 0 && q >= entry.line - 40; q--) if (/\\begin\{(verbatim|lstlisting|minted)\}/.test(ls[q])) { ln = q + 1; break; }
+    if (ln) entry.line = ln;
+    else { ln = findInSources(/\\begin\{(verbatim|lstlisting|minted)\}/, sources, main); if (ln && entry.line == null) { entry.file = main; entry.line = ln; } }
     entry.hint = isBeamer
       ? 'En beamer, una diapositiva con código literal (verbatim, lstlisting) necesita la opción fragile: \\begin{frame}[fragile]{…}'
       : 'Un bloque de código literal no se cerró: revisa que \\end{verbatim} (o \\end{lstlisting}) esté solo en su línea y bien escrito';
@@ -656,8 +726,18 @@ function enrich(entry, head, sources, main, top = '') {
   }
   if (/^Missing \$ inserted/.test(msg)) {
     if (srcLines && entry.line && !(srcLines[entry.line - 1] || '').trim()) {
-      entry.hint = 'Hay una línea en blanco dentro de una ecuación: bórrala (para varias ecuaciones usa align)';
-      entry.context = '';
+      // TeX avisa en la línea en blanco; la causa suele ser un $ que se abrió más arriba y no se cerró.
+      let end = entry.line - 2;
+      while (end > 0 && !(srcLines[end] || '').trim()) end--;
+      const d = end >= 0 ? unclosedDollar(srcLines, paragraphStart(srcLines, end), end) : null;
+      if (d) {
+        entry.covers = { from: d.line + 1, to: entry.line };
+        entry.line = d.line + 1; entry.context = srcLines[d.line].trim();
+        entry.hint = `Aquí se abre una fórmula con ${d.dbl ? '$$' : '$'} que nunca se cierra: agrega el ${d.dbl ? '$$' : '$'} de cierre donde termina la fórmula`;
+      } else {
+        entry.hint = 'Hay una línea en blanco dentro de una ecuación: bórrala (para varias ecuaciones usa align)';
+        entry.context = '';
+      }
     } else if (/_/.test(head || '') && !/\$|\\\(|\\\[/.test(head || '')) {
       entry.hint = 'Hay un _ en texto normal: fuera de las ecuaciones el guion bajo se escribe \\_';
       const l = srcLines && entry.line ? srcLines[entry.line - 1] || '' : '';
@@ -672,11 +752,15 @@ const NOISE = [/==> Fatal error occurred/, /Writing or overwriting file/, /^\s*$
 /** Busca en el código el fragmento que TeX muestra tras "Runaway argument?" para ubicar la línea. */
 function locate(snippet, sources) {
   if (!snippet || !sources) return null;
-  const clean = snippet.replace(/\\par\b.*$/, '').replace(/^\{/, '').trim().slice(0, 40);
+  // TeX agrega espacios tras los comandos («\\usepackage {float}») y corta con \\ETC.: se compara sin espacios.
+  const clean = snippet.replace(/\\par\b.*$/, '').replace(/\\ETC\..*$/, '').replace(/^\{/, '').replace(/\s+/g, '').slice(0, 30);
   if (clean.length < 4) return null;
   for (const [file, text] of Object.entries(sources)) {
-    const idx = text.indexOf(clean);
-    if (idx >= 0) return { file, line: text.slice(0, idx).split('\n').length };
+    let flat = '';
+    const pos = [];
+    for (let i = 0; i < text.length; i++) if (!/\s/.test(text[i])) { flat += text[i]; pos.push(i); }
+    const idx = flat.indexOf(clean);
+    if (idx >= 0) return { file, line: text.slice(0, pos[idx]).split('\n').length };
   }
   return null;
 }
@@ -801,6 +885,18 @@ export function parseLog(log, main = 'main.tex', sources = null) {
     const loaded = new Set();
     for (const m of pre.matchAll(/\\usepackage\s*(?:\[[^\]]*\])?\s*\{([^}\n]*)\}?/g)) m[1].split(',').forEach((p) => loaded.add(p.trim()));
     for (const e of out) if (e !== swallow && e.needPkg && loaded.has(e.needPkg)) { e.cascade = swallow.line; e.swallowed = true; }
+  }
+  // Una llave o un $ sin cerrar: los errores de todo lo que TeX leyó «dentro» (desde la causa hasta
+  // donde lo notó) y los comandos que se definían ahí son consecuencia de ese único error.
+  for (const root of out.filter((e) => e.covers)) {
+    const { from, to, defs = [] } = root.covers;
+    for (const e of out) {
+      if (e === root || e.type !== 'error' || e.cascade != null) continue;
+      const inside = e.file === root.file && e.line != null && e.line >= from && e.line <= to;
+      const atEnd = to === Infinity && /^Emergency stop/.test(e.message);
+      const usesDef = /^Undefined control sequence/.test(e.message) && defs.some((d) => new RegExp('\\\\' + d.replace(/@/g, '\\@') + '(?![A-Za-z@])').test(e.context || ''));
+      if (inside || atEnd || usesDef) e.cascade = root.line;
+    }
   }
   // «Falta el paquete X»: botón para agregar \usepackage{X} debajo del último \usepackage.
   if (sources && sources[main]) {

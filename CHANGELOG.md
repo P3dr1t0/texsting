@@ -17,6 +17,23 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.40] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 50
+
+### Corregido
+- **Una llave sin cerrar se marcaba en la línea equivocada.**
+  - Ejemplo: en `\usepackage{xcolor` (línea 9), los Mensajes señalaban la línea 13, donde había un `\def\BibTeX{…}` repartido en dos líneas.
+  - Ahora la app lee el párrafo como lo lee TeX, llave por llave, y marca **la primera llave que nunca se cerró**. Antes buscaba hacia atrás la línea con más `{` que `}`.
+  - El botón «Agregar la } que falta» la pone al final del código de esa línea, antes de un comentario `%` si lo hay.
+  - Los comandos que se definían dentro del tramo «tragado» ahora cuentan como errores en cadena de este mismo error, no como errores aparte. Por ejemplo, «\BibTeX no existe».
+
+### Mejorado (para evitarlo en general)
+- **El mismo método se usa en otros errores que TeX nota tarde:**
+  - **Un `$` sin cerrar:** TeX avisa «Missing $» en la línea en blanco del final del párrafo. Ahora la app marca la línea donde se abrió la fórmula. Los errores de en medio pasan a ser errores en cadena: «letra con tilde dentro de una fórmula», «falta una llave»…
+  - **Una llave sin cerrar hasta el final del archivo** (p. ej. `\textbf{…` sin cerrar): se marca la línea donde se abrió, y «Falta \end{document}» pasa a ser un error en cadena.
+  - **Código literal (verbatim) sin cerrar:** se marca el `\begin{verbatim}` del bloque.
+  - Al ubicar el texto que TeX muestra tras «Runaway argument?», la app ya no se confunde por los espacios que TeX agrega después de los comandos.
+- Nuevo mensaje en español para «Please use \mathaccent for accents in math mode»: hay una letra con tilde dentro de una fórmula.
+
 ## [0.2.39] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 49
 
 ### Corregido
