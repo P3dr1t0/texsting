@@ -17,6 +17,20 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.45] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 56
+
+### Mejorado (optimización, #8): figuras guardadas
+- **Motor integrado: las figuras de TikZ y pgfplots ya no se redibujan en cada compilación.**
+  - Después de compilar, el motor guarda en segundo plano cada figura ya dibujada.
+  - Desde ahí, cada compilación solo dibuja de nuevo las figuras cuyo código cambió (avisa «Dibujando la figura que cambió…»). Las demás se pegan ya hechas.
+  - En un documento de prueba con 8 gráficas de pgfplots, una compilación pasó de 4,2 s a 1,3 s (−69 %).
+- **Los circuitos de circuitikz se siguen dibujando normal**, porque no se pueden guardar así. Son rápidos.
+- **Se vuelven a dibujar todas** si cambias el preámbulo (p. ej. `\pgfplotsset`) o un archivo de datos (.csv, imágenes). Así nunca queda una figura vieja.
+- **El trabajo en segundo plano se corta en cuanto tocas Compilar**, así que nunca te hace esperar. Si se interrumpe, sigue después donde quedó.
+- **En cada proyecto se usa lo que resulte más rápido:** el preámbulo guardado o las figuras guardadas. Las dos se muestran con ⚡.
+- Si un proyecto da más errores con las figuras guardadas que sin ellas, la app lo detecta y en ese proyecto compila como siempre.
+- Verificado en la compilación del APK con TeX Live 2026: IEEEtran + circuitikz + pgfplots, sin errores.
+
 ## [0.2.44] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 55
 
 ### Corregido

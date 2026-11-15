@@ -608,6 +608,12 @@ public class MotorPlugin extends Plugin {
         return "\\AddToHook{begindocument/before}{\\IfPackageLoadedTF{tikz}{\\usetikzlibrary{external}"
                 + "\\tikzexternalize[mode=list and make,prefix=" + FIG + "/]}{}}";
     }
+    private static long readMs(File f) {
+        try { return Long.parseLong(String.valueOf(readText(f)).trim()); } catch (Exception e) { return -1; }
+    }
+    private static void writeMs(File f, long ms) {
+        try (OutputStream o = new FileOutputStream(f)) { o.write(String.valueOf(ms).getBytes(StandardCharsets.UTF_8)); } catch (IOException ignored) { }
+    }
     private static File figStatus(File mainDir) { return new File(mainDir, FIG + ".txt"); }
 
     private static List<String> figList(File mainDir, String job) {
@@ -627,8 +633,9 @@ public class MotorPlugin extends Plugin {
         return out;
     }
 
-    private boolean figsReady(File mainDir, String job) {
-        return "ok".equals(String.valueOf(readText(figStatus(mainDir))).trim())
+    /** Listas si se armaron con este mismo preámbulo (si cambia, p. ej. \\pgfplotsset, hay que redibujarlas todas). */
+    private boolean figsReady(File mainDir, String job, String key) {
+        return key != null && ("ok " + key).equals(String.valueOf(readText(figStatus(mainDir))).trim())
                 && new File(mainDir, job + ".figlist").exists() && !figList(mainDir, job).isEmpty() && staleFigs(mainDir, job).isEmpty();
     }
 
@@ -649,25 +656,30 @@ public class MotorPlugin extends Plugin {
     }
 
     /** En segundo plano: lista las figuras, dibuja cada una y comprueba que el resultado no tenga más errores. */
-    private void buildFigs(File mainDir, String job, String mainName, int normalErrors) throws Exception {
+    private void buildFigs(File mainDir, String job, String mainName, int normalErrors, String key) throws Exception {
         final int g = gen;
+        // Si se armaron con otro preámbulo u otros datos, se empieza de cero. Si solo se interrumpió
+        // (llegó una compilación), se sigue donde quedó.
+        String st = String.valueOf(readText(figStatus(mainDir))).trim();
+        if (readText(figStatus(mainDir)) != null && !st.endsWith(" " + key)) { delete(new File(mainDir, FIG)); figStatus(mainDir).delete(); }
         Run r = mainWithFigs(mainDir, job, mainName);
         if (g != gen || r.timedOut) return;
-        List<String> figs = figList(mainDir, job);
-        if (figs.isEmpty()) return;
-        for (String f : figs) {
+        if (figList(mainDir, job).isEmpty()) return;
+        for (String f : staleFigs(mainDir, job)) {
             if (g != gen) return;
             if (!makeFig(mainDir, job, mainName, f)) {
                 if (g != gen) return;
-                try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write("no".getBytes(StandardCharsets.UTF_8)); }
+                try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + key).getBytes(StandardCharsets.UTF_8)); }
                 return;
             }
         }
+        long t = System.currentTimeMillis();
         r = mainWithFigs(mainDir, job, mainName);
         if (g != gen || r.timedOut) return;
+        writeMs(new File(mainDir, FIG + "-ms.txt"), System.currentTimeMillis() - t);
         String lg = readText(new File(mainDir, job + ".log"));
         boolean ok = lg != null && countMatches(ERR, lg) <= normalErrors && staleFigs(mainDir, job).isEmpty();
-        try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write((ok ? "ok" : "no").getBytes(StandardCharsets.UTF_8)); }
+        try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(((ok ? "ok " : "no ") + key).getBytes(StandardCharsets.UTF_8)); }
     }
 
     @PluginMethod
@@ -719,23 +731,43 @@ public class MotorPlugin extends Plugin {
                 if (autoinstall) prefetch(dir, files, installedNow);
                 // Preámbulo ya armado para este proyecto: se salta la carga de los paquetes.
                 boolean usePreSetting = call.getBoolean("preambulo", true);
-                String preKey = usePreSetting ? preambleKey(files, main) : null;
+                String docKey = preambleKey(files, main);
+                // Las figuras dependen también de los datos que leen (tablas .csv, imágenes…): si cambia
+                // cualquier archivo que no sea .tex, se vuelven a dibujar todas.
+                String figKey = null;
+                if (docKey != null) {
+                    StringBuilder fk = new StringBuilder(docKey);
+                    for (int i = 0; files != null && i < files.length(); i++) {
+                        JSONObject f = files.getJSONObject(i);
+                        String pth = f.getString("path");
+                        if (pth.endsWith(".tex")) continue;
+                        fk.append('\u0000').append(pth).append('\u0000').append(f.has("text") ? f.optString("text", "") : f.optString("base64", ""));
+                    }
+                    figKey = sha1(fk.toString());
+                }
+                String preKey = usePreSetting ? docKey : null;
                 String preInfo = String.valueOf(readText(new File(mainDir, PRE + ".txt"))).trim();
                 boolean usePre = preKey != null && new File(mainDir, PRE + ".fmt").exists()
                         && (preInfo.equals("ok " + preKey) || preInfo.equals("verificado " + preKey));
                 String job = new File(main).getName().replaceAll("\\.tex$", "");
-                boolean useFigs = autoinstall && figsReady(mainDir, job);
+                boolean useFigs = autoinstall && figsReady(mainDir, job, figKey);
+                // Con las dos cosas listas, se usa la que dio la compilación más rápida en este proyecto.
+                long preMs = readMs(new File(mainDir, PRE + "-ms.txt")), figMs = readMs(new File(mainDir, FIG + "-ms.txt"));
+                if (useFigs && usePre && (preMs < 0 || (figMs >= 0 && preMs <= figMs))) useFigs = false;
                 if (useFigs) usePre = false;
+                long firstRunMs = -1;
                 boolean usedPre = usePre, usedFigs = useFigs;
                 while (true) {
                     // Como latexmk: se repite mientras cambien los archivos auxiliares (índice, referencias), hasta 4 veces.
                     int p = 0;
                     while (p < 4) {
                         String before = digest(dir, stem);
+                        long tRun = System.currentTimeMillis();
                         r = useFigs ? mainWithFigs(mainDir, job, mainName)
                                 : run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=" + (usePre ? PRE : "pdflatex"),
                                 "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", mainName),
                                 mainDir, 10 * 60 * 1000);
+                        if (firstRunMs < 0) firstRunMs = System.currentTimeMillis() - tRun;
                         p++; passes++;
                         output.append(r.out);
                         if (r.timedOut) { timedOut = true; break; }
@@ -787,7 +819,7 @@ public class MotorPlugin extends Plugin {
                         if (ok) { r = mainWithFigs(mainDir, job, mainName); passes++; }
                         else {
                             // Esta figura no se puede guardar aparte: el proyecto vuelve a compilar como siempre.
-                            try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write("no".getBytes(StandardCharsets.UTF_8)); }
+                            try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + figKey).getBytes(StandardCharsets.UTF_8)); }
                             usedFigs = false;
                             r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex",
                                     "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", mainName), mainDir, 10 * 60 * 1000);
@@ -838,6 +870,7 @@ public class MotorPlugin extends Plugin {
                 res.put("prepararMs", t1 - t0);
                 res.put("texMs", t2 - t1);
                 res.put("preparacion", prep);
+                if (firstRunMs > 0 && rounds == 0 && (usedPre || usedFigs)) writeMs(new File(mainDir, (usedFigs ? FIG : PRE) + "-ms.txt"), firstRunMs);
                 res.put("preambuloGuardado", usedPre || usedFigs);
                 res.put("figurasGuardadas", usedFigs);
                 call.resolve(res);
@@ -851,10 +884,12 @@ public class MotorPlugin extends Plugin {
                 }
                 // Si el documento usa TikZ/pgfplots, se guardan sus figuras ya dibujadas para las próximas veces.
                 String figSt = String.valueOf(readText(figStatus(mainDir))).trim();
-                boolean usesTikz = log.contains("/tikz.sty") || log.contains("pgfplots.sty");
-                if (autoinstall && !usedFigs && usesTikz && pdfBytes != null && !timedOut && !figSt.equals("no")) {
+                boolean usesTikz = log.contains("/tikz.sty") || log.contains("pgfplots.sty") || new File(mainDir, job + ".figlist").exists();
+                if (autoinstall && !usedFigs && usesTikz && figKey != null && pdfBytes != null && !timedOut
+                        && !figSt.equals("no " + figKey) && !figsReady(mainDir, job, figKey)) {
                     final int nErr = countMatches(ERR, log);
-                    background(() -> { try { buildFigs(md, jb, mn, nErr); } catch (Exception ignored) { } });
+                    final String dk = figKey;
+                    background(() -> { try { buildFigs(md, jb, mn, nErr, dk); } catch (Exception ignored) { } });
                 }
             } catch (Exception e) {
                 call.reject(String.valueOf(e.getMessage()));
