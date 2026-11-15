@@ -1,0 +1,4767 @@
+% ============================================================
+%  CUADERNO DE ÁLGEBRA PREUNIVERSITARIA
+%  Transcripción a LaTeX para Overleaf
+%  Compilador: pdfLaTeX (el predeterminado de Overleaf)
+% ============================================================
+\documentclass[11pt,a4paper]{article}
+
+% ---------- Idioma y codificación ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands,es-nodecimaldot]{babel}
+
+% ---------- Página ----------
+\usepackage[margin=1.8cm]{geometry}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+
+% ---------- Matemáticas ----------
+\usepackage{amsmath,amssymb}
+\allowdisplaybreaks
+
+% ---------- Listas, columnas, cajas ----------
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{fancybox}      % \ovalbox (cajas ovaladas como en el cuaderno)
+
+% ---------- Colores ----------
+\usepackage[dvipsnames]{xcolor}
+\definecolor{rojo}{RGB}{200,30,45}
+\definecolor{azul}{RGB}{30,70,180}
+\definecolor{verde}{RGB}{20,130,60}
+\definecolor{naranja}{RGB}{225,115,0}
+\definecolor{graf}{RGB}{120,40,160}      % color de las gráficas
+\definecolor{resaltado}{RGB}{160,0,120}  % lo que estaba resaltado en el cuaderno
+
+% ---------- Gráficos ----------
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,patterns}
+
+% ---------- Títulos ----------
+\usepackage{titlesec}
+\titleformat{\section}{\Large\bfseries\color{rojo}}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{azul}}{\thesubsection}{0.5em}{}
+
+\usepackage[hidelinks]{hyperref}
+
+% ============================================================
+%  MACROS PROPIAS
+% ============================================================
+% Número encerrado en círculo: \cn{1}
+\newcommand{\cn}[1]{\raisebox{.5pt}{\textcircled{\raisebox{-.9pt}{\scriptsize #1}}}}
+
+% Caja de color para fórmulas importantes
+\newcommand{\caja}[1]{\fcolorbox{azul}{white}{#1}}
+
+% Texto que estaba resaltado en el cuaderno
+\newcommand{\hl}[1]{\textcolor{resaltado}{#1}}
+
+% Aspa simple:  \aspasimple{a}{b}{c}{d}
+\newcommand{\aspasimple}[4]{%
+\begin{tikzpicture}[baseline=-3pt]
+  \node (a) at (0,0.35) {$#1$}; \node (b) at (1.6,0.35) {$#2$};
+  \node (c) at (0,-0.35) {$#3$}; \node (d) at (1.6,-0.35) {$#4$};
+  \draw[rojo] (a.east) -- (d.west); \draw[rojo] (c.east) -- (b.west);
+\end{tikzpicture}}
+
+% Aspa doble: \aspadoble{a1}{b1}{c1}{a2}{b2}{c2}
+\newcommand{\aspadoble}[6]{%
+\begin{tikzpicture}[baseline=-3pt]
+  \node (a1) at (0,0.35) {$#1$}; \node (b1) at (1.6,0.35) {$#2$}; \node (c1) at (3.2,0.35) {$#3$};
+  \node (a2) at (0,-0.35) {$#4$}; \node (b2) at (1.6,-0.35) {$#5$}; \node (c2) at (3.2,-0.35) {$#6$};
+  \draw[rojo] (a1.east) -- (b2.west); \draw[rojo] (a2.east) -- (b1.west);
+  \draw[azul] (b1.east) -- (c2.west); \draw[azul] (b2.east) -- (c1.west);
+\end{tikzpicture}}
+
+% Intervalos: \intervalo{o|c}{o|c}{f|i}  (o = abierto, c = cerrado, f = finito, i = infinito)
+\newcommand{\intervalo}[3]{%
+\begin{tikzpicture}[baseline=-3pt]
+  \draw[<->] (-0.4,0) -- (3.4,0);
+  \if i#3
+    \draw[<-,thick,graf] (3.3,0.25) -- (0.8,0.25) -- (0.8,0);
+    \node[below] at (0.8,-0.05) {\small $a$};
+    \node[below] at (3.2,-0.05) {\small $+\infty$};
+  \else
+    \draw[thick,graf] (0.8,0) -- (0.8,0.25) -- (2.2,0.25) -- (2.2,0);
+    \node[below] at (0.8,-0.05) {\small $a$}; \node[below] at (2.2,-0.05) {\small $b$};
+    \if c#2 \fill[graf] (2.2,0) circle (2pt); \else \draw[graf,fill=white] (2.2,0) circle (2pt); \fi
+  \fi
+  \if c#1 \fill[graf] (0.8,0) circle (2pt); \else \draw[graf,fill=white] (0.8,0) circle (2pt); \fi
+\end{tikzpicture}}
+
+% Recta de signos: \rectasignos{p1/o,p2/c,...}{+,-,+,...}{número de zonas}
+\newcommand{\rectasignos}[3]{%
+\begin{tikzpicture}[baseline=-3pt]
+  \draw[<->] (0,0) -- ({1.2*#3},0);
+  \foreach [count=\i] \p/\t in {#1} {
+    \if c\t \fill (1.2*\i,0) circle (2pt); \else \draw[fill=white] (1.2*\i,0) circle (2pt); \fi
+    \node[below] at (1.2*\i,-0.08) {\small $\p$};
+  }
+  \foreach [count=\i] \s in {#2} \node[above,rojo] at ({1.2*\i-0.6},0.02) {$\s$};
+\end{tikzpicture}}
+
+% Ejes cartesianos: \ejes{xmin}{xmax}{ymin}{ymax}
+\newcommand{\ejes}[4]{%
+  \draw[->] (#1,0) -- (#2,0) node[below] {$x$};
+  \draw[->] (0,#3) -- (0,#4) node[left] {$y$};}
+
+% Parábola pequeña para la tabla de discriminantes: \parabola{signo de a}{desplazamiento}{-}
+\newcommand{\parabola}[3]{%
+\begin{tikzpicture}[scale=0.45,baseline=0pt]
+  \draw[->] (-2,0) -- (2.2,0); \draw[->] (0,-1.7) -- (0,1.9);
+  \draw[thick,graf,domain=-1.4:1.4,samples=40] plot (\x,{(#1)*0.6*\x*\x+(#2)*0.6});
+\end{tikzpicture}}
+
+% Función "rampa" usada en desplazamientos: \rampa{x0}{y0}{estilo}
+\newcommand{\rampa}[3]{%
+  \draw[thick,#3] ({#1-0.6},{#2-0.6}) -- ({#1+1},{#2+1}) -- ({#1+2.2},{#2+1});}
+
+% ============================================================
+\begin{document}
+
+\begin{center}
+{\Huge\bfseries\color{rojo} Cuaderno de Álgebra}\\[6pt]
+{\Large\color{azul} Preuniversitaria}
+\end{center}
+
+\tableofcontents
+\newpage
+% ============================================================
+% Páginas 1-3
+% ============================================================
+\section{Teoría de exponentes}
+
+Estudia todas las clases o tipos de exponentes y las diferentes relaciones que
+existen entre ellos a través de leyes matemáticas.
+
+\subsection*{1. Propiedades básicas}
+
+\begin{multicols}{2}
+\begin{itemize}[label=$\ast$]
+  \item $a^0 = 1,\ \forall a \neq 0$
+  \item $a^1 = a,\ \forall a \in \mathbb{R}$
+  \item $a^{-n} = \left(\dfrac{1}{a}\right)^{n},\ \forall a \neq 0$
+  \item $(a^m)^n = a^{m\cdot n}$
+  \item $(a\cdot b)^n = a^n\cdot b^n$
+  \item $a^m\cdot a^n = a^{m+n}$
+  \item $\dfrac{a^m}{a^n} = a^{m-n}$
+  \item $a^n = a^m \;\rightarrow\; n = m$
+  \item $\left(\dfrac{a}{b}\right)^{n} = \dfrac{a^n}{b^n},\ \forall a\in\mathbb{R},\ \forall b\neq 0$
+  \item $\sqrt[2n]{a^{2n}} = |a|,\ \forall a \in \mathbb{R}$
+  \item $\sqrt[2n+1]{a^{2n+1}} = a,\ \forall a \in \mathbb{R}$
+  \item $\sqrt[n]{a^m} = a^{\frac{m}{n}}$
+  \item $\sqrt[n]{\dfrac{a}{b}} = \dfrac{\sqrt[n]{a}}{\sqrt[n]{b}},\ \forall a\in\mathbb{R},\ \forall b\neq 0$
+  \item $\sqrt[n]{a}\cdot\sqrt[n]{b} = \sqrt[n]{a\cdot b}$
+  \item $\sqrt[n]{\sqrt[m]{a}} = \sqrt[n\cdot m]{a}$
+  \item $\sqrt[m]{a\sqrt[n]{b\sqrt[p]{c}}} = \sqrt[m]{a}\cdot\sqrt[m\cdot n]{b}\cdot\sqrt[m\cdot n\cdot p]{c}$
+\end{itemize}
+\end{multicols}
+
+\subsection*{2. Propiedades adicionales}
+
+\begin{itemize}[label=$\ast$]
+  \item $\sqrt[m]{a^n\sqrt[p]{a^q\sqrt[r]{a^s}}} = \sqrt[m\cdot p\cdot r]{a^{(n\cdot p+q)\cdot r+s}}$
+  \item $\sqrt[m]{a^n\div\sqrt[p]{a^q\div\sqrt[r]{a^s}}} = \sqrt[m\cdot p\cdot r]{a^{(n\cdot p-q)r+s}}$
+  \item $\sqrt{a+\sqrt{a+\sqrt{a+\cdots\infty}}} = \dfrac{\sqrt{4a+1}+1}{2}$
+  \item $\sqrt{a-\sqrt{a-\sqrt{a-\cdots\infty}}} = \dfrac{\sqrt{4a+1}-1}{2}$
+  \item $\sqrt{a\sqrt{a\sqrt{a\cdots\infty}}} = a$
+  \item $\sqrt[n]{a^m\cdot\sqrt[n]{a^m\cdots\infty}} = \sqrt[n-1]{a^m}$
+  \item $\sqrt[n]{a^m\div\sqrt[n]{a^m\div\cdots\infty}} = \sqrt[n+1]{a^m}$
+  \item $\underbrace{\sqrt[n]{a^{n-1}\sqrt[n]{a^{n-1}\cdots}}}_{\text{``$k$'' veces}} = \sqrt[n^k]{a^{n^k-1}}$
+  \item $\underbrace{\sqrt[n]{a^{p}\sqrt[n]{a^{p}\cdots}}}_{\text{``$m$'' veces}} = \sqrt[n^m]{a^{\frac{p(n^m-1)}{n-1}}}$
+  \item Si ``$m$'' es un número par:
+  \[\underbrace{\sqrt[n]{a^{p}\div\sqrt[n]{a^{p}\cdots}}}_{\text{``$m$'' veces}} = \sqrt[n^m]{a^{\frac{p(n^m-1)}{n+1}}}\]
+  \item Si ``$m$'' es un número impar:
+  \[\underbrace{\sqrt[n]{a^{p}\div\sqrt[n]{a^{p}\cdots}}}_{\text{``$m$'' veces}} = \sqrt[n^m]{a^{\frac{p(n^m+1)}{n+1}}}\]
+\end{itemize}
+
+\subsection*{3. Propiedades auxiliares}
+
+\begin{itemize}[label=$\ast$]
+  \item Si ``$a = m(m+1)$'', se cumple que:
+  \begin{itemize}[label=\checkmark]
+    \item $\sqrt{a+\sqrt{a+\cdots\infty}} = m+1$
+    \item $\sqrt{a-\sqrt{a-\cdots\infty}} = m$
+  \end{itemize}
+  \item Si ``$n \in \mathbb{R}-\{0\}$'', se cumple que:
+  \begin{itemize}[label=\checkmark]
+    \item $x^{x^{x^{\cdot^{\cdot^{\cdot\infty}}}}} = n \;\rightarrow\; x = \sqrt[n]{n}$
+    \item $x^{x^{x^{\cdot^{\cdot^{\cdot n}}}}} = n \;\rightarrow\; x = \sqrt[n]{n}$
+    \item $x^{-n^{n^{-x}}} = n \;\rightarrow\; \sqrt[x]{x} = n^{-1}$
+    \item $x^{\frac{x-1}{x}} = n^{n-1} \;\rightarrow\; x = n^{-1}$
+    \item $\sqrt[n]{n}^{\sqrt[n]{n}^{\cdot^{\cdot^{\cdot\infty}}}} = n$; no se cumple para todo $n$.
+  \end{itemize}
+  \item Si ``$a, b$ y $c \neq 0$'', se cumple que:
+  \begin{itemize}[label=\checkmark]
+    \item $\sqrt[n]{\dfrac{(ab)^n+(bc)^n+(ac)^n}{a^{-n}+b^{-n}+c^{-n}}} = a\cdot b\cdot c$
+    \item $\sqrt[n]{\dfrac{a^n+b^n+c^n}{(ab)^{-n}+(bc)^{-n}+(ac)^{-n}}} = a\cdot b\cdot c$
+  \end{itemize}
+\end{itemize}
+
+\newpage
+% ------------------------------------------------------------
+\section{Polinomios}
+
+\textbf{El polinomio:} son expresiones algebraicas racionales enteras.
+
+\textbf{Ejemplos:}
+\begin{enumerate}[label=\alph*)]
+  \item $E(x;y) = 3x^{20}y^{7}$ \quad en $\mathbb{Z}$.
+  \item $F(a;b;c) = -\dfrac{1}{2}a^{5} + 6b^{3}c^{2}$ \quad en $\mathbb{Q}$.
+  \item $P(x) = \sqrt{5}\,x^{12} - 7x^{4} + 8x^{7}$ \quad en $\mathbb{R}$.
+  \item $F(y) = (\sqrt{y})^{4} + 8y + 11$ \quad \textcolor{rojo}{no es polinomio}.
+\end{enumerate}
+
+\subsection*{Términos semejantes}
+\begin{enumerate}[label=\alph*)]
+  \item $6x^4;\ -\sqrt{5}\,x^4;\ 2x^4$
+  \item $11a^2b^3;\ -\dfrac{1}{2}a^2b^3$
+  \item Si $6x^4 + mx^a = 20x^4$, \ $am = \text{¿?}$
+  \[ m = 14 \qquad a = 4 \qquad a\times m = 56 \]
+\end{enumerate}
+
+\subsection*{Valor numérico}
+
+\textbf{\textcircled{1}} $P(x) = 4x^2 - 7x + 11$, \quad $x = -1$
+\[
+\begin{array}{c|cc|c}
+       & 4 & -7  & 11 \\
+x = -1 &   & -4  & 11 \\ \hline
+       & 4 & -11 & \boxed{22}
+\end{array}
+\quad \text{V.N.}
+\]
+
+\textbf{\textcircled{2}} $P(x) = ax + b$
+\begin{align*}
+P(P(x)) &= a^2x + ab + b\\
+P(P(P(x))) &= a^3x + a^2b + ab + b\\
+\underbrace{P(P(\cdots(P(x))\cdots))}_{\text{``$n$'' veces}} &= a^nx + a^{n-1}b + a^{n-2}b + \cdots + ab + b
+\end{align*}
+
+\textbf{\textcircled{3}} $P(x-3) = 5x + 11$, \quad $P(x) = \text{¿?}$
+\begin{align*}
+x - 3 = y \;&\rightarrow\; x = y + 3\\
+P(y) &= 5(y+3) + 11\\
+P(y) &= 5y + 26
+\end{align*}
+\textcolor{azul}{Cambiamos $y$ por $x$:} \quad $P(x) = 5x + 26$
+
+
+% ============================================================
+% Páginas 4-6
+% ============================================================
+\subsection*{Teoremas}
+Sea un polinomio $P(x)$, se cumple que:
+\begin{enumerate}[label=\Roman*.]
+  \item \textcolor{magenta}{$\sum \text{coeficientes } P(x) = P(1)$}
+  \item \textcolor{magenta}{Término independiente $= P(0)$}
+\end{enumerate}
+
+\textbf{Ejemplos:}
+
+\begin{minipage}[t]{0.485\textwidth}
+a) $P(x) = (x-1)^{2020} + 7x + 1$
+\[P(1) = (1-1)^{2020} + 7(1) + 1\]
+\[\textstyle\sum \text{coef.} = 8\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+b) $Q(y-1) = 2y + 11$
+\[Q(0) = 2(1) + 11\]
+\[T_i = 13\]
+\end{minipage}
+
+\subsection*{Polinomio con una sola variable}
+Sea: \quad $P(x) \equiv a_0x^n + a_1x^{n-1} + \cdots + a_n$
+\begin{itemize}[label={}]
+  \item Variable: $x$
+  \item Grado: $n$
+  \item Coeficiente principal: $a_0$
+  \item Término independiente: $a_n$
+\end{itemize}
+
+\textbf{Ejemplos:}
+
+\begin{minipage}[t]{0.320\textwidth}
+$P(x) = 6x - 7$
+\begin{itemize}[label={}]
+  \item V: $x$
+  \item G: $1$ (Lineal)
+  \item CP: $6$
+  \item Ti: $-7$
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.359\textwidth}
+$F(x) = x^2 - 7x + 11$
+\begin{itemize}[label={}]
+  \item V: $x$
+  \item G: $2$ (Cuadrático)
+  \item CP: $1$ (Mónico)
+  \item Ti: $11$
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.291\textwidth}
+$M(x) \equiv 10$
+\begin{itemize}[label={}]
+  \item Grado cero
+  \item $M(2) = 10$
+  \item $M(-1) = 10$
+\end{itemize}
+\end{minipage}
+
+\subsection*{Grado}
+
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{I. En un término:}
+\[M(x;y) = 2x^{11}y^{7}\]
+\begin{itemize}[label={}]
+  \item $GR_x: 11$
+  \item $GR_y: 7$
+  \item $GA: 18$
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{II. En dos o más términos:}
+\[P(x;y) = 3\overbrace{x^{4}y^{6}}^{10} - \overbrace{x^{2}y^{11}}^{13}\]
+\begin{itemize}[label={}]
+  \item $GR_x: 4$
+  \item $GR_y: 11$
+  \item $GA: 13$
+\end{itemize}
+\end{minipage}
+
+\subsection*{Polinomios especiales}
+
+\textbf{I. Homogéneo:}
+\[P(x,y) = 2\underbrace{x^{13}y^{4}}_{17} - \underbrace{x^{10}y^{7}}_{17} + \underbrace{x^{17}}_{17}\]
+
+\textbf{II. Completo:}
+
+\begin{minipage}[t]{0.485\textwidth}
+\[P(x) = 7x^2 - 11x + 4\]
+\centering Completo y ordenado\\ de forma descendente
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\[Q(y) = 2 - 6y + 8y^2 + y^3\]
+\centering Completo y ordenado\\ de forma ascendente
+\end{minipage}
+
+\[\#\text{ de términos} = \text{grado} + 1\]
+
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{III. Idénticos:}
+\[ax + b \equiv mx + n\]
+\[a = m \;\wedge\; b = n\]
+\textcolor{rojo}{Además:}
+\begin{align*}
+&(x+1)(x+2) \equiv x(x+3) + 2\\
+&x = 2 \;\rightarrow\; 3\times 4 = 2\times 5 + 2\\
+&x = -1 \;\rightarrow\; 0\times 1 = -1\times 2 + 2
+\end{align*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{IV. Nulo:}
+\[ax^2 + bx + c \equiv 0\]
+\[a = 0,\quad b = 0,\quad c = 0\]
+\end{minipage}
+
+\medskip
+\textcolor{naranja}{\textbf{Obs.:}} Si $P(x,y)$ es homogéneo de grado ``$n$''
+$\;\longrightarrow\; \boxed{P(\alpha x, \alpha y) = \alpha^n P(x,y)}$
+
+\newpage
+% ------------------------------------------------------------
+\section{Productos notables}
+
+\begin{multicols}{2}
+\textbf{\cn{1} Identidades:}
+\begin{itemize}[label=\checkmark]
+  \item $(a+b)^2 = a^2 + 2ab + b^2$
+  \item $(a-b)^2 = a^2 - 2ab + b^2$
+\end{itemize}
+
+\textbf{\cn{2} Legendre:}
+\begin{itemize}[label=\checkmark]
+  \item $(a+b)^2 + (a-b)^2 = 2(a^2+b^2)$
+  \item $(a+b)^2 - (a-b)^2 = 4ab$
+\end{itemize}
+
+\textbf{\cn{3}}
+\begin{itemize}[label=\checkmark]
+  \item $(a+b)(a-b) = a^2 - b^2$
+\end{itemize}
+
+\textbf{\cn{4} Stevin:}
+\begin{itemize}[label=\checkmark]
+  \item $(x+a)(x+b) = x^2 + (a+b)x + ab$
+\end{itemize}
+
+\textbf{\cn{5} Cauchy:}
+\begin{itemize}[label=\checkmark]
+  \item $(a+b)^3 = a^3 + b^3 + 3ab(a+b)$
+  \item $(a-b)^3 = a^3 - b^3 - 3ab(a-b)$
+\end{itemize}
+
+\textbf{\cn{6}}
+\begin{itemize}[label=\checkmark]
+  \item $(a+b)(a^2 - ab + b^2) = a^3 + b^3$
+  \item $(a-b)(a^2 + ab + b^2) = a^3 - b^3$
+\end{itemize}
+\end{multicols}
+
+\textbf{\cn{7}} \checkmark\ $(a+b+c)^2 = a^2 + b^2 + c^2 + 2(ab + bc + ac)$, \ Lagrange
+
+\textbf{\cn{8}} $(a^{2m} + a^mb^n + b^{2n})(a^{2m} - a^mb^n + b^{2n}) = a^{4m} + a^{2m}b^{2n} + b^{4n}$
+
+\textbf{\cn{9}} $(a+b+c)^3 = a^3 + b^3 + c^3 + 3(a+b)(a+c)(b+c)$
+
+\subsection*{Relaciones importantes}
+
+\begin{minipage}[t]{0.320\textwidth}
+\cn{1} Si: $(a+b)^2 = 4ab$
+\[\rightarrow a = b\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.320\textwidth}
+\cn{2} Si: $\dfrac{1}{a} + \dfrac{1}{b} = \dfrac{4}{a+b}$
+\[\rightarrow a = b\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.330\textwidth}
+\cn{3} $(a+b)^4 - (a-b)^4 = 8ab(a^2+b^2)$
+\end{minipage}
+
+\medskip
+\begin{minipage}[t]{0.320\textwidth}
+\cn{4} Si: $x^2 - 3x + 1 = 0$
+\[\rightarrow x + \frac{1}{x} = 3\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.650\textwidth}
+\cn{5} $\sqrt{A + B \pm 2\sqrt{AB}} = \sqrt{A} \pm \sqrt{B}, \quad A > B$
+\end{minipage}
+
+\subsection*{Identidades auxiliares}
+\begin{enumerate}[label=\cn{\arabic*}]
+  \item $(x+a)(x+b)(x+c) = x^3 + x^2(a+b+c) + x(ab+bc+ac) + abc$
+  \item $a^3 + b^3 + c^3 - 3abc = (a+b+c)(a^2+b^2+c^2-ab-bc-ac)$, \ Gauss
+  \item $(x^{2n} + x^n + 1)(x^{2n} - x^n + 1) = x^{4n} + x^{2n} + 1$
+\end{enumerate}
+
+
+% ============================================================
+% Páginas 7-9
+% ============================================================
+\subsection*{Identidades condicionales}
+
+\begin{minipage}[t]{0.436\textwidth}
+\cn{1} Si: $a + b + c = 0$
+\begin{align*}
+&\rightarrow a^2 + b^2 + c^2 = -2(ab + bc + ac)\\
+&\rightarrow a^3 + b^3 + c^3 = 3abc
+\end{align*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.533\textwidth}
+\cn{2} Sea: $\{a, b, c\} \subset \mathbb{R}$
+
+$\ast$ Si: $a^2 + b^2 + c^2 = ab + bc + ac$
+\[\rightarrow a = b = c\]
+$\ast$ Si: $a^2 + b^2 + c^2 = 0$
+\[\rightarrow a = 0 \wedge b = 0 \wedge c = 0\]
+\end{minipage}
+
+\medskip
+\cn{3} Si: $a^3 + b^3 + c^3 = 3abc \;\rightarrow\; a = b = c \;\vee\; a + b + c = 0$
+
+\subsection*{Más identidades}
+\begin{itemize}[label=$\ast$]
+  \item $(a+b+c)^3 = a^3 + b^3 + c^3 - 3abc + 3(a+b+c)(ab+bc+ac)$
+  \item $(a+b+c)^3 = 3(a+b+c)(a^2+b^2+c^2) - 2(a^3+b^3+c^3) + 6abc$
+  \item $(a+b)^4 + (a-b)^4 = 2(a^4 + 6a^2b^2 + b^4)$
+\end{itemize}
+
+\begin{minipage}[t]{0.485\textwidth}
+$\ast$ $x - x^{-1} = k,\ \forall k \in \mathbb{R}$
+\begin{align*}
+x^2 + x^{-2} &= k^2 + 2\\
+x^3 - x^{-3} &= k^3 + 3k\\
+x^4 + x^{-4} &= (k^2+2)^2 - 2\\
+x^6 + x^{-6} &= (k^3+3k)^2 + 2
+\end{align*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+$\ast$ $m + m^{-1} = k,\ \forall k \in \mathbb{R}$
+\begin{align*}
+m^2 + m^{-2} &= k^2 - 2\\
+m^3 + m^{-3} &= k^3 - 3k\\
+m^4 + m^{-4} &= (k^2-2)^2 - 2\\
+m^6 + m^{-6} &= (k^3-3k)^2 - 2
+\end{align*}
+\end{minipage}
+
+\newpage
+% ------------------------------------------------------------
+\section{Factorización}
+
+Factorizar es el proceso que consiste en transformar un polinomio entero y de
+coeficientes racionales, en un producto indicado de potencias de sus factores
+primos también racionales enteros y de coeficientes racionales.
+
+\begin{enumerate}
+  \item \textbf{Factor:} El factor de una expresión es aquel que la divide exactamente.
+  \[(x)(x+2) = x^2 + 2x \;\longrightarrow\; (x) \text{ y } (x+2) \text{ son factores de } x^2 + 2x.\]
+
+  \item \textbf{Factor común:} Consiste en identificar el factor que se repite para luego
+  retirarlo y anotar en un paréntesis los cocientes de dividir cada término entre dicho factor.
+  \[6x^3 + 18x^2 = 6x^2(x+3) \;\longrightarrow\; (6x^2) \text{ es el factor común.}\]
+
+  \item \textbf{Factor primo:} Es aquel que sólo acepta descomponerse en dos factores
+  (divisores): la unidad y el propio factor.
+  \[(x)(y^2+2y) \;\longrightarrow\; (x) \text{ es primo y } (y^2+2y) \text{ es no primo.}\]
+\end{enumerate}
+
+\subsection*{Criterios de factorización}
+
+\textbf{1. Aspa simple:} Consiste en descomponer los términos extremos, de tal manera que
+al multiplicar en aspa y sumar estos productos se obtenga el término central.
+
+\textcolor{naranja}{Sirve para:} \
+\fbox{$ax^{2n} + bx^n + c$} \quad \fbox{$ax^{2n} + bx^ny^m + cy^{2m}$}
+
+\medskip
+$\bullet\;\; x^2 - 8x + 15$ \qquad \aspasimple{x}{-5}{x}{-3}
+\qquad $\therefore\; x^2 - 8x + 15 = (x-5)(x-3)$
+
+\bigskip
+\textbf{2. Aspa doble:} Consiste en descomponer los términos que poseen grado par y/o el
+término independiente, a fin de generar tres aspas simples que verificarán los términos
+restantes.
+
+\textcolor{naranja}{Sirve para:}
+\begin{center}
+\fbox{$ax^{2n} + bx^ny^m + cy^{2m} + dx^n + ey^m + f$}\\[4pt]
+\fbox{$ax^{2n} + bx^ny^m + cy^{2m} + dx^nz^p + ey^mz^p + fz^{2p}$}
+\end{center}
+
+$\bullet\;\; x^2 + 5xy + 4y^2 + 3x + 6y + 2$
+\begin{center}
+\aspadoble{x}{4y}{2}{x}{y}{1}
+\end{center}
+\[\therefore\; x^2 + 5xy + 4y^2 + 3x + 6y + 2 = (x + 4y + 2)(x + y + 1)\]
+
+\bigskip
+\textbf{3. Aspa doble especial:} Consiste en descomponer los términos extremos para que a
+través de un aspa simple generemos un resultado. Este restará al término central y el
+valor final de esta operación se va a descomponer debajo del mismo a fin de generar dos
+aspas simples que verificarán los términos restantes.
+
+\textcolor{naranja}{Sirve para:}
+\begin{center}
+\fbox{$ax^{4n} + bx^{3n} + cx^{2n} + dx^n + e$} \quad
+\fbox{$ax^{4n} + bx^{3n}y^m + cx^{2n}y^{2m} + dx^ny^{3m} + ey^{4m}$}
+\end{center}
+
+$\bullet\;\; 6x^4 - 13x^3 + 7x^2 + 6x - 8$
+
+\begin{center}
+\aspasimple{3x^2}{4}{2x^2}{-2}
+\qquad$\longrightarrow$\qquad
+\aspadoble{3x^2}{-5x}{4}{2x^2}{-x}{-2}
+\end{center}
+
+Verificaciones: $-6x^2 + 8x^2 = 2x^2$\\
+Entonces: $7x^2 - 2x^2 = 5x^2$
+\[\therefore\; 6x^4 - 13x^3 + 7x^2 + 6x - 8 = (3x^2 - 5x + 4)(2x^2 - x - 2)\]
+
+\bigskip
+\textbf{4. Ruffini:} Método usado para factorizar \hl{polinomios completos y ordenados de una
+variable, grado impar y que presenten por lo menos una solución real.} Consiste en hallar
+los divisores del término independiente, de tal manera que al elegir uno de ellos y
+reemplazarlo en el polinomio a factorizar, el resultado sea $0$. Luego de encontrar ese
+valor, se utilizará para empezar la factorización como se muestra a continuación.
+
+\begin{minipage}[t]{0.485\textwidth}
+\[P(x) = x^3 + 6x^2 + 3x - 10\]
+Calculamos todos los divisores del $T_i$:
+\[\#D(10) = \pm(1, 2, 5, 10)\]
+Elegimos el valor correspondiente:
+\[x = 1 \longrightarrow P(1) = 1^3 + 6\cdot1^2 + 3\cdot1 - 10 = 0\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\[
+\begin{array}{c|ccc|c}
+x - 1 = 0 & 1 & 6 & 3  & -10\\
+x = 1     &   & 1 & 7  & 10\\ \hline
+          & 1 & 7 & 10 & \boxed{0}
+\end{array}
+\]
+\[Q(x) = x^2 + 7x + 10\]
+Aspa simple: $Q(x) = (x+5)(x+2)$
+\[\therefore\; x^3 + 6x^2 + 3x - 10 = (x+2)(x+5)(x-1)\]
+\end{minipage}
+
+\bigskip
+\textbf{5. Cambio de variable:} Consiste en identificar términos comunes dentro del
+polinomio, luego en conjunto, éstos serán reemplazados por una variable a fin de reducir
+el tamaño del polinomio y hacer más sencilla su factorización.
+\begin{align*}
+P(x) &= x(x+1)(x-2)(x-1) + 1\\
+     &= (x^2 - x)(x^2 - x - 2) + 1\\
+x^2 - x = a \;&\rightarrow\; a(a-2) + 1 = a^2 - 2a + 1 = (a-1)^2\\
+&\therefore\; (x^2 - x - 1)^2
+\end{align*}
+
+
+% ============================================================
+% Páginas 10-12
+% ============================================================
+\textbf{6. Productos notables:} Consiste en utilizar las identidades de los productos
+notables como lo es, \hl{la diferencia de cuadrados, la suma y diferencia de cubos, etc.}
+para factorizar polinomios.
+\[\therefore\; 8x^3 + 27 = (2x)^3 + 3^3 = (2x+3)(4x^2 - 6x + 9)\]
+
+\textbf{7. Quita y pon:} Consiste en identificar el término faltante en el polinomio, para
+luego, agregarlo y a su vez quitarlo con el propósito de reagrupar los términos del
+polinomio y finalmente factorizarlo usando los productos notables.
+
+\textbf{Nota:} los principales productos notables que se usan en este método son:
+\hl{la suma y diferencia de cubos y la identidad de Argand.}
+
+\begin{minipage}[t]{0.436\textwidth}
+\[P(x) = x^5 + x + 1\]
+Agregando el término que falta: $x^2$
+\[x^5 + x + 1 + x^2 - x^2\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.533\textwidth}
+\begin{gather*}
+(x^5 - x^2) + (x^2 + x + 1)\\
+x^2(x^3 - 1) + (x^2 + x + 1)\\
+x^2(x-1)(x^2+x+1) + (x^2+x+1)\\
+(x^2+x+1)(x^3 - x^2 + 1)\\
+\therefore\; x^5 + x + 1 = (x^2+x+1)(x^3 - x^2 + 1)
+\end{gather*}
+\end{minipage}
+
+\subsection*{Observaciones adicionales}
+
+$\ast$ \textbf{Teorema:} Todo polinomio de la forma:
+$P(x) = Ax^2 + Bx + C;\ \{A, B, C\} \subset \mathbb{Z} \wedge \forall A \neq 0$
+es factorizable en los racionales si: $B^2 - 4AC$ es un cuadrado perfecto.
+
+\textbf{Corolario:} Todo polinomio cuadrático en una variable, si es factorizable, debe
+admitir el criterio del aspa simple. Si no admite aspa simple, es porque no es
+factorizable en $\mathbb{Q}$.
+
+$\ast$ \textbf{Teorema:} Un polinomio tiene factores de primer grado de coeficientes
+racionales si y solo si tiene raíces racionales.
+
+\textbf{Nota:} Toda raíz racional de un polinomio pertenece, necesariamente, al conjunto
+de los posibles ceros racionales.
+
+\begin{minipage}[t]{0.339\textwidth}
+\[P(x) = x^3 - 3x + 1\]
+Sus posibles ceros racionales son: $1$ ó $-1$.
+\end{minipage}\hfill
+\begin{minipage}[t]{0.194\textwidth}
+\[P(1) = -1\]
+\[P(-1) = 3\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.436\textwidth}
+Esto nos indica que no tiene ceros racionales, por lo tanto no tendrá factores lineales.
+Indicando que $f(x)$ no será factorizable en los racionales.
+\end{minipage}
+
+\bigskip
+$\ast$ \textbf{Teorema del factor:} Dado un polinomio $P(x)$, si el número ``$b$'' es un
+cero de este polinomio, entonces $(x-b)$ será un factor de $P(x)$.
+
+\begin{minipage}[t]{0.436\textwidth}
+\[P(x) = x^3 + 5x + 6\]
+\[\text{P.C.R.} = \{1, 2, 3, 6\}\]
+Como $P(-1) = (-1)^3 + 5(-1) + 6 = 0$
+\end{minipage}\hfill
+\begin{minipage}[t]{0.533\textwidth}
+$\rightarrow (x - (-1)) \equiv (x+1)$ será un factor de $P(x)$; en tal caso será posible
+escribir:
+\[\boxed{\therefore\; P(x) = (x+1)\,q(x)}\]
+\end{minipage}
+
+\subsection*{Clasificación de factores}
+
+\begin{itemize}[label=\checkmark]
+  \item \textbf{Factores primos:} Son todos aquellos factores no constantes \hl{(bases)} que
+  presenta un polinomio. Se calcula contando los factores que se encuentran en la base de
+  cada exponente.
+  \item \textbf{Factores totales:} Es la cantidad total de factores que posee un polinomio.
+  Se calcula sumándole 1 al exponente de cada factor primo y luego se le multiplican
+  estos valores.
+  \item \textbf{Factores algebraicos:} Son todos los factores que posee un polinomio a
+  excepción de la unidad. Se calcula restándole 1 a la cantidad de factores totales.
+  \item \textbf{Factores compuestos:} Son todos aquellos factores que se han formado de
+  multiplicar los factores primos entre sí, teniendo en cuenta sus respectivos
+  exponentes. Se calcula utilizando la siguiente fórmula:
+  \[\boxed{\#F.T = \#F.P + \#F.C + 1}\]
+\end{itemize}
+
+\textcolor{naranja}{\textbf{Ejemplo:}}
+
+\begin{minipage}[t]{0.533\textwidth}
+\begin{gather*}
+P(x) = x^4(x-2)^2(x-5)\\
+\#F.P = 3\\
+\#F.T = (4+1)(2+1)(1+1) = 30
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.436\textwidth}
+\begin{gather*}
+\#F.A = 30 - 1 = 29\\
+\#F.C = 26
+\end{gather*}
+\end{minipage}
+
+\newpage
+% ------------------------------------------------------------
+\section{División algebraica}
+
+Es aquella operación matemática que se realiza entre dos expresiones algebraicas no
+nulas llamadas ``dividendo'' y ``divisor'' (las que pueden ser monomios o polinomios) y
+consiste en hallar otras dos expresiones algebraicas llamadas ``cociente'' y
+``residuo o resto''.
+
+\textbf{1. Notación:} \quad \fcolorbox{verde}{verde!15}{$D(x) = d(x)\cdot q(x) + R(x)$}
+\begin{center}
+\textcolor{rojo}{$D(x)$}: Dividendo; \quad \textcolor{rojo}{$d(x)$}: Divisor\\
+\textcolor{rojo}{$q(x)$}: Cociente; \quad \textcolor{rojo}{$R(x)$}: Resto
+\end{center}
+
+\textbf{2. Propiedades:}
+\begin{itemize}[label=\checkmark]
+  \item El grado del dividendo es mayor o igual que el grado del divisor.
+  \[\textcolor{magenta}{G(D(x)) \geq G(d(x))}\]
+  \item El grado del cociente es igual al grado del dividendo menos el grado del divisor.
+  \[\textcolor{magenta}{G(q(x)) = G(D(x)) - G(d(x))}\]
+  \item El grado del resto es menor o igual que el grado del divisor disminuido en 1.
+  \[\textcolor{magenta}{G(R(x)) \leq G(d(x)) - 1 \;\longrightarrow\; G(R(x))_{\text{máx}} = G(d(x)) - 1}\]
+  \item Si la división es exacta, el resto es un polinomio idénticamente nulo.
+  \[\textcolor{magenta}{D(x) = d(x)\cdot q(x) \;\longrightarrow\; R(x) = 0}\]
+\end{itemize}
+
+\textbf{3. Principales métodos de división de polinomios:} \hl{Para cualquier método de
+división, el dividendo y el divisor deben estar completos y ordenados} respecto a una de
+sus variables. \hl{En caso de que faltara uno o más términos, se completará con ceros.}
+
+\textcolor{verde}{\textbf{Método clásico:}} Usado para dividir polinomios de cualquier grado.
+
+\textcolor{verde}{\textbf{Pasos a seguir:}}
+\begin{enumerate}
+  \item Los términos del dividendo y del divisor deben estar ordenados en forma decreciente
+  según el exponente de su variable.
+  \item Los términos del cociente se empiezan a obtener de dividir el 1\textsuperscript{er}
+  término del dividendo entre el 1\textsuperscript{er} término del divisor.
+
+% ============================================================
+% Páginas 13-15
+% ============================================================
+  \item Cada término del cociente se multiplica por cada término del divisor, se obtienen
+  los resultados parciales y a los correspondientes términos del dividendo les vamos a
+  restar estos productos parciales.
+  \item La expresión obtenida al realizar la última suma, es el residuo de la división.
+\end{enumerate}
+
+\textcolor{naranja}{\textbf{Ejemplo:}}
+\[
+\textcolor{magenta}{D(x) = 5x^6 - 12x^5 + 10x^3 - 7x + 3} \qquad
+\textcolor{magenta}{d(x) = x - 2}
+\]
+
+{\footnotesize
+\[
+\begin{array}{rrrrrrr|l}
+5x^6 & -12x^5 & \textcolor{magenta}{+0x^4} & +10x^3 & \textcolor{magenta}{+0x^2} & -7x & +3 & \;x-2\\ \cline{8-8}
+5x^6 & -10x^5 &        &        &       &     &    & \;5x^5-2x^4-4x^3+2x^2+4x+1\\ \cline{1-2}
+     & -2x^5  & +0x^4  &        &       &     &    & \\
+     & -2x^5  & +4x^4  &        &       &     &    & \\ \cline{2-3}
+     &        & -4x^4  & +10x^3 &       &     &    & \\
+     &        & -4x^4  & +8x^3  &       &     &    & \\ \cline{3-4}
+     &        &        & 2x^3   & +0x^2 &     &    & \\
+     &        &        & 2x^3   & -4x^2 &     &    & \\ \cline{4-5}
+     &        &        &        & 4x^2  & -7x &    & \\
+     &        &        &        & 4x^2  & -8x &    & \\ \cline{5-6}
+     &        &        &        &       & x   & +3 & \\
+     &        &        &        &       & x   & -2 & \\ \cline{6-7}
+     &        &        &        &       &     & 5  &
+\end{array}
+\]
+}
+\[\therefore\; q(x) = 5x^5 - 2x^4 - 4x^3 + 2x^2 + 4x + 1\]
+\[\therefore\; R(x) = 5\]
+
+\bigskip
+\textcolor{verde}{\textbf{Método de Ruffini:}} Usado para dividir polinomios \hl{cuando el
+divisor es lineal.}
+
+\textcolor{verde}{\textbf{Pasos a seguir:}}
+\begin{enumerate}
+  \item Los coeficientes del dividendo deben estar completos y ordenados en forma
+  decreciente según el exponente de su variable.
+  \item El valor de la variable se obtiene al igualar el divisor a cero.
+  \item Los coeficientes del cociente se obtienen de sumar cada columna, luego que el
+  coeficiente anterior se ha multiplicado por el valor de la variable y este resultado
+  colocado en la columna siguiente.
+  \item El resto se obtiene de sumar la última columna.
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.8]
+  \draw[thick] (0,0) -- (0,2.2);
+  \draw[thick] (-1.2,0.6) -- (4.6,0.6);
+  \draw[thick] (3.6,0) -- (3.6,2.2);
+  \draw (0.2,1.5) rectangle (4.4,2.0); \node at (2.3,1.75) {\cn{1}};
+  \node at (-0.6,0.9) {\cn{2}};
+  \node at (1.8,0.25) {\cn{3}};
+  \node at (4.1,0.25) {\cn{4}};
+\end{tikzpicture}
+\end{center}
+
+\textcolor{naranja}{\textbf{Ejemplo:}}
+\[
+\textcolor{magenta}{D(x) = 3x^4 + 4x^3 - 8} \qquad \textcolor{magenta}{d(x) = x + 1}
+\]
+\begin{minipage}{0.485\textwidth}
+\[
+\begin{array}{c|cccc|c}
+   & 3 & 4  & 0  & 0 & -8\\
+-1 &   & -3 & -1 & 1 & -1\\ \hline
+   & 3 & 1  & -1 & 1 & -9
+\end{array}
+\]
+\end{minipage}\hfill
+\begin{minipage}{0.485\textwidth}
+\[\therefore\; q(x) = 3x^3 + x^2 - x + 1\]
+\[\therefore\; R(x) = -9\]
+\end{minipage}
+
+\medskip
+\textbf{Nota:} Si el divisor es de la forma ``$ax + b$'', con $a \neq 0$, los coeficientes
+del cociente deben dividirse entre ``$a$'' para obtener el cociente correcto.
+
+\bigskip
+\textcolor{verde}{\textbf{Método de Horner:}} Usado para dividir polinomios cuando el divisor
+es de un grado mayor o igual que 2.
+
+\textcolor{verde}{\textbf{Pasos a seguir:}}
+\begin{enumerate}
+  \item Los coeficientes del dividendo deben estar completos y ordenados de forma
+  decreciente según el exponente de su variable.
+  \item Los coeficientes del divisor deben estar ordenados en forma decreciente y
+  completos, según el exponente de su variable pero con signo contrario, salvo el primer
+  coeficiente.
+  \item Los coeficientes del cociente se obtienen al dividir la suma de los elementos de
+  cada columna entre el 1\textsuperscript{er} coeficiente del divisor. Cada coeficiente del
+  cociente se multiplica por los demás coeficientes del divisor y dichos resultados se
+  ubican a partir de la columna siguiente en forma horizontal.
+  \item El resto se obtiene de sumar las últimas columnas.
+\end{enumerate}
+
+\begin{minipage}{0.485\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.8]
+  \draw[thick] (0,0) -- (0,2.6);
+  \draw[thick] (-1,0.6) -- (5.2,0.6);
+  \draw[thick] (4,0) -- (4,2.6);
+  \draw (0.2,2.0) rectangle (5.0,2.4); \node at (2.6,2.2) {\cn{1}};
+  \draw (-0.6,0.8) rectangle (-0.2,2.4); \node at (-0.4,1.6) {\cn{2}};
+  \draw (0.2,0.1) rectangle (3.8,0.5); \node at (2,0.3) {\cn{3}};
+  \draw (4.2,0.1) rectangle (5.0,0.5); \node at (4.6,0.3) {\cn{4}};
+  \draw[->] (3,-0.6) node[below left] {\small Línea divisora} -- (3.95,-0.05);
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.485\textwidth}
+$\ast$ La línea divisora se coloca separando tantos términos del final del dividendo
+según lo indique el grado del divisor.
+\end{minipage}
+
+\bigskip
+\textcolor{naranja}{\textbf{Ejemplo:}}
+\[
+\textcolor{magenta}{D(x) = 6x^5 - 20x^4 - 13x^3 + 20x^2 - 12x + 7} \qquad
+\textcolor{magenta}{d(x) = 3x^2 - x + 1}
+\]
+\begin{minipage}{0.533\textwidth}
+\[
+\begin{array}{c|cccc|cc}
+   &   & -18 & -21 & 19 & & \\[-2pt]
+3  & 6 & -20 & -13 & 20 & -12 & 7\\
+1  &   & 2   & -2  &    &     & \\
+-1 &   &     & -6  & 6  &     & \\
+   &   &     &     & -7 & 7   & \\
+   &   &     &     &    & \frac{19}{3} & -\frac{19}{3}\\ \hline
+   & 2 & -6  & -7  & \frac{19}{3} & \frac{4}{3} & \frac{2}{3}
+\end{array}
+\]
+\end{minipage}\hfill
+\begin{minipage}{0.436\textwidth}
+\[\therefore\; q(x) = 2x^3 - 6x^2 - 7x + \frac{19}{3}\]
+\[\therefore\; R(x) = \frac{4}{3}x + \frac{2}{3}\]
+\end{minipage}
+
+\bigskip
+\textbf{4. Teorema del resto:} Es una regla práctica que nos va a permitir encontrar el
+residuo de una división cualquiera, sin necesidad de realizar la operación.
+
+\textcolor{verde}{\textbf{Pasos a seguir:}}
+\begin{enumerate}
+  \item El divisor se iguala a cero con el propósito de obtener diversas ecuaciones.
+  \item Estas ecuaciones son reemplazadas en el dividendo y la expresión final viene a
+  ser el resto de la división.
+\end{enumerate}
+
+\textcolor{naranja}{\textbf{Ejemplo:}}
+\[
+\textcolor{magenta}{D(x) = (x-2)^5(x+5)^5 + x(x+3) + 15} \qquad
+\textcolor{magenta}{d(x) = x^2 + 3x - 8}
+\]
+\begin{minipage}[t]{0.388\textwidth}
+\begin{gather*}
+x^2 + 3x - 8 = 0\\
+x^2 + 3x = 8\\[6pt]
+\therefore\; \textcolor{magenta}{R(x) = -9}
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.582\textwidth}
+\textcolor{magenta}{Acomodando el dividendo:}
+\begin{gather*}
+(x^2 + 3x - 10)^5 + (x^2 + 3x) + 15\\
+(8 - 10)^5 + (8) + 15\\
+-32 + 23 = -9
+\end{gather*}
+\end{minipage}
+
+
+% ============================================================
+% Páginas 16-18
+% ============================================================
+\newpage
+\section{Cocientes notables}
+
+Son aquellos cocientes exactos que se pueden obtener en forma directa sin necesidad de
+efectuar la operación de división.
+
+\textbf{1. Notación:} \quad
+\caja{$\dfrac{x^m \pm y^m}{x \pm y}$ \quad siendo $m \in \mathbb{Z}^+$ y $m \geq 2$}
+
+\medskip
+\textbf{2. Condición necesaria y suficiente:} Todo cociente notable debe poseer como número
+de términos a un número que sea entero positivo, el cual se obtiene de la siguiente manera:
+\[\caja{$\dfrac{x^p \pm y^q}{x^a \pm y^b}\;, \quad \#t = \dfrac{p}{a} = \dfrac{q}{b}$}\]
+
+\begin{center}
+\hl{$\ast$ El ``$\#t$'' suele representarse con la letra ``$n$''.}
+\end{center}
+
+\textbf{3. Casos posibles:}
+
+\begin{minipage}[t]{0.320\textwidth}
+\centering
+1\textsuperscript{ero}: Para todo $n \geq 2$\\[4pt]
+\caja{$\dfrac{x^p - y^q}{x^a - y^b} = + + + \cdots + +$}\\[4pt]
+\small (Todos los términos de su desarrollo son positivos)
+\end{minipage}\hfill
+\begin{minipage}[t]{0.320\textwidth}
+\centering
+2\textsuperscript{do}: Para todo ``$n$'' impar\\[4pt]
+\caja{$\dfrac{x^p + y^q}{x^a + y^b} = + - + \cdots - +$}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.320\textwidth}
+\centering
+3\textsuperscript{ero}: Para todo ``$n$'' par\\[4pt]
+\caja{$\dfrac{x^p - y^q}{x^a + y^b} = + - + \cdots + -$}
+\end{minipage}
+
+\begin{center}
+\small (En los casos 2 y 3: los términos de posición impar son positivos y los de
+posición par negativos)
+\end{center}
+
+\subsection*{Características del cociente}
+\begin{enumerate}
+  \item El resultado de un cociente notable es un polinomio homogéneo de grado de
+  homogeneidad $(n-1)$; es un polinomio de ``$n$'' términos completo y ordenado respecto
+  de sus dos variables.
+  \item Si el divisor es ``$x + y$'' el polinomio resultante del cociente presenta signos
+  alternados: $(+)(-)(+)(-)\cdots$ etc. Si el divisor es ``$x - y$'' el polinomio resultante
+  del cociente presenta todos sus signos positivos.
+  \item Si ``$n$'' es impar, existe un solo término central en el cual se cumple lo
+  siguiente: $n = 2k - 1$.
+  \item Si ``$n$'' es par, existen dos términos centrales de los cuales el 1\textsuperscript{ero}
+  cumple que: $n = 2k$, mientras que el 2\textsuperscript{do} es sólo el término consecutivo.
+\end{enumerate}
+\[\#t = G.A.(\text{Término } k) + 1\]
+
+\textbf{4. Término general:} \quad \caja{$T_k = \pm\, x^{n-k}\, y^{k-1}$}
+
+\begin{minipage}[t]{0.436\textwidth}
+\begin{itemize}[label={}]
+  \item $k = 1; 2; 3; \cdots; n$
+  \item $x$ = 1\textsuperscript{er} término del divisor
+  \item $y$ = 2\textsuperscript{do} término del divisor
+  \item $n$ = número de términos
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.533\textwidth}
+\begin{itemize}[label=\textcolor{magenta}{$\ast$}]
+  \item El ``$\pm$'' depende de si ``$k$'' es par o impar.
+  \item El ``$\pm$'' es prescindible de la fórmula si se trata del primer caso.
+\end{itemize}
+\end{minipage}
+
+\medskip
+\textbf{5. Términos equidistantes:} Son aquellos términos que se encuentran a una misma
+distancia o posición siendo contados desde los extremos, y presentan las siguientes
+características:
+\begin{itemize}[label=\textcolor{naranja}{\checkmark}]
+  \item La suma de sus posiciones es igual al número de términos más la unidad.
+  \[\caja{$k_1 + k_2 = n + 1$}\]
+  \item Sus bases cambian de exponente.
+  \[\caja{$\begin{aligned}
+    T_{k_1} &= \pm\, x^{n-k_1}\cdot y^{k_1-1}\\
+    T_{k_2} &= \pm\, x^{k_2-1}\cdot y^{n-k_2}
+  \end{aligned}$}\]
+\end{itemize}
+
+\newpage
+% ------------------------------------------------------------
+\section{Factoriales y combinatorias}
+
+\textbf{1. Factoriales:} El factorial de un número, es el producto de todos los números
+naturales consecutivos, desde el 1 hasta el número dado.
+
+\begin{minipage}[t]{0.436\textwidth}
+\textbf{Notación:}
+\[\fbox{$n! = 1\cdot2\cdot3\cdots(n-2)(n-1)n$}\]
+\[\fbox{$n! = n(n-1)!$}\]
+
+\textbf{Factoriales básicos:}
+\[
+\begin{array}{|rcl|rcl|}
+\hline
+0! &=& 1  & 5! &=& 120\\
+1! &=& 1  & 6! &=& 720\\
+2! &=& 2  & 7! &=& 5040\\
+3! &=& 6  & 8! &=& 40320\\
+4! &=& 24 & 9! &=& 362880\\ \hline
+\end{array}
+\]
+
+\textbf{Propiedades básicas:}
+\[
+\begin{array}{|l|}
+\hline
+\textcolor{magenta}{\ast}\ (-n)! = \nexists\\
+\textcolor{magenta}{\ast}\ (n/m)! = \nexists\\
+\textcolor{magenta}{\ast}\ n! = n(n-1)! \text{ para } n \geq 2\\
+\textcolor{magenta}{\ast}\ n! + (n+1)! = (n+2)\,n!\\
+\textcolor{magenta}{\ast}\ n! = m! \rightarrow n = m\\ \hline
+\end{array}
+\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.533\textwidth}\small
+\textbf{Propiedades adicionales:}
+\[
+\begin{array}{|l|}
+\hline
+n! + (n+1)! + (n+2)! = (n+2)^2\cdot n!\\[6pt]
+\dfrac{n}{(n+1)!} = \dfrac{1}{n!} - \dfrac{1}{(n+1)!} \quad \text{para } n \geq 2\\[10pt]
+1\cdot1! + 2\cdot2! + 3\cdot3! + \cdots + n\cdot n! = (n+1)! - 1\\[4pt]
+2^2\cdot1! + 3^2\cdot2! + 4^2\cdot3! + \cdots + (n+1)^2 n! = (n+2)! - 2\\ \hline
+\end{array}
+\]
+\[
+\begin{array}{|l|}
+\hline
+\displaystyle\sum_{i=1}^{n}\frac{i}{(i+1)!} = \frac{1}{2!} + \frac{2}{3!} + \frac{3}{4!} + \cdots + \frac{n}{(n+1)!} = 1 - \frac{1}{(n+1)!}\\[14pt]
+\displaystyle\sum_{i=0}^{\infty}\frac{x^i}{i!} = 1 + x + \frac{x^2}{2!} + \frac{x^3}{3!} + \cdots = e^x\\[14pt]
+\displaystyle\sum_{i=0}^{\infty}\frac{i\,x^i}{i!} = x + \frac{2x^2}{2!} + \frac{3x^3}{3!} + \cdots = x\cdot e^x\\[10pt] \hline
+\end{array}
+\]
+\end{minipage}
+
+\bigskip
+\textbf{Semifactorial:} Se aplica a un número natural par y viene a ser el producto de
+todos los números naturales pares consecutivos, desde el 2 hasta el número dado.
+\[\fbox{$n!! = 2\cdot4\cdot6\cdot8\cdots(n-2)\,n = 2^{\left(\frac{n}{2}\right)}\cdot\left(\dfrac{n}{2}\right)!$}\]
+
+\textbf{Cofactorial:} Se aplica a un número natural impar y viene a ser el producto de
+todos los números naturales impares consecutivos, desde el 1 hasta el número dado.
+\[\fbox{$n!! = 1\cdot3\cdot5\cdot7\cdots(n-2)\,n = \dfrac{n!}{2^{\left(\frac{n-1}{2}\right)}\left(\dfrac{n-1}{2}\right)!}$}\]
+
+
+% ============================================================
+% Páginas 19-21
+% ============================================================
+\subsection*{Fórmulas de seno y coseno}
+\[
+\begin{array}{|l|}
+\hline
+\displaystyle\sum_{i=0}^{\infty}\frac{(-1)^i x^{2i+1}}{(2i+1)!} = x - \frac{x^3}{3!} + \frac{x^5}{5!} - \frac{x^7}{7!} + \cdots = \operatorname{sen} x\\[16pt]
+\displaystyle\sum_{i=0}^{\infty}\frac{(-1)^i\cdot x^{2i}}{(2i)!} = 1 - \frac{x^2}{2!} + \frac{x^4}{4!} - \frac{x^6}{6!} + \cdots = \cos x\\[12pt] \hline
+\end{array}
+\]
+
+\textbf{2. Número combinatorio:} Llamado también combinatoria y viene a ser el número de
+formas en que se pueden extraer subconjuntos a partir de un conjunto dado.
+
+\textbf{Notación:}
+\[
+\fbox{$\underbrace{\dbinom{n}{k}}_{\text{Coeficiente binomial}} = \underbrace{C^{n}_{k}}_{\text{Combinatoria}} = \dfrac{n!}{k!\,(n-k)!}\;; \quad n \in \mathbb{N},\ k \in \mathbb{N}_0,\ n \geq k$}
+\]
+\begin{center}
+``$n$'': Base \qquad ``$k$'': Orden
+\end{center}
+
+\begin{minipage}[t]{0.466\textwidth}
+\textbf{Propiedades básicas:}
+\[
+\begin{array}{|ll|}
+\hline
+C^{n}_{0} = 1 & C^{n}_{1} = n\\
+C^{n}_{n} = 1 & C^{n}_{k} = C^{n}_{n-k}\\ \hline
+\end{array}
+\]
+\[
+\begin{array}{|l|}
+\hline
+C^{n}_{k} = \dfrac{n}{k}\,C^{n-1}_{k-1}\\[10pt]
+C^{n}_{k} = \dfrac{n}{n-k}\,C^{n-1}_{k}\\[10pt]
+C^{n}_{k} = \dfrac{n-k+1}{k}\,C^{n}_{k-1}\\[10pt]
+C^{n}_{k} = C^{m}_{p} \rightarrow n = m \wedge (k = p \vee k + p = n)\\[6pt]
+C^{n}_{k} + C^{n}_{k+1} = C^{n+1}_{k+1}\\[6pt]
+C^{n}_{0} + C^{n}_{1} + C^{n}_{2} + \cdots + C^{n}_{n} = 2^n\\[6pt]
+C^{n}_{0} + C^{n}_{2} + C^{n}_{4} + \cdots + C^{n}_{n} = 2^{n-1}\\[4pt] \hline
+\end{array}
+\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.504\textwidth}
+\[
+\fbox{$C^{n}_{1} + C^{n}_{3} + C^{n}_{5} + \cdots + C^{n}_{n-1} = 2^{n-1}$}
+\]
+\textbf{Propiedades auxiliares:}
+\[
+\begin{array}{|l|}
+\hline
+C^{n}_{0} + C^{n+1}_{1} + C^{n+2}_{2} + \cdots + C^{n+k}_{k} = C^{n+k+1}_{k}\\[6pt]
+C^{n}_{1} + 2C^{n}_{2} + 3C^{n}_{3} + \cdots + nC^{n}_{n} = n\cdot 2^{n-1}\\[6pt]
+C^{n}_{1} + 2^2C^{n}_{2} + 3^2C^{n}_{3} + \cdots + n^2C^{n}_{n} = \dfrac{n(n+1)}{2}\cdot 2^{n-1}\\[10pt]
+(C^{n}_{0})^2 + (C^{n}_{1})^2 + (C^{n}_{2})^2 + \cdots + (C^{n}_{n})^2 = \dfrac{(2n)!}{(n!)^2}\\[8pt] \hline
+\end{array}
+\]
+\end{minipage}
+
+\newpage
+% ------------------------------------------------------------
+\section{Binomio de Newton}
+
+La potencia de un binomio es un polinomio que se denomina binomial o de Newton.
+Así tenemos:
+\[(x+y)^n = \binom{n}{0}x^n + \binom{n}{1}x^{n-1}y + \cdots + \binom{n}{n-1}x\,y^{n-1} + \binom{n}{n}y^n\]
+
+\subsection*{Propiedades del binomio de Newton}
+\begin{enumerate}[label=\cn{\arabic*}]
+  \item \hl{En el desarrollo existen $(n+1)$ términos siendo $n \in \mathbb{N}$.}
+  \item Los coeficientes de los términos equidistantes de los extremos son iguales, lo
+  cual es evidente por ser números combinatorios complementarios.
+  \item Si los términos del binomio tienen signos contrarios, los términos del desarrollo
+  serán alternativamente positivos y negativos.
+  \begin{center}
+  Siendo los de lugar impar \textcolor{rojo}{$(+)$}\\
+  Siendo los de lugar par \textcolor{rojo}{$(-)$}
+  \end{center}
+  \item Si los dos términos del binomio son negativos, todos los términos del desarrollo
+  serán positivos o negativos según que el exponente sea par o impar. En efecto, se tiene:
+  \[(-x-a)^m = [-(x+a)]^m\]
+  \item La suma de los coeficientes de los términos de lugar impar es igual a la suma de
+  los de lugar par.
+  \item Término central de un binomio con exponente par: $\dfrac{n+2}{2}$
+  \item Términos centrales de un binomio con exponente impar: $\dfrac{n+1}{2}$ \ y \
+  $\dfrac{n+1}{2} + 1$
+  \item La suma de coeficientes de un binomio de Newton cuya fórmula es
+  \textcolor{magenta}{$(ax^{\alpha} \pm by^{\beta})^n$} está dada por:
+  \[\sum \text{coef.} = (a \pm b)^n \quad \text{siendo } x = y = 1\]
+  \item La suma de exponentes (grados absolutos) de los términos del desarrollo de un
+  binomio de Newton cuya forma más general es:
+  \textcolor{magenta}{$(ax^{\alpha} \pm by^{\beta})^n$}
+  \[\sum G.A. = \left[\frac{n(n+1)}{2}\right](\alpha + \beta)\]
+  \item \hl{La fórmula del término general es: $t_{k+1} = C^{n}_{k}\cdot x^{n-k}\cdot y^{k}$}
+  \item La suma de las posiciones de dos términos equidistantes es: $n + 2$
+\end{enumerate}
+
+\subsection*{Expansión de Leibnitz}
+Llamado también desarrollo de Leibnitz. Es una generalización del binomio de Newton que
+tiene por finalidad hacer más fácil el desarrollo de la potencia $n$-ésima de los
+binomios que presentan más de 2 bases. Su forma es:
+\[(\underbrace{a + b + c + d + \cdots}_{\text{``$k$'' bases}})^n\]
+
+\begin{itemize}[label=\textcolor{naranja}{\checkmark}]
+  \item El número de términos está dado por:
+  \[\#t = C^{n+k-1}_{k-1}\]
+  \item Su término general está dado por:
+  \[
+  T_{\text{General}} = \frac{n!}{\underbrace{\alpha!\,\beta!\,\theta!\,\lambda!\cdots}_{\text{Exponentes de las bases}}}\;
+  \underbrace{a^{\alpha}\cdot b^{\beta}\cdot c^{\theta}\cdot d^{\lambda}\cdots}_{\text{Bases}}
+  \qquad \text{obs: } \fbox{$\underbrace{\alpha + \beta + \theta + \lambda + \cdots}_{\text{``$k$'' sumandos}} = n$}
+  \]
+\end{itemize}
+
+\textbf{Nota:} Cuando todas las bases de la expansión de Leibnitz presenten exponentes
+iguales a la unidad, la suma de grados absolutos de todos sus términos se calculará
+usando la siguiente fórmula deducida:
+\[\sum G.A. = n\cdot C^{n+k-1}_{k-1} = n\cdot\#t\]
+
+\subsection*{\textcolor{rojo}{Expansión o desarrollo del binomio de Newton, cuando el exponente es negativo y/o fraccionario}}
+\[
+B_{(x)} = (1+x)^n = \binom{n}{0} + \binom{n}{1}x + \binom{n}{2}x^2 + \binom{n}{3}x^3 + \binom{n}{4}x^4 + \cdots\infty
+= \sum_{k=0}^{\infty}\binom{n}{k}x^k
+\]
+\begin{center}
+\textcolor{azul}{Serie binomial o Serie binómica de Newton}
+\end{center}
+
+\textbf{Propiedades:}
+\begin{itemize}[label=\textcolor{magenta}{\checkmark}]
+  \item Cuando el exponente ``$n$'' no es un entero positivo, el número de términos es ilimitado.
+  \item Su término general es: \ \fbox{$t_{k+1} = \dbinom{n}{k}\cdot x^k$}
+\end{itemize}
+
+\textbf{Obs:} \ \fbox{$\displaystyle\lim_{x\to 0}(1+x)^n = 1 + nx$}
+
+\medskip
+\textbf{Ejemplo:}
+\[
+(1-x)^{-1/3} = \binom{-\frac{1}{3}}{0} + \binom{-\frac{1}{3}}{1}(-x) + \binom{-\frac{1}{3}}{2}(-x)^2 + \cdots = 1 + \frac{x}{3} + \frac{2x^2}{9} + \cdots
+\]
+
+
+% ============================================================
+% Páginas 22-24
+% ============================================================
+\newpage
+\section{Racionalización de radicales}
+
+Es el proceso que consiste en eliminar la raíz o raíces que están presentes en el
+denominador de una fracción.
+
+\textbf{1. Factor racionalizante (F.R.):} El factor racionalizante de una expresión
+irracional es otra expresión irracional que, multiplicada por la primera, la convierte en
+una expresión racional.
+\[\sqrt[4]{5} \rightarrow \text{F.R.} = \sqrt[4]{5^3} \rightarrow \left(\sqrt[4]{5}\right)\left(\sqrt[4]{5^3}\right) = \sqrt[4]{5^4} = 5\]
+
+\textbf{2. Tipos de radicales:}
+
+\textbf{2.1. Homogéneos:} Son todos aquellos radicales que presentan el mismo índice.
+\[\sqrt[4]{x}\,,\quad -2\sqrt[4]{y}\,,\quad \frac{1}{5}\sqrt[4]{xyz}\]
+
+\textbf{2.2. Semejantes:} Son todos aquellos radicales que presentan el mismo índice y a su
+vez el mismo radicando.
+\[2\sqrt[5]{x}\,,\quad 5\sqrt[5]{x}\,,\quad \frac{-\sqrt{3}}{2}\sqrt[5]{x}\]
+
+\textbf{3. Propiedades:} Las propiedades se presentan según la forma que tenga el denominador.
+
+\begin{minipage}[t]{0.242\textwidth}
+\centering
+\textcolor{magenta}{1\textsuperscript{ERA} FORMA: $\sqrt{a}$}\\[6pt]
+\fbox{$\dfrac{b}{\sqrt{a}}\left(\dfrac{\sqrt{a}}{\sqrt{a}}\right)$}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.320\textwidth}
+\centering
+\textcolor{magenta}{2\textsuperscript{DA} FORMA: $\sqrt{a} \pm \sqrt{b}$}\\[6pt]
+\fbox{$\dfrac{c}{\sqrt{a} \pm \sqrt{b}}\left(\dfrac{\sqrt{a} \mp \sqrt{b}}{\sqrt{a} \mp \sqrt{b}}\right)$}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.407\textwidth}
+\centering
+\textcolor{magenta}{3\textsuperscript{ERA} FORMA: $\sqrt{a} + \sqrt{b} \pm \sqrt{c}$}\\[6pt]
+\fbox{$\dfrac{d}{\sqrt{a} + \sqrt{b} \pm \sqrt{c}}\left(\dfrac{\sqrt{a} + \sqrt{b} \mp \sqrt{c}}{\sqrt{a} + \sqrt{b} \mp \sqrt{c}}\right)$}
+\end{minipage}
+
+\bigskip
+\begin{minipage}[t]{0.388\textwidth}
+\centering
+\textcolor{magenta}{4\textsuperscript{TA} FORMA: $\sqrt[n]{a^m}$}\\[6pt]
+\fbox{$\dfrac{b}{\sqrt[n]{a^m}}\left(\dfrac{\sqrt[n]{a^{n-m}}}{\sqrt[n]{a^{n-m}}}\right)$}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.582\textwidth}
+\centering
+\textcolor{magenta}{5\textsuperscript{TA} FORMA: $\sqrt[n]{a} \pm \sqrt[n]{b}$} $\rightarrow n$ es par\\[6pt]
+\fbox{$\dfrac{c}{\sqrt[n]{a} \pm \sqrt[n]{b}}\left(\dfrac{\sqrt[n]{a} \mp \sqrt[n]{b}}{\sqrt[n]{a} \mp \sqrt[n]{b}}\right)$}
+\end{minipage}
+
+\bigskip
+\textcolor{magenta}{6\textsuperscript{TA} FORMA:} $n \in \mathbb{Z}^+ \wedge n \geq 2$
+\begin{gather*}
+\left(\sqrt[n]{A} - \sqrt[n]{B}\right)\text{F.R.} = A - B\\
+\text{F.R.} = \sqrt[n]{A}^{\,n-1} + \sqrt[n]{A}^{\,n-2}\sqrt[n]{B} + \cdots + \sqrt[n]{B}^{\,n-1}
+\end{gather*}
+
+\textcolor{magenta}{7\textsuperscript{MA} FORMA:} $n \in \mathbb{Z}^+ \wedge n$ es impar
+\begin{gather*}
+\left(\sqrt[n]{A} + \sqrt[n]{B}\right)\text{F.R.} = A + B\\
+\text{F.R.} = \sqrt[n]{A}^{\,n-1} - \sqrt[n]{A}^{\,n-2}\sqrt[n]{B} + \cdots + \sqrt[n]{B}^{\,n-1}
+\end{gather*}
+
+\textcolor{magenta}{8\textsuperscript{VA} FORMA:} $n \in \mathbb{Z}^+ \wedge n$ es par
+\begin{gather*}
+\left(\sqrt[n]{A} + \sqrt[n]{B}\right)\text{F.R.} = A - B\\
+\text{F.R.} = \sqrt[n]{A}^{\,n-1} - \sqrt[n]{A}^{\,n-2}\sqrt[n]{B} + \cdots - \sqrt[n]{B}^{\,n-1}
+\end{gather*}
+
+$\ast$ En la racionalización se usa con mucha frecuencia algunas identidades de los
+productos notables como lo son: la diferencia de cuadrados, la suma y diferencia de cubos,
+la identidad de Lagrange, etc. Así también, se hace necesario usar la factorización y la
+teoría de cocientes notables.
+
+\textbf{4. Radicales dobles:}
+\begin{itemize}[label=$\ast$]
+  \item \caja{$\sqrt{A \pm \sqrt{B}} = \sqrt{\dfrac{A+C}{2}} \pm \sqrt{\dfrac{A-C}{2}}\,, \quad C = \sqrt{A^2 - B}$}
+  \quad \textcolor{magenta}{$(C \in \mathbb{Q}^+)$}
+  \item \caja{$\sqrt{A \pm 2\sqrt{B}} = \sqrt{m} \pm \sqrt{n}\,, \quad B = m\cdot n \text{ y } A = m + n$}
+  \quad \textcolor{magenta}{$(m > n)$}
+\end{itemize}
+
+\textbf{5. Radicales triples:}
+\begin{itemize}[label=$\ast$]
+  \item \caja{$\sqrt{(a+b+c) + 2\sqrt{ab} + 2\sqrt{bc} + 2\sqrt{ac}} = \sqrt{a} + \sqrt{b} + \sqrt{c}$}
+  \item \caja{$\sqrt{(a+b+c) + 2\sqrt{ab} - 2\sqrt{bc} - 2\sqrt{ac}} = \sqrt{a} + \sqrt{b} - \sqrt{c}$}
+  \item \caja{$\sqrt{(a+b+c) - 2\sqrt{ab} - 2\sqrt{bc} + 2\sqrt{ac}} = \sqrt{a} - \sqrt{b} + \sqrt{c}$}
+  \item \caja{$\sqrt{(a+b+c) - 2\sqrt{ab} + 2\sqrt{bc} - 2\sqrt{ac}} = -\sqrt{a} + \sqrt{b} + \sqrt{c}$}
+\end{itemize}
+
+\textbf{6. Raíz cúbica:}
+\begin{itemize}[label=$\ast$]
+  \item \fbox{$\sqrt[3]{A \pm \sqrt{B}} = n \pm \sqrt{m}$}
+  \begin{itemize}[label=\checkmark]
+    \item $C = \sqrt[3]{A^2 - B}$
+    \item $A = 4n^3 - 3nC$
+    \item $m = n^2 - C$
+  \end{itemize}
+\end{itemize}
+
+\textbf{7. Extraer raíz cuadrada:} El polinomio tiene que ser completo y ordenado.
+
+Extraer la raíz cuadrada de: \textcolor{magenta}{$25x^6 - 20x^5 + 34x^4 - 52x^3 + 24x^2 + 15$}
+
+{\small
+\[
+\begin{array}{rrrrrrr|l}
+\sqrt{25x^6} & -20x^5 & +34x^4 & -52x^3 & +24x^2 & \textcolor{naranja}{+0x} & +15 & \;5x^3 - 2x^2 + 3x - 4\\ \cline{8-8}
+25x^6 &        &        &        &        &     &     & \;(10x^3 + (-2x^2))(-2x^2)\\ \cline{1-1}
+0     & -20x^5 & +34x^4 &        &        &     &     & \;(10x^3 - 4x^2 + 3x)(3x)\\
+      & -20x^5 & +4x^4  &        &        &     &     & \;(10x^3 - 4x^2 + 6x - 4)(-4)\\ \cline{2-3}
+      &        & 30x^4  & -52x^3 & +24x^2 &     &     & \\
+      &        & 30x^4  & -12x^3 & +9x^2  &     &     & \\ \cline{3-5}
+      &        &        & -40x^3 & +15x^2 & +0x & +15 & \\
+      &        &        & -40x^3 & +16x^2 & -24x & +16 & \\ \cline{4-7}
+\multicolumn{3}{r}{\text{Residuo} \rightarrow} & & -x^2 & +24x & -1 &
+\end{array}
+\]
+}
+
+\[\therefore\; 25x^6 - 20x^5 + 34x^4 - 52x^3 + 24x^2 + 15 = (5x^3 - 2x^2 + 3x - 4)^2 + (-x^2 + 24x - 1)\]
+
+\begin{tabular}{@{}l@{\;}l}
+\textcolor{magenta}{Polinomio radicando de grado par} $\rightarrow$ & $P(x) = 25x^6 - 20x^5 + 34x^4 - 52x^3 + 24x^2 + 15$\\
+\textcolor{magenta}{Polinomio raíz} $\rightarrow$ & $q(x) = 5x^3 - 2x^2 + 3x - 4$\\
+\textcolor{magenta}{Polinomio residuo} $\rightarrow$ & $R(x) = -x^2 + 24x - 1$
+\end{tabular}
+
+\medskip
+$\ast$ \textcolor{magenta}{Cuando el polinomio residuo es igual a cero es raíz cuadrada
+exacta, caso contrario será raíz cuadrada inexacta.}
+
+
+% ============================================================
+% Páginas 25-27
+% ============================================================
+\newpage
+\section{Matrices y determinantes}
+
+\textbf{Definición:} Una matriz de orden $m\times n$ es un arreglo rectangular de elementos
+(números o funciones), dispuestos en $m$ líneas horizontales, llamadas filas y en $n$
+líneas verticales llamadas columnas, de la forma:
+
+\begin{minipage}{0.436\textwidth}
+\[
+A = \begin{bmatrix}
+a_{11} & a_{12} & \cdots & a_{1n}\\
+a_{21} & a_{22} & \cdots & a_{2n}\\
+a_{31} & a_{32} & \cdots & a_{3n}\\
+\vdots & \vdots & \ddots & \vdots\\
+a_{m1} & a_{m2} & \cdots & a_{mn}
+\end{bmatrix}
+\]
+\end{minipage}\hfill
+\begin{minipage}{0.533\textwidth}
+$\ast$ Los subíndices indican la posición del elemento dentro de la matriz, el primero
+denota la fila $i$ y el segundo la columna $j$. Por ejemplo, el elemento $a_{25}$ se
+ubica en la segunda fila y quinta columna de la matriz.
+
+$\ast$ La dimensión de una matriz es el número $m\times n$ de elementos que tiene la matriz.
+\end{minipage}
+
+\medskip
+\textbf{Matrices iguales:} Dos matrices son iguales cuando tienen la misma dimensión y
+cuando los elementos que ocupan los mismos lugares son iguales. Si
+$A = (a_{ij})_{m\times n}$ y $B = (b_{ij})_{m\times n}$, entonces $A = B$ si y sólo si
+$a_{ij} = b_{ij}$ para cada valor de $i, j$. Las siguientes matrices no son iguales:
+\[
+A = \begin{pmatrix} 1 & 2 & -3\\ 0 & 5 & 6 \end{pmatrix}
+\qquad
+B = \begin{pmatrix} 1 & 0\\ 2 & 5\\ -3 & 6 \end{pmatrix}
+\]
+\begin{center}
+\textcolor{naranja}{Orden $2\times3$} \hspace{3cm} \textcolor{naranja}{Orden $3\times2$}
+\end{center}
+
+\subsection*{Algunos tipos de matrices}
+
+\textbf{1. Matriz cuadrada:} Tiene el mismo número de filas que de columnas, es decir
+\hl{$m = n$}, y se dice que la matriz cuadrada es de \hl{orden $n$}. La diagonal principal
+de una matriz cuadrada es el conjunto formado por los elementos
+$a_{11}, a_{22}, a_{33}, a_{44}, \ldots, a_{nn}$ y la traza de la matriz cuadrada es el
+número dado por la suma de los elementos de la diagonal principal, es decir:
+\[\fbox{$\operatorname{Traz}(A) = a_{11} + a_{22} + a_{33} + a_{44} + \cdots + a_{nn} = \displaystyle\sum_{i=1}^{n} a_{ii}$}\]
+
+\textbf{2. Matriz rectangular:} Es toda matriz en la que $m \neq n$.
+
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{3. Matriz fila:} Es una matriz de orden $1\times n$.
+\[A = \begin{pmatrix} a_{11} & a_{12} & a_{13} & \cdots & a_{1n}\end{pmatrix}\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{4. Matriz columna:} Es una matriz de orden $m\times 1$.
+\[A = \begin{pmatrix} a_{11}\\ a_{21}\\ a_{31}\\ \vdots\\ a_{m1}\end{pmatrix}\]
+\end{minipage}
+
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{5. Matriz nula:} Es aquella que tiene todos sus elementos nulos.
+\[\begin{pmatrix} 0 & 0 & 0\\ 0 & 0 & 0\end{pmatrix}\]
+
+\textbf{7. Matriz escalar:} Es una matriz diagonal en la que todos los elementos de la
+diagonal principal son iguales a una constante.
+\[
+B = \begin{bmatrix}
+k & 0 & 0 & \cdots & 0\\
+0 & k & 0 & \cdots & 0\\
+0 & 0 & k & \cdots & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots\\
+0 & 0 & 0 & \cdots & k
+\end{bmatrix}
+\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{6. Matriz diagonal:} Es una matriz cuadrada en la que todos los elementos que no
+pertenecen a la diagonal principal son nulos.
+\[
+B = \begin{bmatrix}
+a_{11} & 0 & 0 & \cdots & 0\\
+0 & a_{22} & 0 & \cdots & 0\\
+0 & 0 & a_{33} & \cdots & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots\\
+0 & 0 & 0 & \cdots & a_{nn}
+\end{bmatrix}
+\]
+
+\textbf{8. Matriz unidad o identidad:} Es la matriz escalar en la que $k = 1$.
+\[
+B = \begin{bmatrix}
+1 & 0 & 0 & \cdots & 0\\
+0 & 1 & 0 & \cdots & 0\\
+0 & 0 & 1 & \cdots & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots\\
+0 & 0 & 0 & \cdots & 1
+\end{bmatrix}_{n\times n} = I_n
+\]
+\end{minipage}
+
+\medskip
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{9. Matriz triangular superior:} Es la matriz cuadrada que tiene todos sus elementos
+que se encuentran por debajo de la diagonal principal nulos, es decir $a_{ij} = 0$ para
+todo $i > j$.
+\[
+A = \begin{bmatrix}
+a_{11} & a_{12} & a_{13} & a_{14}\\
+0 & a_{22} & a_{23} & a_{24}\\
+0 & 0 & a_{33} & a_{34}\\
+0 & 0 & 0 & a_{44}
+\end{bmatrix}
+\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{10. Matriz triangular inferior:} Es la matriz cuadrada que tiene todos sus
+elementos que se encuentran por encima de la diagonal principal nulos, es decir
+$a_{ij} = 0$ para todo $i < j$.
+\[
+A = \begin{bmatrix}
+a_{11} & 0 & 0 & 0\\
+a_{21} & a_{22} & 0 & 0\\
+a_{31} & a_{32} & a_{33} & 0\\
+a_{41} & a_{42} & a_{43} & a_{44}
+\end{bmatrix}
+\]
+\end{minipage}
+
+\medskip
+\textbf{11. Matriz traspuesta:} Es la matriz que se obtiene de la matriz
+$A = (a_{ij})_{m\times n}$ intercambiando las filas por columnas. Se denota
+$A^t = (a_{ji})_{n\times m}$.
+\[
+A = \begin{bmatrix}
+a_{11} & a_{12} & a_{13}\\
+a_{21} & a_{22} & a_{23}\\
+a_{31} & a_{32} & a_{33}\\
+a_{41} & a_{42} & a_{43}
+\end{bmatrix}
+\;\longrightarrow\;
+A^t = \begin{bmatrix}
+a_{11} & a_{21} & a_{31} & a_{41}\\
+a_{12} & a_{22} & a_{32} & a_{42}\\
+a_{13} & a_{23} & a_{33} & a_{43}
+\end{bmatrix}
+\]
+
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{12. Matriz simétrica:} Es toda matriz tal que $A = A^t$.
+\[
+A = \begin{bmatrix} 1 & 0 & 1\\ 0 & 2 & 4\\ 1 & 4 & 3\end{bmatrix}
+\rightarrow
+A^t = \begin{bmatrix} 1 & 0 & 1\\ 0 & 2 & 4\\ 1 & 4 & 3\end{bmatrix}
+\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{13. Matriz antisimétrica:} Es toda matriz tal que $A = -A^t$.
+\[
+A = \begin{pmatrix} 0 & -1\\ 1 & 0\end{pmatrix}
+\rightarrow
+A^t = \begin{pmatrix} 0 & 1\\ -1 & 0\end{pmatrix}
+\]
+\end{minipage}
+
+\subsection*{Operaciones con matrices}
+
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{Adición de matrices:} Si $A = (a_{ij})_{m\times n}$ y $B = (b_{ij})_{m\times n}$, se
+define entonces la suma $A + B$ como la matriz de orden $m\times n$,
+$C = (c_{ij})_{m\times n}$ tal que: \hl{$c_{ij} = a_{ij} + b_{ij}$}.
+\[
+A = \begin{pmatrix} 3 & -2 & 1\\ -4 & 7 & 5\end{pmatrix}
+\quad
+B = \begin{pmatrix} -9 & 8 & 6\\ -7 & 1 & 2\end{pmatrix}
+\]
+\[
+A + B = C = \begin{pmatrix} -6 & 6 & 7\\ -11 & 8 & 7\end{pmatrix}
+\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{Diferencia de matrices:} La diferencia de matrices $A$ y $B$, de orden $m\times n$,
+se define como la matriz $D = A + (-B)$, es decir, $D = (d_{ij})_{m\times n}$ tal que
+\hl{$d_{ij} = a_{ij} - b_{ij}$}.
+
+\textbf{Propiedades:} Si $A$, $B$, $C$ son matrices de orden $m\times n$, se cumple:
+\begin{itemize}[label=\textcolor{naranja}{\checkmark}]
+  \item $A + B = B + A$
+  \item $A + (B + C) = (A + B) + C$
+  \item $A + O = O + A$
+  \item Existe la matriz opuesta de la matriz $A$, que se obtiene cambiando los signos de
+  todos los elementos de $A$, tal que $A + (-A) = O$.
+\end{itemize}
+\end{minipage}
+
+\medskip
+\textbf{Producto de un escalar por una matriz:} Dado un número real $k$ y la matriz
+$A_{m\times n}$, el producto $k\cdot A$ es otra matriz del mismo orden, que resulta de
+multiplicar cada elemento de $A$ por $k$.
+\[
+k\cdot A = k\cdot\begin{bmatrix}
+a_{11} & a_{12} & \cdots & a_{1n}\\
+a_{21} & a_{22} & \cdots & a_{2n}\\
+a_{31} & a_{32} & \cdots & a_{3n}\\
+\vdots & \vdots & \ddots & \vdots\\
+a_{m1} & a_{m2} & \cdots & a_{mn}
+\end{bmatrix}
+=
+\begin{bmatrix}
+k a_{11} & k a_{12} & \cdots & k a_{1n}\\
+k a_{21} & k a_{22} & \cdots & k a_{2n}\\
+k a_{31} & k a_{32} & \cdots & k a_{3n}\\
+\vdots & \vdots & \ddots & \vdots\\
+k a_{m1} & k a_{m2} & \cdots & k a_{mn}
+\end{bmatrix}
+\]
+\textbf{Propiedades:} $\forall \alpha, \beta \in \mathbb{R}$ y $\forall A = (a_{ij})_{m\times n}$,
+$B = (b_{ij})_{m\times n}$, se cumple:
+\begin{multicols}{2}
+\begin{itemize}[label=\textcolor{naranja}{\checkmark}]
+  \item $(\alpha\cdot\beta)A = \alpha(\beta\cdot A)$
+  \item $\alpha\cdot A = A\cdot\alpha$
+  \item $\alpha(A + B) = \alpha A + \alpha B$
+  \item $A(\alpha + \beta) = A\alpha + A\beta$
+\end{itemize}
+\end{multicols}
+
+\textbf{Producto de matrices:} Dadas dos matrices $A_{m\times n}$ y $B_{n\times p}$ ellas son
+compatibles para la multiplicación de $A$ por $B$, si el número de columnas de $A$ es igual
+al número de filas de $B$. El producto $A\cdot B$ es la matriz $C$ de orden $m\times p$, tal
+que los elementos $c_{ij}$ de $C$ es \hl{$c_{ij} = \displaystyle\sum_{k} a_{ik}b_{kj}$} para
+cada $i, j$.
+
+\begin{minipage}[t]{0.533\textwidth}
+\[
+A = \underbrace{\begin{bmatrix} 6 & 4\\ -1 & 3\\ 5 & -2\end{bmatrix}}_{3\times2}
+\qquad
+B = \underbrace{\begin{bmatrix} 1 & 6 & 3\\ 5 & -10 & -7\end{bmatrix}}_{2\times3}
+\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.436\textwidth}
+\textbf{Propiedades:}
+\begin{itemize}[label=\textcolor{naranja}{\checkmark}]
+  \item $A(BC) = (A\cdot B)C$
+  \item $A(B + C) = A\cdot B + A\cdot C$
+  \item $(\alpha\cdot A)^t = \alpha\cdot A^t;\ \alpha \in \mathbb{R}$
+  \item $(A\cdot B)^t = B^t\cdot A^t$
+  \item Si $A\cdot B = 0$ no implica que $A = 0$ ó $B = 0$.
+  \item Si $A\cdot B = A\cdot C$ no implica necesariamente que $B = C$.
+  \item El producto de matrices no siempre es conmutativo: $A\cdot B \neq B\cdot A$.
+\end{itemize}
+\end{minipage}
+\[
+A\cdot B = \underbrace{\begin{pmatrix}
+6\cdot1 + 4\cdot5 & 6\cdot6 + 4(-10) & 6\cdot3 + 4(-7)\\
+(-1)1 + 3\cdot5 & (-1)6 + 3(-10) & (-1)3 + 3(-7)\\
+5\cdot1 + (-2)5 & 5\cdot6 + (-2)(-10) & 5\cdot3 + (-2)(-7)
+\end{pmatrix}}_{3\times3}
+\]
+
+
+% ============================================================
+% Páginas 28-30
+% ============================================================
+\subsection*{Otros tipos de matrices}
+\begin{itemize}[label={}]
+  \item \textbf{Matriz regular:} Es una matriz cuadrada que tiene inversa.
+  \item \textbf{Matriz singular:} No tiene matriz inversa.
+  \item \textbf{Matriz idempotente:} Si $A^2 = A$
+  \item \textbf{Matriz nilpotente:} Si $A^k = 0 \;\wedge\; A^{k-1} \neq 0$
+  \item \textbf{Matriz involutiva:} Si $A^2 = I$
+  \item \textbf{Matriz ortogonal:} Si $A\cdot A^t = I$
+  \item \textbf{Matrices normales:} Si conmutan con su traspuesta, esto es, si
+  $A\cdot A^t = A^t\cdot A$. Obviamente, si $A$ es simétrica, antisimétrica u ortogonal,
+  es necesariamente normal.
+\end{itemize}
+
+\subsection*{Determinantes}
+El determinante es un número real o un escalar que se asocia a cada matriz cuadrada.
+
+\textbf{Notación:} Sea $A$ una matriz cuadrada, el determinante de $A$, se denota por $|A|$,
+$\operatorname{Det}(A)$, $\Delta_A$.
+
+\begin{minipage}[t]{0.339\textwidth}
+\textbf{Matriz de orden uno:}
+
+Sea $A = [a_{11}]$ entonces:
+\[|A| = a_{11}\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.630\textwidth}
+\textbf{Matriz de orden dos:}
+
+Sea $A = \begin{bmatrix} a_{11} & a_{12}\\ a_{21} & a_{22}\end{bmatrix}$ entonces:
+\[|A| = a_{11}\cdot a_{22} - a_{21}\cdot a_{12}\]
+\end{minipage}
+
+\medskip
+\textbf{Matriz de orden tres} (regla de Sarrus):
+
+\begin{minipage}{0.339\textwidth}
+\[
+A = \begin{bmatrix}
+a_{11} & a_{12} & a_{13}\\
+a_{21} & a_{22} & a_{23}\\
+a_{31} & a_{32} & a_{33}
+\end{bmatrix}
+\]
+\[
+\begin{array}{ccc}
+a_{11} & a_{12} & a_{13}\\
+a_{21} & a_{22} & a_{23}\\
+a_{31} & a_{32} & a_{33}\\ \hline
+a_{11} & a_{12} & a_{13}\\
+a_{21} & a_{22} & a_{23}
+\end{array}
+\]
+\end{minipage}\hfill
+\begin{minipage}{0.630\textwidth}
+entonces:
+\begin{align*}
+|A| = {}& a_{11}\cdot a_{22}\cdot a_{33} + a_{21}\cdot a_{32}\cdot a_{13} + a_{31}\cdot a_{12}\cdot a_{23}\\
+& - a_{13}\cdot a_{22}\cdot a_{31} - a_{23}\cdot a_{32}\cdot a_{11} - a_{33}\cdot a_{12}\cdot a_{21}
+\end{align*}
+\end{minipage}
+
+\medskip
+\textbf{Teoremas:} Dadas las matrices cuadradas $A$, $B$ de orden $n$ y el escalar $k$:
+
+\begin{minipage}[t]{0.291\textwidth}
+\begin{itemize}[label=\textcolor{naranja}{\checkmark}]
+  \item $|AB| = |A||B|$
+  \item $|A^t| = |A|$
+  \item $|A + B| \neq |A| + |B|$
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.679\textwidth}
+\begin{itemize}[label=\textcolor{naranja}{\checkmark}]
+  \item El determinante no varía si a todos los elementos de una de sus filas (o
+  columnas) se suman o restan un múltiplo de otra fila (o columna).
+  \item Si dos filas (o columnas) son proporcionales el valor del determinante es
+  \hl{cero}.
+\end{itemize}
+\end{minipage}
+\begin{itemize}[label=\textcolor{naranja}{\checkmark}]
+  \item Si los elementos de una fila (o columna) son \hl{ceros} el valor del determinante
+  es \hl{cero}.
+  \item Cuando los elementos de una fila (o columna) tienen factor común, este factor
+  puede salir a multiplicar al determinante.
+  \item Cuando se permutan dos filas (o columnas) el determinante cambia de signo.
+  \item El determinante de una matriz diagonal, triangular superior o inferior, es igual
+  al producto de los elementos de la diagonal principal.
+  \item El determinante de una matriz antisimétrica \hl{de orden impar}, es igual a
+  \hl{cero}.
+  \item $|k\cdot A| = k^n|A|$
+  \item Determinante de VANDERMONDE:
+  \[
+  \begin{vmatrix} 1 & 1 & 1\\ a & b & c\\ a^2 & b^2 & c^2\end{vmatrix} = (c-a)(c-b)(b-a)
+  \]
+\end{itemize}
+
+\textbf{Menor de un elemento:} Se llama menor $M_{ij}$ de un elemento $a_{ij}$ al
+determinante de orden ``$n-1$'' que resulta al suprimir en la matriz $A$ de orden $n$, todos
+los elementos de la fila $i$ y la columna $j$. Dada la matriz:
+\[
+A = \begin{pmatrix} -1 & 2 & 1\\ 1 & 0 & -1\\ 2 & 1 & 0\end{pmatrix}
+\qquad\text{Luego:}\quad
+M_{21} = \begin{vmatrix} 2 & 1\\ 1 & 0\end{vmatrix} = -1
+\qquad
+M_{33} = \begin{vmatrix} -1 & 2\\ 1 & 0\end{vmatrix} = -2
+\]
+
+\textbf{Cofactor de un elemento:} Se llama cofactor de un elemento \hl{$a_{ij}$} a su
+\hl{menor} con su signo o con signo contrario según sea par o impar la suma $i + j$. El
+cofactor del elemento \hl{$a_{ij}$} denotamos por \hl{$A_{ij}$}. Del ejemplo anterior:
+\[
+\fcolorbox{verde}{verde!15}{$A_{ij} = (-1)^{i+j}M_{ij}$}
+\qquad
+A_{21} = (-1)^{2+1}M_{21} = (-1)(-1) = 1
+\qquad
+A_{33} = (-1)^{3+3}M_{33} = 1(-2) = -2
+\]
+
+\textbf{Teorema de Laplace:} Sea: $A = [a_{ij}]_n$
+\[
+\left.
+\begin{array}{l}
+\checkmark\ \text{Respecto a la fila } i\text{:}\quad |A| = \displaystyle\sum_{j=1}^{n} a_{ij}A_{ij}\\[14pt]
+\checkmark\ \text{Respecto a la columna } j\text{:}\quad |A| = \displaystyle\sum_{i=1}^{n} a_{ij}A_{ij}
+\end{array}
+\right\}\; A_{ij} \text{ es el cofactor de } a_{ij}
+\]
+
+Del ejemplo anterior:
+\[
+A = \begin{pmatrix}
+\overset{+}{-1} & \overset{-}{2} & \overset{+}{1}\\
+1 & 0 & -1\\
+2 & 1 & 0
+\end{pmatrix}_{3\times3}
+\quad n = 3
+\]
+\textcolor{magenta}{$\ast$} Respecto a la fila 1:
+\[
+|A| = \underset{-1}{a_{11}}\underset{(1)}{A_{11}} + \underset{2}{a_{12}}\underset{(-2)}{A_{12}} + \underset{1}{a_{13}}\underset{(1)}{A_{13}} = -1 - 4 + 1 = \boxed{-4}
+\]
+\[
+A_{11} = \begin{vmatrix} 0 & -1\\ 1 & 0\end{vmatrix} = 1
+\qquad
+A_{12} = \begin{vmatrix} 1 & -1\\ 2 & 0\end{vmatrix}(-1) = -2
+\qquad
+A_{13} = \begin{vmatrix} 1 & 0\\ 2 & 1\end{vmatrix} = 1
+\]
+
+\textbf{Matriz de cofactores:}
+\[
+\fcolorbox{verde}{verde!15}{$\operatorname{Cof}(A) = \begin{bmatrix}
+A_{11} & A_{12} & A_{13}\\
+A_{21} & A_{22} & A_{23}\\
+A_{31} & A_{32} & A_{33}
+\end{bmatrix}$}
+\]
+Del ejemplo anterior:
+\[
+\operatorname{Cof}(A) = \begin{pmatrix}
+\begin{vmatrix} 0 & -1\\ 1 & 0\end{vmatrix} & -\begin{vmatrix} 1 & -1\\ 2 & 0\end{vmatrix} & \begin{vmatrix} 1 & 0\\ 2 & 1\end{vmatrix}\\[12pt]
+-\begin{vmatrix} 2 & 1\\ 1 & 0\end{vmatrix} & \begin{vmatrix} -1 & 1\\ 2 & 0\end{vmatrix} & -\begin{vmatrix} -1 & 2\\ 2 & 1\end{vmatrix}\\[12pt]
+\begin{vmatrix} 2 & 1\\ 0 & -1\end{vmatrix} & -\begin{vmatrix} -1 & 1\\ 1 & -1\end{vmatrix} & \begin{vmatrix} -1 & 2\\ 1 & 0\end{vmatrix}
+\end{pmatrix}
+\;\Rightarrow\;
+\operatorname{Cof}(A) = \begin{pmatrix} 1 & -2 & 1\\ 1 & -2 & 5\\ -2 & 0 & -2\end{pmatrix}
+\]
+
+\textbf{Adjunta de una matriz:}
+\[
+\fcolorbox{verde}{verde!15}{$\operatorname{Adj}(A) = (\operatorname{Cof}(A))^t$}
+\qquad \text{Del ejemplo anterior:}\quad
+\operatorname{Adj}(A) = \begin{pmatrix} 1 & 1 & -2\\ -2 & -2 & 0\\ 1 & 5 & -2\end{pmatrix}
+\]
+
+\textbf{Matriz inversa:} Sea $A$ una matriz cuadrada regular o no singular, se llama matriz
+inversa de $A$ denotada por $A^{-1}$ (que) verifica la relación:
+\[\fbox{$A\cdot A^{-1} = A^{-1}\cdot A = I$} \qquad \textcolor{rojo}{I}\text{: Matriz identidad.}\]
+En general para toda matriz $A$ no singular, la inversa se puede obtener:
+\[\fbox{$A^{-1} = \dfrac{1}{|A|}\cdot\operatorname{Adj}(A)$}\]
+Del ejemplo anterior:
+\[
+A^{-1} = \frac{1}{(-4)}\begin{bmatrix} 1 & 1 & -2\\ -2 & -2 & 0\\ 1 & 5 & -2\end{bmatrix}
+\longrightarrow
+A^{-1} = \begin{bmatrix} -1/4 & -1/4 & 1/2\\ 1/2 & 1/2 & 0\\ -1/4 & -5/4 & 1/2\end{bmatrix}
+\]
+Para una matriz de \hl{orden 2} podemos utilizar:
+\[
+A = \begin{bmatrix} a & b\\ c & d\end{bmatrix}
+\longrightarrow
+A^{-1} = \frac{1}{|A|}\begin{bmatrix} d & -b\\ -c & a\end{bmatrix}
+\]
+
+
+% ============================================================
+% Páginas 31-33
+% ============================================================
+\subsection*{Método de Gauss--Jordan}
+Se trata de plantearla como una ecuación matricial donde el objetivo es encontrar
+$A^{-1}$. Para ello seguiremos los siguientes pasos:
+\begin{enumerate}
+  \item Escribimos una matriz doble que contiene a la matriz $A$ en un lado y a la matriz
+  identidad $I$ en el otro.
+  \item Realizamos \hl{operaciones elementales fila} para transformar la matriz $A$ en la
+  identidad.
+  \item El procedimiento termina cuando la matriz identidad está al lado izquierdo y el
+  lado derecho es la matriz $B$, que precisamente, es la inversa de $A$: $B = A^{-1}$.
+\end{enumerate}
+
+Llamaremos operaciones elementales fila (sobre una matriz) a las siguientes operaciones:
+\begin{enumerate}
+  \item Multiplicar una fila por un número distinto de $0$.
+  \item Sumar (o restar) a una fila, el múltiplo de otra fila.
+  \item Intercambiar el orden de las filas.
+\end{enumerate}
+
+\textbf{Ejemplos:}
+
+\textbf{1.} Hallar la matriz inversa de: \quad $A = \begin{pmatrix} 8 & 2\\ 7 & 2\end{pmatrix}$
+\[
+\left(\begin{array}{cc|cc} 8 & 2 & 1 & 0\\ 7 & 2 & 0 & 1\end{array}\right)
+\xrightarrow[\;8f_2 - 7f_1\;]{\;f_1 - f_2\;}
+\left(\begin{array}{cc|cc} 1 & 0 & 1 & -1\\ 0 & 2 & -7 & 8\end{array}\right)
+\xrightarrow{\;f_2/2\;}
+\left(\begin{array}{cc|cc} 1 & 0 & 1 & -1\\ 0 & 1 & -\frac{7}{2} & 4\end{array}\right)
+\]
+\[A^{-1} = \begin{pmatrix} 1 & -1\\ -\frac{7}{2} & 4\end{pmatrix}\]
+
+\textbf{2.} Hallar la matriz inversa de: \quad
+$A = \begin{pmatrix} -1 & 2 & 1\\ 1 & 0 & -1\\ 2 & 1 & 0\end{pmatrix}$
+\[
+\left(\begin{array}{ccc|ccc}
+-1 & 2 & 1 & 1 & 0 & 0\\
+1 & 0 & -1 & 0 & 1 & 0\\
+2 & 1 & 0 & 0 & 0 & 1
+\end{array}\right)
+\xrightarrow{\substack{f_1 - 2f_3\\ f_2 + f_1\\ f_3 + 2f_1}}
+\left(\begin{array}{ccc|ccc}
+-5 & 0 & 1 & 1 & 0 & -2\\
+0 & 2 & 0 & 1 & 1 & 0\\
+0 & 5 & 2 & 2 & 0 & 1
+\end{array}\right)
+\]
+\[
+\xrightarrow{\;2f_3 - 5f_2\;}
+\left(\begin{array}{ccc|ccc}
+-5 & 0 & 1 & 1 & 0 & -2\\
+0 & 2 & 0 & 1 & 1 & 0\\
+0 & 0 & 4 & -1 & -5 & 2
+\end{array}\right)
+\xrightarrow{\;4f_1 - f_3\;}
+\left(\begin{array}{ccc|ccc}
+-20 & 0 & 0 & 5 & 5 & -10\\
+0 & 2 & 0 & 1 & 1 & 0\\
+0 & 0 & 4 & -1 & -5 & 2
+\end{array}\right)
+\]
+\[
+\xrightarrow{\substack{f_1/(-20)\\ f_2/2\\ f_3/4}}
+\left(\begin{array}{ccc|ccc}
+1 & 0 & 0 & -1/4 & -1/4 & 1/2\\
+0 & 1 & 0 & 1/2 & 1/2 & 0\\
+0 & 0 & 1 & -1/4 & -5/4 & 1/2
+\end{array}\right)
+\quad\Rightarrow\quad
+A^{-1} = \begin{pmatrix} -1/4 & -1/4 & 1/2\\ 1/2 & 1/2 & 0\\ -1/4 & -5/4 & 1/2\end{pmatrix}
+\]
+
+\textbf{Teoremas:} $A$, $B$ de orden ``$n$'', no singulares.
+\begin{multicols}{2}
+\begin{itemize}[label=\textcolor{naranja}{\checkmark}]
+  \item $|A^{-1}| = |A|^{-1}$
+  \item $(A + B)^{-1} \neq A^{-1} + B^{-1}$
+  \item $(A^{-1})^T = (A^T)^{-1}$
+  \item $|\operatorname{Adj}(\operatorname{Adj}(A))| = |A|^{(n-1)^2}$
+  \item $(A^{-1})^{-1} = A$
+  \item $(A\cdot B)^{-1} = B^{-1}\cdot A^{-1}$
+  \item $(\lambda A)^{-1} = \lambda^{-1}\cdot A^{-1}$
+  \item Si: $A\cdot X\cdot B = C \rightarrow X = A^{-1}\cdot C\cdot B^{-1}$
+\end{itemize}
+\end{multicols}
+
+\newpage
+% ------------------------------------------------------------
+\section{Teoría de ecuaciones I}
+
+\textbf{Ecuación:} Es una igualdad que se establece entre dos expresiones matemáticas de
+una o más variables.
+\[\fbox{$A(x,y) = B(x,y)$} \qquad \textcolor{magenta}{x, y\text{: incógnitas}}\]
+
+\textbf{Solución de una ecuación:} Es aquel valor que toma la incógnita y convierte a la
+ecuación en una proposición verdadera.
+
+\textbf{Conjunto solución:} Es un conjunto formado por todas las soluciones de la ecuación.
+
+Ejemplos: Resuelva la ecuación $x^2 - 4 = 3x$
+\[
+\begin{array}{lll}
+x^2 - 3x - 4 = 0 \qquad & x_1 = 4 \qquad & \therefore\ C.S. = \{-1; 4\}\\
+(x-4)(x+1) = 0 & x_2 = -1 &
+\end{array}
+\]
+
+\textbf{Clasificación de las ecuaciones:} De acuerdo al número de soluciones, las
+ecuaciones se clasifican en:
+
+\textcolor{azul}{\textbf{Ecuación compatible:}} Es aquella que admite al menos una solución,
+a su vez pueden ser:
+\begin{itemize}[label={}]
+  \item \textbf{E.C. Determinada:} Es aquella que admite un número finito de soluciones.
+
+  Ejemplo: \quad $(x-4)(x-7)(x+11) = 0 \qquad \therefore\ C.S. = \{-11; 4; 7\}$
+
+  \item \textbf{E.C. Indeterminada:} Es aquella que admite infinitas soluciones.
+
+  \begin{minipage}{0.5\linewidth}
+  Ejemplo:
+  \begin{gather*}
+  (x+5)(x+1) + 4 = (x+3)^2\\
+  x^2 + 6x + 9 = x^2 + 6x + 9
+  \end{gather*}
+  \end{minipage}%
+  \begin{minipage}{0.45\linewidth}
+  Esta igualdad es correcta para todo valor real de $x$, por tanto:
+  \[\therefore\ C.S. = \mathbb{R}\]
+  \end{minipage}
+\end{itemize}
+
+\textcolor{azul}{\textbf{Ecuación incompatible:}} Es aquella que no admite solución, es
+decir, su conjunto solución es el vacío.
+
+\begin{minipage}{0.388\textwidth}
+Ejemplo: \quad $\dfrac{3}{x+1} = 0$
+\end{minipage}\hfill
+\begin{minipage}{0.582\textwidth}
+Esta igualdad no es correcta para cualquier valor de $x$, por tanto, su conjunto solución
+no tiene elementos, es decir:
+\[\therefore\ C.S. = \varnothing\]
+\end{minipage}
+
+
+% ============================================================
+% Páginas 34-36
+% ============================================================
+\subsection*{Ecuaciones polinomiales}
+
+\textcolor{azul}{\textbf{Ecuación lineal:}} Es aquella ecuación que tiene la siguiente forma
+general:
+\[\ovalbox{$P(x) = ax + b = 0$} \qquad \forall a \neq 0;\ a \wedge b \in \mathbb{R}\]
+Cuya raíz o solución es: \ \fcolorbox{azul}{azul!10}{$x = \dfrac{-b}{a}$}
+\begin{itemize}[label=\checkmark]
+  \item Si: $a \neq 0 \longrightarrow$ E. Lineal compatible determinada.
+  \item Si: $a = 0 \wedge b = 0 \longrightarrow$ E. compatible indeterminada.
+  \item Si: $a = 0 \wedge b \neq 0 \longrightarrow$ E. incompatible.
+\end{itemize}
+
+\textcolor{azul}{\textbf{Ecuación cuadrática:}} Es aquella ecuación que tiene la siguiente
+forma general:
+\[\ovalbox{$P(x) = ax^2 + bx + c = 0$} \qquad \forall a \neq 0;\ a \wedge b \wedge c \in \mathbb{R}\]
+Presenta dos raíces ($x_1; x_2$) pero una o dos soluciones; para hallar las raíces de una
+ecuación cuadrática se recomienda primero intentar factorizar por aspa simple, agrupación
+o diferencia de cuadrados.
+
+Cuando no se puede factorizando, las raíces se obtienen por la siguiente
+\hl{fórmula general}:
+
+\begin{minipage}{0.582\textwidth}
+\[
+\text{\textcolor{naranja}{(Fórmula de Bhaskara)}}\quad
+\ovalbox{$x_{1,2} = \dfrac{-b \pm \sqrt{b^2 - 4ac}}{2a}$}
+\]
+\end{minipage}\hfill
+\begin{minipage}{0.388\textwidth}
+donde: \ $\Delta = b^2 - 4ac$
+
+\textcolor{rojo}{$\Delta$}: Discriminante
+\end{minipage}
+
+\medskip
+\textbf{Naturaleza de las raíces:} Dada la ecuación cuadrática de coeficientes reales:
+$ax^2 + bx + c = 0$
+\begin{enumerate}[label=\Roman*.]
+  \item Si $\Delta > 0$ las raíces son reales y diferentes.
+  \item Si $\Delta = 0$ las raíces son reales e iguales.
+  \item Si $\Delta < 0$ las raíces son imaginarias y conjugadas.
+\end{enumerate}
+
+\textbf{Teoremas de las raíces:} Sean: $x_1; x_2$ las raíces de la cuadrática:
+$ax^2 + bx + c = 0$
+
+\begin{minipage}[t]{0.504\textwidth}
+\begin{enumerate}
+  \item Suma de raíces: \ \ovalbox{$x_1 + x_2 = -\dfrac{b}{a}$}
+  \item Producto de raíces: \ \ovalbox{$x_1\cdot x_2 = \dfrac{c}{a}$}
+  \item Diferencia de raíces: \ \ovalbox{$|x_1 - x_2| = \dfrac{\sqrt{\Delta}}{|a|}$}
+
+  \ovalbox{$(x_1 + x_2)^2 - (x_1 - x_2)^2 = 4x_1\cdot x_2$}
+  \item Raíces simétricas: \ \ovalbox{$x_1 + x_2 = 0$}
+
+  \textcolor{rojo}{$\ast$} $b = 0$
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.466\textwidth}
+\begin{enumerate}\setcounter{enumi}{4}
+  \item Raíces recíprocas: \ \ovalbox{$x_1\cdot x_2 = 1$}
+
+  \textcolor{rojo}{$\ast$} $a = c$
+  \item $x_1^2 + x_2^2 = (x_1 + x_2)^2 - 2x_1x_2$
+  \item $x_1^3 + x_2^3 = (x_1 + x_2)^3 - 3x_1x_2(x_1 + x_2)$
+  \item Reconstrucción de una ecuación cuadrática:
+  \[\ovalbox{$x^2 - (x_1 + x_2)x + x_1x_2 = 0$}\]
+\end{enumerate}
+\end{minipage}
+
+\subsection*{Teoremas}
+
+\begin{minipage}[t]{0.436\textwidth}
+$\ast$ \textbf{Ecuaciones equivalentes:}
+\[
+\begin{cases}
+a_1x^2 + b_1x + c_1 = 0\\
+a_2x^2 + b_2x + c_2 = 0
+\end{cases}
+\]
+Se cumple: \ \ovalbox{$\dfrac{a_1}{a_2} = \dfrac{b_1}{b_2} = \dfrac{c_1}{c_2}$}
+
+\medskip
+$\ast$ Cuando poseen el mismo conjunto solución.
+\end{minipage}\hfill
+\begin{minipage}[t]{0.533\textwidth}
+$\ast$ \textbf{Teorema de Bezout:}
+\[
+\left.\begin{array}{l}
+a_1x^2 + b_1x + c_1 = 0\\
+a_2x^2 + b_2x + c_2 = 0
+\end{array}\right\}
+\text{\small Ambas presentan una raíz común}
+\]
+Se cumple:
+\[\ovalbox{$(a_1c_2 - a_2c_1)^2 = (a_1b_2 - a_2b_1)(b_1c_2 - b_2c_1)$}\]
+
+\textbf{Obs.:} Supongamos que ``$m$'' es una raíz común.
+\begin{gather*}
+x^2 + \frac{b_1}{a_1}x + \frac{c_1}{a_1} = 0 \qquad x^2 + \frac{b_2}{a_2}x + \frac{c_2}{a_2} = 0\\
+m^2 + \frac{b_1}{a_1}m + \frac{c_1}{a_1} = 0 \quad (-) \quad m^2 + \frac{b_2}{a_2}m + \frac{c_2}{a_2} = 0\\
+m\left(\frac{b_1}{a_1} - \frac{b_2}{a_2}\right) + \frac{c_1}{a_1} - \frac{c_2}{a_2} = 0\\
+m(a_2b_1 - a_1b_2) + a_2c_1 - a_1c_2 = 0\\
+\therefore\ m = \frac{a_1c_2 - a_2c_1}{a_2b_1 - a_1b_2}
+\end{gather*}
+\end{minipage}
+
+\newpage
+% ------------------------------------------------------------
+\section{Teoría de ecuaciones II}
+
+\subsection*{Algunas definiciones previas}
+
+\textbf{Definición 1:} El número ``$\alpha$'' es una raíz o cero del polinomio
+$P(x) \longleftrightarrow P(\alpha) = 0$
+
+\textbf{Teorema del factor:} ``$\alpha$'' es una raíz o cero del polinomio
+$P(x) \longleftrightarrow (x - \alpha)$ es factor de $P(x)$.
+
+\textbf{Definición 2:} El número ``$\alpha$'' es una raíz de multiplicidad ``$k$'' de un
+polinomio $P(x) \longleftrightarrow P(x)$ es divisible por $(x-\alpha)^k$ pero no por
+$(x-\alpha)^{k+1}$, es decir:
+\[\ovalbox{$P(x) = (x-\alpha)^k\cdot Q(x)\;;\quad Q(\alpha) \neq 0$}\]
+
+\textbf{Teorema fundamental del álgebra:} Un polinomio de grado ``$n$'', con coeficientes
+complejos tiene por lo menos una raíz generalmente compleja.
+
+\textbf{Corolario:} Todo polinomio de grado ``$n$'' tiene exactamente ``$n$'' raíces
+contadas las multiplicidades.
+
+\textbf{Ecuación polinomial de grado superior:} Sea:
+\ \ovalbox{$P(x) = a_0x^n + a_1x^{n-1} + a_2x^{n-2} + \cdots + a_n = 0$}
+
+$n \in \mathbb{N} \wedge$ (Coeficiente principal $a_0 \neq 0$) $\wedge$ Sus raíces son:
+$x_1, x_2, x_3, \ldots, x_n$
+
+Luego: \quad \ovalbox{$P(x) = a_0(x - x_1)(x - x_2)(x - x_3)\cdots(x - x_n) = 0$}
+
+En una ecuación polinomial de grado ``$n$'', que tiene exactamente ``$n$'' raíces:
+$x_1; x_2; x_3; \ldots; x_n$ como se trata de una ecuación también tiene soluciones, en este
+tipo de ecuaciones se cumple:
+\[\ovalbox{N.\textsuperscript{o} raíces $\geq$ N.\textsuperscript{o} soluciones}\]
+
+\textbf{Ejemplo:} Calcule las raíces y soluciones de la ecuación:
+\ $P(x) = (x-2)(x-9)^2(x+6)^3 = 0$
+
+Como $^{\circ}[P(x)]$ es 6, entonces tiene 6 raíces. Igualando cada factor a cero:
+
+\begin{minipage}{0.630\textwidth}
+\begin{itemize}
+  \item $x - 2 = 0 \rightarrow x = 2$: raíz simple
+  \item $(x-9)^2 = 0 \rightarrow x = 9$: raíz doble o de multiplicidad 2.
+  \item $(x+6)^3 = 0 \rightarrow x = -6$: raíz triple o de multiplicidad 3.
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}{0.339\textwidth}
+$\left.\right\}$ $C.S. = \{2; 9; -6\}$ \\ tiene 3 soluciones
+
+\smallskip
+{\small $\ast$ Para calcular las raíces de un polinomio o ecuación se factoriza y se iguala
+cada factor a cero.}
+\end{minipage}
+
+
+% ============================================================
+% Páginas 37-39
+% ============================================================
+\subsection*{Teoremas de Cardano--Viette}
+
+\begin{minipage}[t]{0.436\textwidth}
+\cn{1} \textcolor{magenta}{Suma de raíces:}
+\[\ovalbox{$x_1 + x_2 + x_3 + \cdots + x_n = -\dfrac{a_1}{a_0}$}\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.533\textwidth}
+\cn{2} \textcolor{magenta}{Suma de productos binarios de las raíces:}
+\[\ovalbox{$x_1x_2 + x_1x_3 + x_2x_3 + \cdots + x_{n-1}x_n = \dfrac{a_2}{a_0}$}\]
+\end{minipage}
+
+\medskip
+\begin{minipage}[t]{0.582\textwidth}
+\cn{3} \textcolor{magenta}{Suma de productos ternarios de las raíces:}
+\[\ovalbox{$x_1x_2x_3 + x_1x_2x_4 + \cdots + x_{n-2}x_{n-1}x_n = -\dfrac{a_3}{a_0}$}\]
+\[\vdots\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.388\textwidth}
+\fbox{\parbox{0.9\linewidth}{\textbf{En general:} Si ``$S_k$'' representa la suma de los
+productos de las raíces tomadas de ``$k$'' en ``$k$'' se cumple:
+\[\ovalbox{$S_k = (-1)^k\cdot\dfrac{a_k}{a_0}$}\]}}
+\end{minipage}
+
+\cn{4} \textcolor{magenta}{Producto de raíces:}
+\[\ovalbox{$x_1\cdot x_2\cdot x_3\cdot x_4\cdots x_n = (-1)^n\dfrac{a_n}{a_0}$} \qquad
+\textcolor{magenta}{n\text{: depende del grado de la ecuación.}}\]
+
+\textcolor{naranja}{\textbf{Ecuación cúbica:}} Es aquella que tiene la siguiente forma general:
+\[\ovalbox{$ax^3 + bx^2 + cx + d = 0$} \qquad \forall a \neq 0;\ a, b, c \wedge d \in \mathbb{R}\]
+Sus raíces son: $x_1, x_2, x_3$
+\[
+\cn{1}\ x_1 + x_2 + x_3 = -\frac{b}{a} \qquad
+\cn{2}\ x_1x_2 + x_1x_3 + x_2x_3 = \frac{c}{a} \qquad
+\cn{3}\ x_1\cdot x_2\cdot x_3 = -\frac{d}{a}
+\]
+
+\textcolor{verde}{\textbf{Obs.:}}
+
+\begin{minipage}{0.388\textwidth}
+\begin{gather*}
+x^3 + px + q = 0\\
+D = \left(\frac{p}{3}\right)^3 + \left(\frac{q}{2}\right)^2
+\end{gather*}
+\textcolor{rojo}{$D$}: Discriminante
+\end{minipage}\hfill
+\begin{minipage}{0.582\textwidth}
+\begin{itemize}[label=\checkmark]
+  \item Si $D > 0$: 1 raíz real y 2 imaginarias.
+  \item Si $D = 0$: 3 raíces reales (2 raíces iguales).
+  \item Si $D < 0$: 3 raíces reales distintas.
+\end{itemize}
+\end{minipage}
+
+\medskip
+\textcolor{naranja}{\textbf{Ecuación bicuadrada:}} Ecuación de cuarto grado, sin términos de
+grado impar y presenta dos pares de raíces simétricas. Tiene la siguiente forma general:
+\[\ovalbox{$ax^4 + bx^2 + c = 0$} \qquad \forall a \neq 0;\ a, b \wedge c \in \mathbb{R}\]
+La resolución se realiza factorizando o mediante un cambio de variable para transformarla
+en una ecuación cuadrática.
+
+También presenta una fórmula general:
+\[x_{1,2,3,4} = \pm\sqrt{\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}}\]
+Sus raíces son: \ $\underset{\alpha}{x_1},\ \underset{-\alpha}{x_2},\ \underset{\beta}{x_3},\ \underset{-\beta}{x_4}$
+
+\begin{minipage}[t]{0.388\textwidth}
+\cn{1} $x_1 + x_2 + x_3 + x_4 = 0$
+\[\bullet\ \alpha - \alpha + \beta - \beta = 0\]
+
+\cn{3} $x_1\cdot x_2\cdot x_3\cdot x_4 = \dfrac{c}{a}$
+\[\bullet\ (\alpha)(-\alpha)(\beta)(-\beta) = \frac{c}{a}\]
+\[\ovalbox{$\alpha^2\cdot\beta^2 = \dfrac{c}{a}$}\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.582\textwidth}
+\cn{2} $x_1x_2 + x_1x_3 + x_1x_4 + x_2x_3 + x_2x_4 + x_3x_4 = \dfrac{b}{a}$
+\begin{gather*}
+\bullet\ -\alpha^2 + \alpha\beta - \alpha\beta - \alpha\beta + \alpha\beta - \beta^2 = \frac{b}{a}\\
+-\alpha^2 - \beta^2 = \frac{b}{a} \;\rightarrow\; \ovalbox{$\alpha^2 + \beta^2 = -\dfrac{b}{a}$}
+\end{gather*}
+
+\cn{4} \textcolor{magenta}{Reconstrucción de una ecuación bicuadrada:}
+\begin{gather*}
+x^4 + [x_1\cdot x_2 + x_3\cdot x_4]x^2 + [x_1\cdot x_2\cdot x_3\cdot x_4] = 0\\
+\bullet\ x^4 - (\alpha^2 + \beta^2)x^2 + \alpha^2\cdot\beta^2 = 0;\quad \alpha + \beta \neq 0
+\end{gather*}
+\end{minipage}
+
+\medskip
+$\ast$ Si las raíces de una ecuación bicuadrada están en P.A., sus raíces tienen la forma:
+\[\underbrace{-3m,\ -m}_{2m},\ \underbrace{m,}_{2m}\ \underbrace{3m}_{2m}\,; \quad
+\text{También: } ax^4 + bx^2 + c = 0 \;\rightarrow\; \ovalbox{$9b^2 = 100ac$}\]
+
+\textcolor{naranja}{\textbf{Ecuaciones recíprocas:}} Se caracterizan porque los coeficientes
+de los términos equidistantes de los extremos son iguales. Su forma general es:
+\[\ovalbox{$Ax^n + Bx^{n-1} + Cx^{n-2} + \cdots + Cx^2 + Bx + A = 0$}\]
+Ejemplo: \quad $3x^5 - 2x^4 + 6x^3 + 6x^2 - 2x + 3 = 0$
+\[\text{Sus raíces son de la forma: } \ovalbox{$\alpha, \dfrac{1}{\alpha}, \beta, \dfrac{1}{\beta}, \theta$}\]
+Cuando es de grado impar, una raíz es $1$ ó $-1$; si es de grado par, aplicar la
+factorización recíproca.
+
+\textcolor{magenta}{\textbf{Propiedad:}} Si $P(x)$ es un polinomio recíproco:
+\[\ovalbox{$P(x) \equiv x^n\cdot P\!\left(\dfrac{1}{x}\right)$}\]
+
+\subsection*{Teoremas de paridad de raíces}
+
+\textcolor{verde}{\textbf{Paridad de raíces imaginarias:}} En una ecuación polinomial de
+coeficientes reales, si una raíz imaginaria es ``$a + bi$'' entonces la otra raíz es la
+conjugada ``$a - bi$''.
+\begin{itemize}
+  \item Si la ecuación polinomial de coeficientes reales es de grado impar, tendrá por lo
+  menos una raíz real.
+\end{itemize}
+
+\textcolor{verde}{\textbf{Paridad de raíces irracionales:}} En una ecuación polinomial de
+coeficientes racionales, si una raíz irracional es ``$a + \sqrt{b}$'' entonces la otra raíz
+es la conjugada ``$a - \sqrt{b}$'', con $a, b \in \mathbb{Q}$ y $\sqrt{b} \in$ irracionales.
+\begin{itemize}
+  \item En una ecuación polinomial de coeficientes racionales, si una raíz es
+  ``$\sqrt{a} + \sqrt{b}$'' entonces las otras raíces son la conjugada, la opuesta y la
+  conjugada de la opuesta: $\sqrt{a} - \sqrt{b};\ -\sqrt{a} - \sqrt{b};\ -\sqrt{a} + \sqrt{b}$,
+  con $a, b \in \mathbb{Q}^+$; $\sqrt{a}$ y $\sqrt{b} \in$ irracionales.
+\end{itemize}
+
+\subsection*{Transformadas de las raíces}
+Sea la ecuación polinomial:
+$a_0x^n + a_1x^{n-1} + a_2x^{n-2} + \cdots + a_{n-1}x + a_n = 0;\ a_0 \neq 0$ con raíces
+$\{x_1; x_2; x_3; \ldots; x_n\}$ entonces:
+
+\begin{enumerate}[label=\cn{\arabic*}]
+  \item La ecuación de raíces aumentadas o disminuidas en un valor ``$k$'', es decir con
+  raíces: $\{x_1 \pm k; x_2 \pm k; x_3 \pm k; \ldots; x_n \pm k\}$ es:
+  \[\ovalbox{$a_0(x \mp k)^n + a_1(x \mp k)^{n-1} + a_2(x \mp k)^{n-2} + \cdots + a_{n-1}(x \mp k) + a_n = 0$}\]
+  \item La ecuación de raíces multiplicadas por un valor ``$k$'' $(k \neq 0)$; es decir con
+  raíces: $\{x_1\cdot k; x_2\cdot k; x_3\cdot k; \ldots; x_n\cdot k\}$ es:
+  \[\ovalbox{$a_0\left(\dfrac{x}{k}\right)^n + a_1\left(\dfrac{x}{k}\right)^{n-1} + \cdots + a_{n-1}\left(\dfrac{x}{k}\right) + a_n = 0$}\]
+  \item La ecuación de raíces invertidas, es decir con raíces:
+  $\left\{\dfrac{1}{x_1}; \dfrac{1}{x_2}; \dfrac{1}{x_3}; \ldots; \dfrac{1}{x_n}\right\}$ es:
+  \[\ovalbox{$a_nx^n + a_{n-1}x^{n-1} + \cdots + a_1x + a_0 = 0$}\]
+\end{enumerate}
+
+
+% ============================================================
+% Páginas 40-42
+% ============================================================
+\newpage
+\section{Desigualdades I}
+
+\textbf{Desigualdad:} Es una comparación de números reales mediante los símbolos de orden:
+$<;\ >;\ \geq;\ \leq$.
+
+\textbf{Definiciones:} Siendo $a \in \mathbb{R}$, se establece:
+
+\begin{minipage}[t]{0.485\textwidth}
+\begin{itemize}[label=\textcolor{naranja}{\checkmark}]
+  \item $a$ es positivo $\longleftrightarrow a > 0$
+  \item $a$ es negativo $\longleftrightarrow a < 0$
+  \item $a$ es no positivo $\longleftrightarrow a \leq 0$
+  \item $a$ es no negativo $\longleftrightarrow a \geq 0$
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\begin{itemize}[label=\textcolor{naranja}{\checkmark}]
+  \item $a > b \longleftrightarrow a - b > 0$
+  \item $a < b \longleftrightarrow a - b < 0$
+  \item $a \geq b \longleftrightarrow a > b \vee a = b$
+\end{itemize}
+\end{minipage}
+
+\subsection*{Axiomas de orden}
+
+\begin{minipage}[t]{0.485\textwidth}
+\cn{1} \textcolor{verde}{\textbf{Ley de tricotomía:}}
+\[\forall a \wedge b \in \mathbb{R}:\ a > b \vee a = b \vee a < b\]
+
+\cn{2} \textcolor{verde}{\textbf{Ley aditiva:}}
+\[\forall a, b \wedge c \in \mathbb{R}: \text{ Si } a > b \rightarrow a + c > b + c\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\cn{3} \textcolor{verde}{\textbf{Ley multiplicativa:}}
+\[\forall a, b \in \mathbb{R} \wedge c \in \mathbb{R}^+: \text{ Si } a > b \leftrightarrow ac > bc\]
+
+\cn{4} \textcolor{verde}{\textbf{Ley de transitividad:}}
+\[\forall a, b \wedge c \in \mathbb{R}: \text{ Si } a > b \wedge b > c \leftrightarrow a > c\]
+\end{minipage}
+
+\subsection*{Intervalos}
+Es un subconjunto de los números reales definido entre dos extremos, uno inferior y otro
+superior. Existen 2 clases de intervalos.
+
+\textcolor{verde}{\textbf{Acotados:}} Los extremos del intervalo son finitos, a su vez estos
+pueden ser:
+
+\textcolor{naranja}{\textbf{I. Intervalo abierto:}}
+\[\intervalo{o}{o}{f} \qquad \ovalbox{$]a;b[ \;=\; \langle a;b\rangle = \{x \in \mathbb{R} \,/\, a < x < b\}$}\]
+
+\textcolor{naranja}{\textbf{II. Intervalo cerrado:}}
+\[\intervalo{c}{c}{f} \qquad \ovalbox{$[a;b] = \{x \in \mathbb{R} \,/\, a \leq x \leq b\}$}\]
+
+\textcolor{naranja}{\textbf{III. Intervalo semiabierto:}}
+\[\intervalo{o}{c}{f} \qquad \ovalbox{$]a;b] = \langle a;b] = \{x \in \mathbb{R} \,/\, a < x \leq b\}$}\]
+
+\textcolor{verde}{\textbf{No acotados:}} Al menos un extremo del intervalo no es finito, también
+se denomina intervalo al infinito.
+\[\intervalo{o}{o}{i} \qquad \ovalbox{$]a;+\infty[ \;=\; \langle a;+\infty\rangle = \{x \in \mathbb{R} \,/\, x > a\}$}\]
+
+\begin{itemize}
+  \item En el caso del conjunto de los números reales se tiene:
+  \[\ovalbox{$\mathbb{R} = \;]-\infty;+\infty[\; = \langle -\infty;+\infty\rangle$}\]
+\end{itemize}
+
+\subsection*{Operaciones con intervalos}
+Si los conjuntos $A$ y $B$ son intervalos, entonces:
+
+\begin{minipage}[t]{0.485\textwidth}
+\begin{enumerate}[label=\cn{\arabic*}]
+  \item Unión: $A \cup B = \{x \,/\, x \in A \vee x \in B\}$
+  \item Intersección: $A \cap B = \{x \,/\, x \in A \wedge x \in B\}$
+  \item Diferencia: $A - B = \{x \,/\, x \in A \wedge x \notin B\}$
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\begin{enumerate}[label=\cn{\arabic*}]\setcounter{enumi}{3}
+  \item Complemento: $A' = \{x \,/\, x \in \mathbb{R} \wedge x \notin A\}$
+  \item Diferencia simétrica:
+
+  $A \,\Delta\, B = \{x \,/\, x \in A - B \vee x \in B - A\}$
+\end{enumerate}
+\end{minipage}
+
+\subsection*{Teoremas}
+Con $a; b; c; d \in \mathbb{R}$
+
+\begin{minipage}[t]{0.485\textwidth}
+\begin{enumerate}[label=\cn{\arabic*}]
+  \item $\forall x \in \mathbb{R}: x^2 \geq 0$
+  \item Si $a < b \wedge c < 0 \rightarrow ac > bc$
+  \item Si $a < b < c$; $n \in \mathbb{N}$; cumple:
+  \[
+  \begin{cases}
+  a^{2n+1} < b^{2n+1} < c^{2n+1}\\[4pt]
+  \sqrt[2n+1]{a} < \sqrt[2n+1]{b} < \sqrt[2n+1]{c}
+  \end{cases}
+  \]
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\begin{enumerate}[label=\cn{\arabic*}]\setcounter{enumi}{3}
+  \item Si $a > b > c > 0$; $n \in \mathbb{N} \rightarrow a^{2n} > b^{2n} > c^{2n} > 0$
+  \item $ab > 0 \leftrightarrow \{a > 0 \wedge b > 0\} \vee \{a < 0 \wedge b < 0\}$
+  \item $ab < 0 \leftrightarrow \{a > 0 \wedge b < 0\} \vee \{a < 0 \wedge b > 0\}$
+  \item Si $ab > 0 \wedge a > b \rightarrow \dfrac{1}{a} < \dfrac{1}{b}$
+  \item Si: $0 < x < a \rightarrow \dfrac{1}{x} > \dfrac{1}{a}$
+\end{enumerate}
+\end{minipage}
+
+\begin{enumerate}[label=\cn{\arabic*}]\setcounter{enumi}{8}
+  \item Si $ab < 0 \wedge a < x < b \rightarrow 0 \leq x^2 < \operatorname{Máx}\{a^2; b^2\}$
+  \item $\forall x > 0:\ x + \dfrac{1}{x} \geq 2$
+  \item $\forall x < 0:\ x + \dfrac{1}{x} \leq -2$
+  \item Si $\{a; b; c\} \subset \mathbb{R}^+$, las medias cumplen:
+  \ovalbox{$MA \geq MG \geq MH$}
+  \[
+  \bullet\ \frac{a+b}{2} \geq \sqrt{ab} \geq \frac{2}{\frac{1}{a} + \frac{1}{b}}
+  \qquad\qquad
+  \bullet\ \frac{a+b+c}{3} \geq \sqrt[3]{abc} \geq \frac{3}{\frac{1}{a} + \frac{1}{b} + \frac{1}{c}}
+  \]
+  \item \textcolor{magenta}{\textbf{Desigualdad de Cauchy--Schwarz--Buniakovski}}
+
+  Sean $a_1, a_2, \ldots, a_n, b_1, b_2, \ldots, b_n$ números reales no todos nulos, entonces:
+  \[\ovalbox{$(a_1b_1 + a_2b_2 + \cdots + a_nb_n)^2 \leq (a_1^2 + a_2^2 + \cdots + a_n^2)(b_1^2 + b_2^2 + \cdots + b_n^2)$}\]
+\end{enumerate}
+
+
+% ============================================================
+% Páginas 43-45
+% ============================================================
+\newpage
+\section{Desigualdades II}
+
+\textbf{Inecuación:} Son aquellas desigualdades planteadas entre expresiones matemáticas
+definidas sobre $\mathbb{R}$; los valores de las incógnitas que verifican la desigualdad
+forman el conjunto solución (C.S.).
+
+\subsection*{Inecuaciones polinomiales}
+
+\textcolor{verde}{\textbf{Inecuación lineal:}} Es aquella inecuación polinomial que se reduce
+a la forma general:
+\[\ovalbox{$P(x) = ax + b \gtrless 0$}\;;\ a \neq 0\]
+{\small\[
+\begin{array}{cccc|l}
+\cn{1}\ ax + b > 0 & \cn{2}\ ax + b < 0 & \cn{3}\ ax + b \geq 0 & \cn{4}\ ax + b \leq 0 & \\[4pt]
+x > -\frac{b}{a} & x < -\frac{b}{a} & x \geq -\frac{b}{a} & x \leq -\frac{b}{a} & \text{Con } a \in \mathbb{R}^+\\[8pt]
+x \in \left\langle -\frac{b}{a}; +\infty\right\rangle &
+x \in \left\langle -\infty; -\frac{b}{a}\right\rangle &
+x \in \left[-\frac{b}{a}; +\infty\right\rangle &
+x \in \left\langle -\infty; -\frac{b}{a}\right] &
+\end{array}
+\]}
+
+\textcolor{verde}{\textbf{Inecuación cuadrática:}} Son aquellas inecuaciones polinomiales de
+la forma \ \fbox{$P(x) = ax^2 + bx + c \gtrless 0$}
+
+Siendo: $a, b, c \in \mathbb{R};\ a \neq 0$.
+
+Considerando $a > 0$, tenemos:
+\[
+a\left(x^2 + \frac{b}{a}x + \frac{c}{a}\right) \gtrless 0
+\longrightarrow
+a\left(\left(x + \frac{b}{2a}\right)^2 - \left(\frac{b^2 - 4ac}{4a^2}\right)\right) \gtrless 0
+\longrightarrow
+a\left(\left(x + \frac{b}{2a}\right)^2 - \frac{\Delta}{4a^2}\right) \gtrless 0
+\]
+
+\textcolor{rojo}{\textbf{Caso I:}} Si $\Delta = 0$, reemplazando nos damos cuenta que como
+$a > 0 \rightarrow P(x) \geq 0\ \forall x \in \mathbb{R}$, pues:
+\[\left(x + \frac{b}{2a}\right)^2 \geq 0 \;:\; \text{Siempre es positivo}\]
+Ejemplo: \quad $x^2 - 6x + 9 < 0 \leftrightarrow (x-3)^2 < 0, \quad C.S. = \varnothing$
+
+\textcolor{rojo}{\textbf{Caso II:}} Si $\Delta > 0$, tenemos:
+\[
+\left(x + \frac{b}{2a} + \frac{\sqrt{\Delta}}{2a}\right)\left(x + \frac{b}{2a} - \frac{\sqrt{\Delta}}{2a}\right) \gtrless 0
+\]
+y para resolverlo aplicaremos la \underline{regla de los signos} o de los
+\underline{puntos de referencia}.
+
+Ejemplo:
+
+\begin{minipage}[t]{0.485\textwidth}
+\centering
+$x^2 - 5x + 4 \geq 0$\\
+$(x-4)(x-1) \geq 0$\\[6pt]
+\rectasignos{1/c,4/c}{+,-,+}{3}\\[6pt]
+$C.S. = \langle -\infty; 1] \cup [4; +\infty\rangle$
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\centering
+$x^2 - 4x - 5 < 0$\\
+$(x-5)(x+1) < 0$\\[6pt]
+\rectasignos{-1/o,5/o}{+,-,+}{3}\\[6pt]
+$C.S. = \langle -1; 5\rangle$
+\end{minipage}
+
+\medskip
+\textcolor{rojo}{\textbf{Caso III:}} Si $\Delta < 0$, observamos que como
+$a > 0 \rightarrow P(x) > 0\ \forall x \in \mathbb{R}$, pues:
+\[\underbrace{\left(x + \frac{b}{2a}\right)^2}_{+}\underbrace{-\frac{\Delta}{4a^2}}_{+} > 0\]
+
+\textcolor{naranja}{\textbf{Teorema (Trinomio positivo):}} El polinomio cuadrático
+$P(x) = ax^2 + bx + c$ con coeficientes reales \underline{es positivo} para todo valor real
+de $x \leftrightarrow a > 0 \wedge \Delta < 0$.
+
+Ejemplo:
+\begin{align*}
+&x^2 + 2x + 3 > 0 \quad \text{como } \Delta < 0 \rightarrow C.S. = \mathbb{R}\\
+&x^2 + 4x + 7 < 0 \quad \text{como } \Delta < 0 \rightarrow C.S. = \varnothing
+\end{align*}
+
+\textcolor{naranja}{\textbf{Teorema (Trinomio no negativo):}} El polinomio cuadrático
+$P(x) = ax^2 + bx + c$ con coeficientes reales es \underline{no negativo} para todo valor
+real de $x \leftrightarrow a > 0 \wedge \Delta \leq 0$.
+
+\textcolor{verde}{\textbf{Inecuación polinómica de grado superior:}} Son aquellas que se
+reducen a la forma:
+\[\ovalbox{$P(x) = a_0x^n + a_1x^{n-1} + a_2x^{n-2} + \cdots + a_{n-1}x + a_n \gtrless 0$}\]
+\[a_0; a_1; a_2; a_3; \ldots; a_n \in \mathbb{R} \wedge a_0 \neq 0 \qquad
+\text{Generalmente: } a_0 > 0,\ n \in \mathbb{Z}^+;\ n \geq 2\]
+
+Tenemos que factorizar el polinomio hasta obtener factores lineales o sus potencias y
+factores de signo conocido, para luego aplicar la regla de los
+\underline{puntos de referencia}.
+\begin{itemize}
+  \item Cuando se presentan factores de la forma $(x-\alpha)^{2n+1}$ se toman como si
+  tuviesen exponente 1, es decir $(x - \alpha)$.
+  \item $(x-\alpha)^{2n}$: el punto crítico no será colocado en la recta numérica; se
+  analiza por separado, reemplazando en la inecuación para saber si forma parte o no del C.S.
+  \item Si aparecen factores positivos o $\Delta < 0$, estos serán eliminados y no alteran
+  la ecuación.
+\end{itemize}
+
+Ejemplo:
+
+\begin{minipage}{0.436\textwidth}
+\begin{gather*}
+x^6 - x^4 - 2x^2 + 2 \leq 0\\
+x^4(x^2 - 1) - 2(x^2 - 1) \leq 0\\
+(x^4 - 2)(x^2 - 1) \leq 0\\
+\underbrace{(x^2 + \sqrt{2})}_{+}(x^2 - \sqrt{2})(x - 1)(x + 1) \leq 0
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}{0.533\textwidth}
+\centering
+$(x - \sqrt[4]{2})(x + \sqrt[4]{2})(x - 1)(x + 1) \leq 0$\\[6pt]
+\rectasignos{-\sqrt[4]{2}/c,-1/c,1/c,\sqrt[4]{2}/c}{+,-,+,-,+}{5}\\[6pt]
+$\therefore\ C.S. = [-\sqrt[4]{2}; -1] \cup [1; \sqrt[4]{2}]$
+\end{minipage}
+
+\newpage
+% ------------------------------------------------------------
+\section{Desigualdades III}
+
+\subsection*{Inecuaciones racionales o fraccionarias}
+\[
+\frac{P(x)}{F(x)} \gtrless 0 \qquad
+\begin{array}{l}
+\text{donde: } \textcolor{magenta}{P(x), F(x)}\text{: son polinomios}\\
+\textcolor{magenta}{F(x)}\text{: al menos de primer grado.}
+\end{array}
+\]
+Para resolver las inecuaciones polinómicas y fraccionarias utilizaremos el método de los
+puntos de referencia.
+
+En el caso de una inecuación polinómica lineal tan sólo despejamos la incógnita
+considerando los teoremas sobre desigualdades ya estudiados. Los puntos de referencia son
+las raíces del polinomio.
+
+\textbf{Procedimiento:}
+\begin{enumerate}
+  \item Transponer la expresión a un solo miembro, luego factorizar tratando de obtener
+  factores lineales y/o cuadráticos con coeficientes principales positivos.
+  \item Igualamos cada factor a cero para encontrar los puntos de referencia, estos se
+  disponen en la recta real y se analizan (abiertos o cerrados).
+  \item Colocamos los signos $+$ y $-$ en las zonas, de derecha a izquierda. Cuando un
+  factor lineal tiene exponente par la zona positiva se refleja.
+  \item Si la expresión es \underline{mayor que cero} se tomarán \underline{las zonas
+  positivas} y si es \underline{menor que cero} se tomarán las \underline{zonas negativas}.
+  \item En la inecuación fraccionaria si tenemos $\geq;\ \leq$, los puntos de referencia son
+  cerrados en el numerador y siempre abiertos en el denominador.
+\end{enumerate}
+
+\textbf{Ejemplos:}
+
+\begin{minipage}[t]{0.466\textwidth}
+\begin{gather*}
+\frac{\overset{+}{2006^7}(x-2)^7(1-x)(3x-1)^8}{\underset{+}{2005^7}} \leq 0\\
+(x-2)^7(1-x)(3x-1)^8 \leq 0\\
+(x-2)^7(x-1)(3x-1)^8 \geq 0
+\end{gather*}
+\centering
+\rectasignos{\tfrac{1}{3}/c,1/c,2/c}{+,+,-,+}{4}
+\begin{gather*}
+C.S. = \langle -\infty; 1] \cup [2; +\infty\rangle\\
+C.S. = \mathbb{R} - \langle 1; 2\rangle
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\[\frac{(2x-3)^{31}(5x-9)^{15}}{(4x-7)^{20}(3x-4)^{42}} \geq 0\]
+\centering
+\rectasignos{\tfrac{4}{3}/o,\tfrac{3}{2}/c,\tfrac{7}{4}/o,\tfrac{9}{5}/c}{+,+,-,-,+}{5}
+\begin{gather*}
+C.S. = \left\langle -\infty; \tfrac{4}{3}\right\rangle \cup \left\langle \tfrac{4}{3}; \tfrac{3}{2}\right] \cup \left[\tfrac{9}{5}; +\infty\right\rangle\\
+C.S. = \mathbb{R} - \left\{\tfrac{4}{3}\right\} - \left\langle \tfrac{3}{2}; \tfrac{9}{5}\right\rangle
+\end{gather*}
+\end{minipage}
+
+
+% ============================================================
+% Páginas 46-48
+% ============================================================
+\subsection*{Inecuaciones irracionales}
+
+\textbf{I. Forma:} \ \ovalbox{$\sqrt[2n]{A} > B$}$,\ n \in \mathbb{Z}^+$
+\[
+\left.
+\begin{array}{l}
+S_1: A \geq 0 \wedge B \geq 0 \wedge A > B^{2n}\\
+S_2: A \geq 0 \wedge B < 0
+\end{array}
+\right\}\; C.S. = S_1 \cup S_2
+\]
+
+\textbf{II. Forma:} \ \ovalbox{$\sqrt[2n]{A} < B$}$;\ n \in \mathbb{Z}^+$
+\[C.S. = A \geq 0 \wedge B > 0 \wedge A < B^{2n}\]
+
+\textbf{III. Forma:} \ \ovalbox{$\sqrt[2n]{A} \gtrless \sqrt[2n]{B}$}$;\ m \wedge n \in \mathbb{Z}^+$
+\[C.S. = A \geq 0 \wedge B \geq 0 \wedge A^n \gtrless B^n\]
+
+\subsection*{Ecuaciones irracionales}
+\begin{enumerate}[label=\Roman*.]
+  \item $\sqrt[2n]{f(x)} = g(x) \longleftrightarrow f(x) \geq 0 \wedge g(x) \geq 0 \wedge f(x) = [g(x)]^{2n}$
+  \item $\sqrt[2n]{f(x)} = \sqrt[2n]{g(x)} \longleftrightarrow f(x) \geq 0 \wedge g(x) \geq 0 \wedge f(x) = g(x)$
+  \item $\sqrt{f_1(x)} + \sqrt{f_2(x)} + \sqrt{f_3(x)} + \cdots + \sqrt{f_n(x)} = 0$
+  \[\longleftrightarrow f_1(x) = f_2(x) = f_3(x) = \cdots = f_n(x) = 0\]
+\end{enumerate}
+
+\subsection*{Existencia de una expresión irracional sobre $\mathbb{R}$}
+Si $n \in \mathbb{Z}^+$:
+\[
+\ovalbox{$\sqrt[2n]{f(x)} \in \mathbb{R} \longleftrightarrow f(x) \geq 0$}
+\qquad
+\ovalbox{$\sqrt[2n+1]{g(x)} \in \mathbb{R} \longleftrightarrow g(x) \in \mathbb{R}$}
+\]
+
+\newpage
+% ------------------------------------------------------------
+\section{Valor absoluto}
+
+\textbf{Definición:}
+\[
+|x| = \begin{cases}
+x; & \text{si } x \geq 0\\
+\operatorname{op}(x) = -x; & \text{si } x < 0
+\end{cases}
+\]
+
+\subsection*{Teoremas}
+\begin{minipage}[t]{0.320\textwidth}
+\begin{enumerate}[label=\cn{\arabic*}]
+  \item $|x| = 0 \longleftrightarrow x = 0$
+  \item $|x| \geq 0$
+  \item $|x| = |-x|$
+  \item $|x| \geq x,\ |x| \geq -x$
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.291\textwidth}
+\begin{enumerate}[label=\cn{\arabic*}]\setcounter{enumi}{5}
+  \item $|xy| = |x||y|$
+  \item $\left|\dfrac{x}{y}\right| = \dfrac{|x|}{|y|}$
+  \item $|x^2| = |x|^2 = x^2$
+  \item $\sqrt[2n]{x^{2n}} = |x|$
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.359\textwidth}
+\begin{enumerate}[label=\cn{\arabic*}]\setcounter{enumi}{9}
+  \item Si $a < x < b \wedge ab < 0$ entonces:
+  \[0 \leq |x| < \operatorname{Máx}\{|a|, |b|\}\]
+\end{enumerate}
+\end{minipage}
+\begin{enumerate}[label=\cn{\arabic*}]\setcounter{enumi}{4}
+  \item $|x + y| \leq |x| + |y|$ \ \textcolor{magenta}{(Desigualdad triangular)}
+\end{enumerate}
+
+\textbf{Ecuaciones con valor absoluto:} Forma general \fbox{$F(x) = 0$}. Donde $F(x)$ es una
+expresión con valor absoluto.
+
+\textcolor{naranja}{\textbf{Teoremas:}} Sean $f(x)$ y $g(x)$ expresiones definidas en $\mathbb{R}$.
+\begin{enumerate}[label=\cn{\arabic*}]
+  \item $|f(x)| = g(x) \longleftrightarrow g(x) \geq 0 \wedge [f(x) = g(x) \vee f(x) = -g(x)]$
+  \item $|f(x)| = |g(x)| \longleftrightarrow [f(x) = g(x) \vee f(x) = -g(x)]$
+  \item $|f(x) + g(x)| = |f(x)| + |g(x)| \longleftrightarrow f(x)\cdot g(x) \geq 0$
+\end{enumerate}
+
+\textbf{Ejemplos:}
+
+\begin{minipage}[t]{0.504\textwidth}
+\[|2x - 4| = 5x - x^2 - 6\]
+\begin{minipage}[t]{0.5\linewidth}
+\begin{gather*}
+-x^2 - 6 + 5x \geq 0\\
+x^2 - 5x + 6 \leq 0\\
+(x-3)(x-2) \leq 0\\
+x \in [2; 3]
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.5\linewidth}
+\begin{gather*}
+2x - 4 = 5x - x^2 - 6\\
+x^2 - 3x + 2 = 0\\
+(x-2)(x-1) = 0\\
+x \in \{1; 2\}
+\end{gather*}
+\end{minipage}
+\begin{gather*}
+2x - 4 = -5x + x^2 + 6\\
+x^2 - 7x + 10 = 0\\
+(x-5)(x-2) = 0\\
+x \in \{2; 5\}\\
+\therefore\ x = 2
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.466\textwidth}
+\[|x^2 + 3| = |2x + 2|\]
+\begin{minipage}[t]{0.5\linewidth}
+\begin{gather*}
+x^2 + 3 = 2x + 2\\
+x^2 - 2x + 1 = 0\\
+x = 1
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.5\linewidth}
+\begin{gather*}
+x^2 + 3 = -2x - 2\\
+x^2 + 2x + 5 = 0\\
+\Delta < 0\\
+x \in \varnothing
+\end{gather*}
+\end{minipage}
+\[\therefore\ x = 1\]
+\end{minipage}
+
+\subsection*{Inecuaciones con valor absoluto}
+Sean $f(x)$ y $g(x)$ expresiones definidas en $\mathbb{R}$.
+\begin{enumerate}[label=\cn{\arabic*}]
+  \item $|f(x)| \leq g(x) \longleftrightarrow g(x) \geq 0 \wedge [-g(x) \leq f(x) \leq g(x)]$
+  \item $|f(x)| \geq g(x) \longleftrightarrow [f(x) \geq g(x) \vee f(x) \leq -g(x)]$
+  \item $|f(x)| \lesseqgtr |g(x)| \longleftrightarrow (f(x))^2 \lesseqgtr (g(x))^2$
+  \item $|f(x) + g(x)| < |f(x)| + |g(x)| \longleftrightarrow f(x)\cdot g(x) < 0$
+\end{enumerate}
+
+\textbf{Ejemplos:}
+
+\begin{minipage}[t]{0.291\textwidth}
+\begin{gather*}
+\left|x + \frac{1}{x}\right| \geq 2\\
+x + \frac{1}{x} \geq 2 \;\vee\; x + \frac{1}{x} \leq -2\\
+x \in \mathbb{R}^+ - \{0\} \;\vee\; x \in \mathbb{R}^- - \{0\}\\
+\therefore\ x \in \mathbb{R} - \{0\}
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.330\textwidth}
+\begin{gather*}
+|x^2 + 3| > |x + 3|\\
+(x^2 + 3)^2 > (x + 3)^2\\
+(x^2 + 3)^2 - (x + 3)^2 > 0\\
+(x^2 - x)\underbrace{(x^2 + x + 6)}_{+} > 0\\
+x(x - 1) > 0\\
+\therefore\ x \in \mathbb{R} - [0; 1]
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.349\textwidth}\small
+\begin{gather*}
+\left|\frac{x^2}{x - 2}\right| \leq x - 4\\
+\text{C.V.A.} \rightarrow x \geq 4;\ x \neq 2\\
+\frac{x^2}{x-2} \leq x - 4 \;\wedge\; 4 - x \leq \frac{x^2}{x-2}\\
+x^2 \leq x^2 - 6x + 8 \;\wedge\; -x^2 + 6x - 8 \leq x^2\\
+x \leq \frac{4}{3} \;\wedge\; x^2 - 3x + 4 \geq 0\\
+\Delta < 0 \rightarrow x \in \mathbb{R}\\
+x \leq \frac{4}{3} \;\wedge\; x \geq 4\\
+\therefore\ C.S. = \varnothing
+\end{gather*}
+\end{minipage}
+
+
+\medskip
+Hay otros casos donde no es tan simple aplicar y para estos hay otro método (por zonas):
+
+\begin{minipage}[t]{0.466\textwidth}
+$\bullet\ |x - 2| + 3|x - 1| < 4 \rightarrow C.S. = S_1 \cup S_2 \cup S_3 = \left\langle \frac{1}{4}; \frac{9}{4}\right\rangle$
+
+\begin{center}
+\begin{tikzpicture}[x=1.2cm]
+  \draw[<->] (0,0) -- (4,0);
+  \foreach \p/\l in {1.3/1, 2.6/2} {\draw (\p,0.1) -- (\p,-0.1); \node[below] at (\p,-0.1) {\small $\l$};}
+  \node[below,naranja] at (0.65,-0.1) {\small I};
+  \node[below,naranja] at (1.95,-0.1) {\small II};
+  \node[below,naranja] at (3.3,-0.1) {\small III};
+  \node[above,magenta] at (0.65,0.05) {\scriptsize $\langle -\infty;1\rangle$};
+  \node[above,magenta] at (1.95,0.05) {\scriptsize $[1;2\rangle$};
+  \node[above,magenta] at (3.3,0.05) {\scriptsize $[2;+\infty\rangle$};
+\end{tikzpicture}
+\end{center}
+
+\textcolor{naranja}{En I:}
+\begin{gather*}
+2 - x + 3(1 - x) < 4\\
+2 - x + 3 - 3x < 4\\
+x > 1/4 \;\cap\; x < 1\\
+S_1: x \in \langle 1/4; 1\rangle
+\end{gather*}
+\textcolor{naranja}{En II:}
+\begin{gather*}
+2 - x + 3(x - 1) < 4\\
+2 - x + 3x - 3 < 4\\
+x < 5/2 \;\cap\; 1 \leq x < 2\\
+S_2: x \in [1; 2\rangle
+\end{gather*}
+\textcolor{naranja}{En III:}
+\begin{gather*}
+x - 2 + 3(x - 1) < 4\\
+x < 9/4 \;\cap\; x \geq 2\\
+S_3: x \in [2; 9/4\rangle
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+$\bullet\ |x + 6| > |x + 9| + |x + 2| \rightarrow C.S. = S_1 \cup S_2 \cup S_3 \cup S_4 = \varnothing$
+
+\begin{center}
+\begin{tikzpicture}[x=1.1cm]
+  \draw[<->] (0,0) -- (5,0);
+  \foreach \p/\l in {1.2/-9, 2.4/-6, 3.6/-2} {\draw (\p,0.1) -- (\p,-0.1); \node[below] at (\p,-0.1) {\small $\l$};}
+  \node[below,naranja] at (0.6,-0.1) {\small I};
+  \node[below,naranja] at (1.8,-0.1) {\small II};
+  \node[below,naranja] at (3.0,-0.1) {\small III};
+  \node[below,naranja] at (4.3,-0.1) {\small IV};
+  \node[above,magenta] at (0.6,0.05) {\scriptsize $\langle -\infty;-9\rangle$};
+  \node[above,magenta] at (1.8,0.05) {\scriptsize $[-9;-6\rangle$};
+  \node[above,magenta] at (3.0,0.05) {\scriptsize $[-6;-2\rangle$};
+  \node[above,magenta] at (4.3,0.05) {\scriptsize $[-2;+\infty\rangle$};
+\end{tikzpicture}
+\end{center}
+
+\begin{minipage}[t]{0.5\linewidth}
+\textcolor{naranja}{En I:}
+\begin{gather*}
+-x - 6 > -x - 9 - x - 2\\
+x > -5 \;\cap\; x < -9\\
+S_1: x = \varnothing
+\end{gather*}
+\textcolor{naranja}{En III:}
+\begin{gather*}
+x + 6 > x + 9 - x - 2\\
+x > 1 \;\cap\; -6 \leq x < -2\\
+S_3: x = \varnothing
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.5\linewidth}
+\textcolor{naranja}{En II:}
+\begin{gather*}
+-x - 6 > x + 9 - x - 2\\
+x < -13 \;\cap\; -9 \leq x < -6\\
+S_2: x = \varnothing
+\end{gather*}
+\textcolor{naranja}{En IV:}
+\begin{gather*}
+x + 6 > x + 9 + x + 2\\
+x < -5 \;\cap\; x \geq -2\\
+S_4: x = \varnothing
+\end{gather*}
+\end{minipage}
+
+\medskip
+\textcolor{rojo}{$\ast$} También se utiliza en ecuaciones con valor absoluto.
+\end{minipage}
+
+
+% ============================================================
+% Páginas 49-51
+% ============================================================
+\newpage
+\section{Relaciones}
+
+\subsection*{Conceptos previos}
+
+\textcolor{magenta}{\textbf{Pares ordenados:}} Son entes matemáticos que consisten de dos
+elementos ``$a$'' y ``$b$'', a los cuales se les denomina primera componente y segunda
+componente respectivamente, y se les denota por $(a;b)$.
+
+\textbf{Igualdad de pares ordenados:} Dados dos pares ordenados $(a;b)$ y $(c;d)$, entonces:
+\[\ovalbox{$(c;d) = (a;b) \longleftrightarrow a = c \text{ y } b = d$}\]
+Ejemplo:
+\begin{itemize}
+  \item $(2;3) \neq (3;2)$
+  \item $(2x + y; 1) = (3; 2x - y) \longleftrightarrow
+  \begin{array}{l} 2x + y = 3\\ 1 = 2x - y\end{array}
+  \longleftrightarrow
+  \begin{array}{l} x = 1\\ y = 1\end{array}$
+\end{itemize}
+
+\textcolor{magenta}{\textbf{Producto cartesiano:}} Dados dos conjuntos no vacíos $A$ y $B$ se
+define el producto cartesiano $A\times B$ como el conjunto de pares ordenados.
+\[\ovalbox{$A\times B = \{(a;b) \,/\, a \in A \wedge b \in B\}$}\]
+Tales que su 1\textsuperscript{ra} componente está en $A$ y su 2\textsuperscript{da} componente
+está en $B$.
+
+Ejemplo: \quad Sea $A = \{1; 2; 3\}$ y $B = \{a; b\}$, entonces:
+\[A\times B = \{(1;a); (1;b); (2;a); (2;b); (3;a); (3;b)\}\]
+
+\textcolor{magenta}{\textbf{Nota:}} En general, si los conjuntos $A$ y $B$ son finitos con
+$m$ y $n$ elementos respectivamente, entonces el producto cartesiano $A\times B$ tiene
+$m\times n$ elementos. De aquí su nombre y notación. En general, el producto cartesiano no
+es conmutativo; es decir $A\times B \neq B\times A$, a menos que $A = B$.
+
+\textbf{Relaciones:} Dados dos conjuntos no vacíos $A$ y $B$, a un conjunto $R$ de pares
+ordenados se le denomina ``Relación de $A$ en $B$'' si $R$ es un subconjunto cualquiera de
+$A\times B$. También se le llama ``Relación Binaria''.
+\[\ovalbox{$R$ es una relación de $A$ en $B$ si y sólo si $R \subset A\times B$}\]
+Puesto que, en general, si $A\times B$ tiene $n$ elementos entonces $A\times B$ tiene $2^n$
+subconjuntos, entonces existen $2^n$ relaciones de $A$ en $B$.
+
+Cuando un par ordenado $(a;b)$ pertenece a una relación $R$, también se denota: $a\,R\,b$,
+es decir, $a\,R\,b$ si y sólo si $(a;b) \in R$ y en tal caso se lee: ``$a$ está relacionado
+con $b$ según la relación $R$'' y si $(a;b) \notin R$ entonces se denota $a \not\!R\, b$.
+
+\textbf{Definición:} Se dice que $R$ es una relación en el conjunto $A$ si
+$R \subset A\times A$ ó $R \subset A^2$.
+
+Ejemplo: Si $R$ es una relación en $A$, $A = \{2; 3; 4\}$ tal que:
+\[R = \{(x;y) \,/\, y + 1 < x^2\}\]
+\[R = \{(2;2); (2;3); (3;2); (3;3); (3;4); (4;2); (4;3); (4;4)\}\]
+pues para $(x;y) \in A\times A$, con $x \in A$ y $y \in A$:
+\begin{align*}
+x = 2:\ y + 1 < 2^2 &\longrightarrow y \in \{2; 3\} \longrightarrow (2;2), (2;3) \in R\\
+x = 3:\ y + 1 < 3^2 &\longrightarrow y \in \{2; 3; 4\} \longrightarrow (3;2), (3;3), (3;4) \in R\\
+x = 4:\ y + 1 < 4^2 &\longrightarrow y \in \{2; 3; 4\} \longrightarrow (4;2), (4;3), (4;4) \in R
+\end{align*}
+
+\subsection*{Tipos de relaciones}
+
+\textcolor{magenta}{\textbf{Relaciones reflexivas:}} Una relación $R$ es reflexiva en $A$,
+$[R \subset A^2]$ si $\forall a \in A,\ (a;a) \in R$. Es decir, $R$ es reflexiva en $A$ si todo
+elemento de $A$ está relacionado consigo mismo mediante la relación $R$.
+
+Ejemplo: Sean $A = \{1; 2; 3; 4\}$, y las relaciones en $A$:
+\[
+R_1 = \{(1;2); \underline{(3;3)}; (3;4); \underline{(4;4)}; (4;1); \underline{(2;2)}; \underline{(1;1)}\}
+\qquad
+R_2 = \{\underline{(1;1)}; \underline{(2;2)}; (3;4); (4;3); \underline{(4;4)}\}
+\]
+Entonces $R_1$ es reflexiva pues $(a;a) \in R_1,\ \forall a \in A$, además de otros puntos; en
+cambio a $R_2$ le falta $(3;3)$ para serlo.
+
+\textcolor{magenta}{\textbf{Relaciones simétricas:}} Una relación $R$ en un conjunto $A$ es
+simétrica si se cumple la siguiente implicación:
+\[\ovalbox{$(a;b) \in R \longrightarrow (b;a) \in R$}\]
+Es decir, si $(a;b)$ está en $R$ entonces el elemento $(b;a)$ también debe estar en $R$ para
+que $R$ sea simétrica.
+
+Ejemplo: Sea $A = \{1; 2; 3; 4\}$, y las relaciones en $A$:
+\begin{gather*}
+R_1 = \{(1;2); (2;3); (4;2); (3;2); (2;1); (2;4)\} \qquad R_2 = \{(1;1); (2;2); (3;3)\}\\
+R_3 = \{(1;1); (3;3); (4;1); (2;3); (1;4)\}
+\end{gather*}
+Entonces $R_1$ y $R_2$ son simétricas pero $R_3$ no lo es pues le falta el elemento $(3;2)$
+para serlo.
+
+\textcolor{magenta}{\textbf{Relaciones transitivas:}} Una relación $R$ en un conjunto $A$ es
+transitiva si se cumple la siguiente implicación:
+\[\ovalbox{$[(a;b) \in R \wedge (b;c) \in R] \longrightarrow (a;c) \in R$}\]
+Ejemplo: Sea $A = \{1; 2; 3; 4\}$, la relación en $A$:
+\[R_1 = \{(1;2); (2;3); (1;3); (3;1); (1;1)\}\]
+No es transitiva, pues si bien se cumplen las implicaciones:
+\begin{align*}
+(1;2) \in R_1 \wedge (2;3) \in R_1 &\longrightarrow (1;3) \in R_1\\
+(1;3) \in R_1 \wedge (3;1) \in R_1 &\longrightarrow (1;1) \in R_1
+\end{align*}
+en cambio falla en:
+\[(2;3) \in R_1 \wedge (3;1) \in R_1 \longrightarrow (2;1) \notin R_1\]
+\[R_2 = \{(1;2); (2;1); (2;2); (1;1)\} \quad \text{sí es transitiva.}\]
+
+\textcolor{magenta}{\textbf{Relaciones de equivalencia:}} Una relación $R$ en $A$ es una
+relación de equivalencia si satisface simultáneamente las tres condiciones:
+\begin{itemize}[label=\textcolor{rojo}{\checkmark}]
+  \item \textcolor{rojo}{Reflexiva:} $\forall a \in A,\ (a;a) \in R$.
+  \item \textcolor{rojo}{Simétrica:} Si $(a;b) \in R$ entonces $(b;a) \in R$.
+  \item \textcolor{rojo}{Transitiva:} Si $(a;b) \in R$ y $(b;c) \in R$ entonces $(a;c) \in R$.
+\end{itemize}
+Ejemplos: Sea $A = \{1; 2; 3; 4\}$ entonces la relación
+$R = \{(1;1); (2;1); (1;2); (2;2); (3;3); (4;4)\}$ es una relación de equivalencia en $A$.
+
+\textbf{Dominio y rango de una relación:} Se llama dominio al conjunto de todas las primeras
+componentes de los pares ordenados de $R$, se llama rango al conjunto de todas las segundas
+componentes.
+
+
+% ============================================================
+% Páginas 52-54
+% ============================================================
+\[
+\ovalbox{$\operatorname{Dom}(R) = \{x \,/\, (x;y) \in R\}$}
+\qquad
+\ovalbox{$\operatorname{Ran}(R) = \{y \,/\, (x;y) \in R\}$}
+\]
+Ejemplo: Dada la relación en $A = \{1; 2; 3; 4; 5\}$
+\[R = \{(1;1); (2;1); (2;2); (3;1); (3;2); (4;2); (5;3)\}\]
+\[\operatorname{Dom}(R) = \{1; 2; 3; 4; 5\} \qquad \operatorname{Ran}(R) = \{1; 2; 3\}\]
+
+\textbf{Relación inversa:} Dado un conjunto no vacío $A$ y la relación $R: A \to A$ tal que:
+\[\ovalbox{$R = \{(x;y) \in A^2 \,/\, P_{(x;y)}\}$}\]
+Se define la relación INVERSA de $A$ como:
+\[\ovalbox{$R^* = R^{-1} = \{(y;x) \in A^2 \,/\, P_{(x;y)}\}$}\]
+donde: \ \ovalbox{$\operatorname{Dom}R^* = \operatorname{Ran}R \;\wedge\; \operatorname{Ran}R^* = \operatorname{Dom}R$}
+
+\textcolor{magenta}{\textbf{Propiedad:}} Dada la relación $R: A \to A$, donde $A$ es un
+conjunto no vacío:
+\[\ovalbox{$R$ es simétrica $\longleftrightarrow R = R^*$}\]
+
+\newpage
+% ------------------------------------------------------------
+\section{Funciones I}
+
+\textbf{Definición:} Dados dos conjuntos no vacíos $A$ y $B$ se define una función de $A$ en
+$B$ como un conjunto de pares ordenados $(x;y)$ tal que a cada elemento $x \in A$ existe un
+único elemento $y \in B$.
+
+\textcolor{magenta}{\textbf{Notación:}} Si $f$ es una función de $A$ en $B$, luego:
+\ \ovalbox{$f: A \to B$}
+
+\textcolor{magenta}{\textbf{Condición de existencia y unicidad:}} Sea $f: A \to B$, se debe
+cumplir:
+
+\begin{minipage}[t]{0.485\textwidth}
+\begin{enumerate}
+  \item $\forall x \in A;\ \exists!\, y \in B \,/\, (x;y) \in f$
+
+  \textcolor{magenta}{$\exists!$}: Se lee ``Existe y es único''
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\begin{enumerate}\setcounter{enumi}{1}
+  \item Si $(x;y) \in f \wedge (x;z) \in f \rightarrow y = z$
+\end{enumerate}
+\end{minipage}
+
+\smallskip
+De la definición de una función se deduce que dos pares ordenados diferentes no pueden tener
+la misma primera componente.
+
+\textbf{Ejemplos:}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
+  % f1
+  \begin{scope}
+    \draw (0,0) ellipse (0.7 and 1.3); \draw (2.2,0) ellipse (0.7 and 1.3);
+    \node at (0,1.6) {$A$}; \node at (2.2,1.6) {$B$};
+    \draw[->,verde,thick] (0.2,1.6) to[bend left=20] node[above] {$f_1$} (2.0,1.6);
+    \node (a1) at (0,0.7) {1}; \node (a2) at (0,0) {2}; \node (a3) at (0,-0.7) {3};
+    \node (b1) at (2.2,0.35) {4}; \node (b2) at (2.2,-0.35) {5};
+    \draw[->] (a1) -- (b1); \draw[->] (a2) -- (b2); \draw[->] (a3) -- (b1);
+    \node at (1.1,-1.9) {\protect\underline{Son funciones}};
+  \end{scope}
+  % f2
+  \begin{scope}[xshift=4.2cm]
+    \draw (0,0) ellipse (0.7 and 1.3); \draw (2.2,0) ellipse (0.7 and 1.3);
+    \node at (0,1.6) {$A$}; \node at (2.2,1.6) {$B$};
+    \draw[->,verde,thick] (0.2,1.6) to[bend left=20] node[above] {$f_2$} (2.0,1.6);
+    \node (a1) at (0,0.9) {1}; \node (a2) at (0,0.3) {2}; \node (a3) at (0,-0.3) {3}; \node (a4) at (0,-0.9) {4};
+    \node (b1) at (2.2,0) {5};
+    \foreach \a in {a1,a2,a3,a4} \draw[->] (\a) -- (b1);
+  \end{scope}
+  % f3
+  \begin{scope}[xshift=8.4cm]
+    \draw (0,0) ellipse (0.7 and 1.3); \draw (2.2,0) ellipse (0.7 and 1.3);
+    \node at (0,1.6) {$A$}; \node at (2.2,1.6) {$B$};
+    \draw[->,verde,thick] (0.2,1.6) to[bend left=20] node[above] {$f_3$} (2.0,1.6);
+    \node (a1) at (0,0.5) {2}; \node (a2) at (0,-0.5) {3};
+    \node (b1) at (2.2,0.7) {8}; \node (b2) at (2.2,0) {7}; \node (b3) at (2.2,-0.7) {6};
+    \draw[->] (a1) -- (b1); \draw[->] (a1) -- (b2); \draw[->] (a2) -- (b3);
+    \node at (1.1,-1.9) {\protect\underline{No es función}};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\textbf{Dominio y rango de una función:} El dominio es el conjunto de todas las primeras
+componentes de los pares ordenados de $f$, se llama rango al conjunto de todas las segundas
+componentes.
+\[
+\ovalbox{$\operatorname{Dom}(f) = \{x \in A \,/\, \exists!\, y \in B \wedge (x;y) \in f\} \subset A$}
+\quad
+\ovalbox{$\operatorname{Ran}(f) = \{y \in B \,/\, \exists x \in A \wedge (x;y) \in f\} \subset B$}
+\]
+Ejemplo: Sea $f = \{(1;2); (3;4); (5;6); (7;8)\}$, determinar el dominio y el rango.
+\[D_f = \{1; 3; 5; 7\} \qquad R_f = \{2; 4; 6; 8\}\]
+
+\textbf{Regla de correspondencia:} Es aquella relación que se establece entre la primera y
+la segunda componente de una función. Esta relación se establece mediante una fórmula
+matemática.
+
+\begin{minipage}{0.388\textwidth}
+\centering
+\begin{tikzpicture}[>=Stealth]
+  \draw (0,0) ellipse (0.8 and 1.3); \draw (2.6,0) ellipse (0.8 and 1.3);
+  \node at (0,1.6) {$A$}; \node at (2.6,1.6) {$B$};
+  \draw[->,verde,thick] (0.2,1.6) to[bend left=20] node[above] {$f: A \to B$} (2.4,1.6);
+  \draw[->] (0,0) node[left] {$x$} -- (2.6,0) node[right] {$y$};
+  \node at (1.3,-1.8) {\ovalbox{$y = f(x)$}};
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.582\textwidth}
+\begin{itemize}
+  \item Toda función queda completamente definida si se conoce el dominio y la regla de
+  correspondencia.
+  \item Toda función es una relación pero no toda relación es función.
+\end{itemize}
+\end{minipage}
+
+\medskip
+\textbf{Función real de variable real:} Sea $f: A \to B$, si
+\ovalbox{$A \subset \mathbb{R} \wedge B \subset \mathbb{R}$} diremos que $f$ es una función
+real de variable real.
+
+\textcolor{magenta}{\textbf{Teorema fundamental de las funciones reales:}} Una función real
+es de variable real, si toda recta vertical corta a su gráfica en un solo punto.
+
+\begin{center}
+\begin{tikzpicture}[scale=0.8]
+  \begin{scope}
+    \draw[->] (-2.5,0) -- (3,0) node[below] {$x$};
+    \draw[->] (0,-2) -- (0,3) node[left] {$y$};
+    \node[below left] at (0,0) {$O$};
+    \draw[thick,rojo!70!black] (-2.3,-1.8) .. controls (-2,-0.5) and (-1,0.5) .. (0,0.8)
+      .. controls (1,1) and (1.2,2.2) .. (2.6,2.6);
+    \node at (-2.2,-0.8) {$f_1$};
+    \draw[thick,rojo] (1.5,-2) -- (1.5,3);
+    \fill (1.5,1.75) circle (2pt);
+    \node at (0.8,-1.6) {\small $f_1$ es función};
+  \end{scope}
+  \begin{scope}[xshift=7.5cm]
+    \draw[->] (-2.5,0) -- (3,0) node[below] {$x$};
+    \draw[->] (0,-2) -- (0,3) node[left] {$y$};
+    \node[below left] at (0,0) {$O$};
+    \draw[thick] (2.8,2.5) -- (0.4,0.6) -- (2.8,-1.4);
+    \node at (2.6,1.5) {$f_2$};
+    \draw[thick,rojo] (1.5,-2) -- (1.5,3);
+    \fill (1.5,1.47) circle (2pt); \fill (1.5,-0.27) circle (2pt);
+    \node at (-0.6,-1.6) {\small $f_2$ no es función};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\begin{itemize}
+  \item El dominio se obtiene planteando la existencia de la regla de correspondencia
+  sobre $\mathbb{R}$.
+  \item No existe una regla específica para el cálculo del rango, sin embargo se recomienda
+  despejar $x$ en función de $y$, para luego analizar para qué valores de $y$ la función
+  está definida.
+\end{itemize}
+
+Ejemplo: Halle el rango de: \ $f(x) = \dfrac{3x - 1}{x - 2} = y$
+\begin{enumerate}[label=\roman*)]
+  \item $x - 2 \neq 0 \rightarrow x \neq 2$; luego: $\operatorname{Dom}f = \mathbb{R} - \{2\}$
+  \item $yx - 2y = 3x - 1$
+  \[x = \frac{2y - 1}{y - 3}; \text{ luego: } y - 3 \neq 0 \rightarrow y \neq 3, \text{ luego: } \operatorname{Ran}f = \mathbb{R} - \{3\}\]
+\end{enumerate}
+
+
+% ============================================================
+% Páginas 55-57
+% ============================================================
+\newpage
+\section{Funciones II}
+
+\textbf{Gráfica de una función:} Es el conjunto de pares ordenados $(x;y)$ en donde ``$x$''
+está en el dominio de la función y además ``$y = f(x)$''. Es decir:
+\[\ovalbox{$\operatorname{Graf}(f) = \{(x;y) \in \mathbb{R}^2 \,/\, y = f(x);\ x \in \operatorname{Dom}(f)\}$}\]
+
+\textbf{Funciones elementales:} Sirven de base para estudiar otras funciones.
+
+\begin{minipage}[t]{0.466\textwidth}
+\textbf{Función constante:}
+\begin{center}
+\begin{tikzpicture}[scale=0.7]
+  \ejes{-0.5}{4}{-0.3}{3}
+  \draw[<->,thick,graf] (-0.5,1.8) -- (4,1.8);
+  \node[above] at (0.3,1.8) {$c$};
+  \node at (2.8,2.6) {\ovalbox{$f(x) = c$}};
+\end{tikzpicture}
+
+\ovalbox{$\operatorname{Dom}f = \mathbb{R}$} \ \ovalbox{$\operatorname{Ran}f = \{c\}$}
+\end{center}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{Función escalón unitario:} Su regla de correspondencia es:
+\[
+\ovalbox{$f(x) = \mu_a(x) = \begin{cases} 0; & x < a\\ 1; & x \geq a\end{cases}\quad a \in \mathbb{R}$}
+\]
+\begin{center}
+\begin{tikzpicture}[scale=0.7]
+  \ejes{-1}{4.5}{-0.5}{1.8}
+  \draw[<-,thick,graf] (-1,0) -- (1.5,0); \draw[graf,fill=white] (1.5,0) circle (2.5pt);
+  \draw[->,thick,graf] (1.5,1) -- (4.3,1); \fill[graf] (1.5,1) circle (2.5pt);
+  \node[below] at (1.5,-0.1) {$a$}; \node[left] at (0,1) {$1$};
+\end{tikzpicture}
+
+\ovalbox{$\operatorname{Dom}f = \mathbb{R}$} \ \ovalbox{$\operatorname{Ran}f = \{0; 1\}$}
+\end{center}
+\end{minipage}
+
+\medskip
+\textbf{Función signo (Sgn):}
+
+\begin{minipage}{0.436\textwidth}
+\[
+\ovalbox{$f(x) = \operatorname{Sgn}(x) = \begin{cases} -1; & x < 0\\ 0; & x = 0\\ 1; & x > 0\end{cases}$}
+\]
+\end{minipage}\hfill
+\begin{minipage}{0.533\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.7]
+  \ejes{-3}{3}{-1.5}{1.6}
+  \draw[thick,graf] (0,1) -- (2.8,1); \draw[graf,fill=white] (0,1) circle (2.5pt);
+  \draw[thick,graf] (-3,-1) -- (0,-1); \draw[graf,fill=white] (0,-1) circle (2.5pt);
+  \fill[graf] (0,0) circle (2.5pt);
+  \node[left] at (0,1) {$1$}; \node[right] at (0,-1) {$-1$}; \node[below left] at (0,0) {$0$};
+\end{tikzpicture}
+
+\ovalbox{$\operatorname{Dom}f = \mathbb{R}$} \ \ovalbox{$\operatorname{Ran}f = \{-1; 0; 1\}$}
+\end{minipage}
+
+\medskip
+\textbf{Función máximo entero:} Veamos algunas propiedades, definimos $x \in \mathbb{R}$ y
+$n \in \mathbb{Z}$.
+
+\begin{minipage}[t]{0.388\textwidth}
+\begin{itemize}
+  \item $[\![x]\!] \in \mathbb{Z}$
+  \item $[\![x]\!] = x \leftrightarrow x \in \mathbb{Z}$
+  \item $[\![x]\!] = n \leftrightarrow n \leq x < n + 1$
+  \item $[\![x + n]\!] = [\![x]\!] + n$
+  \item $[\![\,[\![x]\!]\,]\!] = [\![x]\!]$
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.582\textwidth}
+Ejemplos:
+\[
+\begin{array}{llll}
+[\![2{,}75]\!] = 2 & [\![0]\!] = 0 & [\![-4]\!] = -4 & [\![\sqrt{2}]\!] = 1\\[4pt]
+[\![1{,}99]\!] = 1 & [\![5]\!] = 5 & [\![-3{,}02]\!] = -4 & [\![-\sqrt{2}]\!] = -2
+\end{array}
+\]
+\end{minipage}
+
+\begin{minipage}{0.291\textwidth}
+\centering
+\ovalbox{$f(x) = [\![x]\!]$}\\[8pt]
+\ovalbox{$\operatorname{Dom}f = \mathbb{R}$}\\[4pt]
+\ovalbox{$\operatorname{Ran}f = \mathbb{Z}$}
+\end{minipage}\hfill
+\begin{minipage}{0.407\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.55]
+  \ejes{-2.5}{5}{-2.5}{3.8}
+  \foreach \n in {-2,...,3} {
+    \draw[thick,graf] (\n,\n) -- (\n+1,\n);
+    \fill[graf] (\n,\n) circle (3pt);
+    \draw[graf,fill=white] (\n+1,\n) circle (3pt);
+  }
+  \foreach \n in {1,2,3,4} \node[below] at (\n,0) {\scriptsize $\n$};
+  \foreach \n in {1,2,3} \node[left] at (0,\n) {\scriptsize $\n$};
+  \node[below] at (-1,0) {\scriptsize $-1$}; \node[below] at (-2,0) {\scriptsize $-2$};
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.272\textwidth}
+\[
+\begin{array}{r|l}
+-2 & \text{Si } -2 \leq x < -1\\
+-1 & \text{Si } -1 \leq x < 0\\
+0 & \text{Si } 0 \leq x < 1\\
+1 & \text{Si } 1 \leq x < 2\\
+2 & \text{Si } 2 \leq x < 3\\
+3 & \text{Si } 3 \leq x < 4
+\end{array}
+\]
+\end{minipage}
+
+\begin{multicols}{2}
+\begin{itemize}
+  \item $[\![x]\!] < n \leftrightarrow x < n$
+  \item $[\![x]\!] \geq n \leftrightarrow x \geq n$
+  \item $[\![x]\!] \leq n \leftrightarrow x < n + 1$
+  \item $[\![x]\!] > n \leftrightarrow x \geq n + 1$
+\end{itemize}
+\end{multicols}
+
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{Función identidad:}
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-3}{4}{-3}{4}
+  \draw[<->,thick,graf] (-2.8,-2.8) -- (3.5,3.5);
+  \draw[dashed] (3,0) -- (3,3) -- (0,3); \draw[dashed] (-2,0) -- (-2,-2) -- (0,-2);
+  \node[below] at (3,0) {\scriptsize 4}; \node[left] at (0,3) {\scriptsize 4};
+  \node[above] at (-2,0) {\scriptsize $-2$}; \node[right] at (0,-2) {\scriptsize $-2$};
+  \draw[rojo] (0.6,0) arc (0:45:0.6); \node[rojo] at (1.1,0.3) {\scriptsize $45^\circ$};
+  \node at (2,3.6) {\ovalbox{$f(x) = x$}};
+\end{tikzpicture}
+
+\ovalbox{$\operatorname{Dom}f = \mathbb{R}$} \ \ovalbox{$\operatorname{Ran}f = \mathbb{R}$}
+\end{center}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{Función valor absoluto:}
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-4}{4}{-0.5}{4}
+  \draw[<->,thick,graf] (-3.5,3.5) -- (0,0) -- (3.5,3.5);
+  \draw[rojo] (0.6,0) arc (0:45:0.6); \node[rojo] at (1.1,0.3) {\scriptsize $45^\circ$};
+  \draw[rojo] (-0.6,0) arc (180:135:0.6); \node[rojo] at (-1.1,0.3) {\scriptsize $45^\circ$};
+  \node at (2.5,4) {\ovalbox{$f(x) = |x|$}};
+\end{tikzpicture}
+
+\ovalbox{$f(x) = |x| = \begin{cases} x; & x \geq 0\\ -x; & x < 0\end{cases}$}\\[4pt]
+\ovalbox{$\operatorname{Dom}f = \mathbb{R}$} \ \ovalbox{$\operatorname{Ran}f = \mathbb{R}^+_0$}
+\end{center}
+\end{minipage}
+
+\medskip
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{Función raíz cuadrada:}
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-0.5}{5}{-0.5}{3}
+  \draw[->,thick,graf,domain=0:4.8,samples=60] plot (\x,{sqrt(\x)});
+  \node at (3,2.7) {\ovalbox{$f(x) = \sqrt{x}$}};
+\end{tikzpicture}
+
+\ovalbox{$\operatorname{Dom}f = \mathbb{R}^+_0$} \ \ovalbox{$\operatorname{Ran}f = \mathbb{R}^+_0$}
+\end{center}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{Función inverso multiplicativo:}
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-3.5}{3.5}{-3.5}{3.5}
+  \draw[thick,graf,domain=0.3:3.3,samples=60] plot (\x,{1/\x});
+  \draw[thick,graf,domain=-3.3:-0.3,samples=60] plot (\x,{1/\x});
+  \draw[dashed] (1,0) -- (1,1) -- (0,1); \draw[dashed] (-1,0) -- (-1,-1) -- (0,-1);
+  \node[below] at (1,0) {\scriptsize 1}; \node[left] at (0,1) {\scriptsize 1};
+  \node[above] at (-1,0) {\scriptsize $-1$}; \node[right] at (0,-1) {\scriptsize $-1$};
+  \node at (2.3,2.8) {\ovalbox{$f(x) = \frac{1}{x}$}};
+\end{tikzpicture}
+
+\ovalbox{$\operatorname{Dom}f = \mathbb{R} - \{0\}$}\\[2pt]
+\ovalbox{$\operatorname{Ran}f = \mathbb{R} - \{0\}$}
+\end{center}
+\end{minipage}
+
+\subsection*{Funciones polinomiales}
+Son aquellas cuya regla de correspondencia está asociada a un polinomio. Entre las
+principales tenemos:
+
+\textbf{Función lineal:}
+\begin{itemize}
+  \item Regla de correspondencia: \ovalbox{$f(x) = mx + b;\ m \neq 0$}
+  \item Dominio: \ovalbox{$\operatorname{Dom}f = \mathbb{R}$} $\wedge$ Rango: \ovalbox{$\operatorname{Ran}f = \mathbb{R}$}
+\end{itemize}
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \begin{scope}
+    \ejes{-3.5}{3.5}{-2.5}{3.5}
+    \draw[<->,thick,graf] (-3.2,-2.3) -- (2.5,3.4);
+    \fill (0,0.9) circle (2pt) node[right] {$b$};
+    \node[below] at (-0.9,0) {\scriptsize $-\frac{b}{m}$};
+    \draw[rojo] (-0.4,0) arc (0:45:0.5); \node[rojo] at (-0.1,0.35) {\scriptsize $\theta$};
+    \node[rojo] at (-2.5,2) {$m > 0$};
+  \end{scope}
+  \begin{scope}[xshift=9cm]
+    \ejes{-3.5}{3.5}{-2.5}{3.5}
+    \draw[<->,thick,graf] (-2.5,3.4) -- (3.2,-2.3);
+    \fill (0,0.9) circle (2pt) node[right] {$b$};
+    \node[below] at (0.9,-0.1) {\scriptsize $-\frac{b}{m}$};
+    \draw[rojo] (1.4,0) arc (0:135:0.5); \node[rojo] at (1.6,0.5) {\scriptsize $\theta$};
+    \node[rojo] at (-2,1.5) {$m < 0$};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\textbf{Función cuadrática:}
+\begin{itemize}
+  \item Regla de correspondencia: \ovalbox{$f(x) = ax^2 + bx + c,\ a \neq 0$}
+  \item Dominio: \ovalbox{$\operatorname{Dom}f = \mathbb{R}$}
+  \item Gráfica: Su gráfica $G_f$ es una parábola simétrica respecto a una recta vertical
+  (llamada eje de simetría) que pasa por el vértice de la parábola.
+
+  Si $a > 0$, la parábola abre hacia arriba: $\cup$\\
+  Si $a < 0$, la parábola abre hacia abajo: $\cap$
+\end{itemize}
+\begin{center}
+\begin{tikzpicture}[scale=0.55]
+  \begin{scope}
+    \ejes{-3}{3.5}{-0.5}{4.5}
+    \draw[thick,graf,domain=-2:2,samples=50] plot (\x,{\x*\x});
+    \node at (3,3.5) {\ovalbox{$f(x) = x^2$}};
+  \end{scope}
+  \begin{scope}[xshift=10cm,yshift=4cm]
+    \ejes{-3}{3.5}{-4.5}{0.8}
+    \draw[thick,graf,domain=-2:2,samples=50] plot (\x,{-\x*\x});
+    \node at (3.6,-2) {\ovalbox{$f(x) = -x^2$}};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+\begin{itemize}
+  \item Vértice de la parábola:
+  \ $V(h;k) = V\left(-\dfrac{b}{2a}; -\dfrac{b^2 - 4ac}{4a}\right)$
+\end{itemize}
+
+\textcolor{verde}{\textbf{Análisis de la gráfica de la función cuadrática:}} Sea
+$f(x) = ax^2 + bx + c,\ a \neq 0$, de raíces $x_1, x_2$ y discriminante $\Delta = b^2 - 4ac$.
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline
+$f(x)$ & \textcolor{naranja}{$\Delta > 0$} & \textcolor{naranja}{$\Delta = 0$} & \textcolor{naranja}{$\Delta < 0$}\\ \hline
+\textcolor{verde}{$a > 0$} &
+\parabola{1}{-1}{0} & \parabola{1}{0}{0} & \parabola{1}{1}{0}\\ \hline
+\textcolor{verde}{$a < 0$} &
+\parabola{-1}{1}{0} & \parabola{-1}{0}{0} & \parabola{-1}{-1}{0}\\ \hline
+\end{tabular}
+\end{center}
+
+\textbf{Función cúbica:}
+\begin{itemize}
+  \item Regla de correspondencia: \ovalbox{$f(x) = ax^3 + bx^2 + cx + d$}
+  \item Dominio: \ovalbox{$\operatorname{Dom}f = \mathbb{R}$} $\wedge$ Rango: \ovalbox{$\operatorname{Ran}f = \mathbb{R}$}
+  \item Gráfica: Su gráfica $G_f$ es una curva que corta en al menos un punto al eje $X$, y
+  al eje $Y$ en el punto $(0;d)$.
+\end{itemize}
+
+
+% ============================================================
+% Páginas 58-60
+% ============================================================
+\begin{center}
+\begin{tikzpicture}[scale=0.55]
+  \begin{scope}
+    \ejes{-3}{3.5}{-3.5}{3.5}
+    \draw[thick,graf,domain=-1.5:1.5,samples=60] plot (\x,{\x*\x*\x});
+    \node at (2.5,3) {\ovalbox{$f(x) = x^3$}};
+  \end{scope}
+  \begin{scope}[xshift=10cm]
+    \ejes{-3}{3.5}{-3.5}{3.5}
+    \draw[thick,graf,domain=-1.5:1.5,samples=60] plot (\x,{-\x*\x*\x});
+    \node at (-2.3,3) {\ovalbox{$f(x) = -x^3$}};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\textcolor{verde}{\textbf{Análisis de la gráfica de la función cúbica reducida:}} Sea
+$f(x) = a(x^3 + px + q);\ a \neq 0$ una función cúbica reducida de raíces: $x_1, x_2$ y
+$x_3$. La gráfica $f$ depende de $a$ y la expresión
+$\Delta = \left(\dfrac{p}{3}\right)^3 + \left(\dfrac{q}{2}\right)^2$, tal como se observa en
+los siguientes casos.
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline
+$f(x)$ & \textcolor{naranja}{$\Delta < 0$} & \textcolor{naranja}{$\Delta = 0$} & \textcolor{naranja}{$\Delta > 0$}\\ \hline
+\textcolor{verde}{$a > 0$} &
+\begin{tikzpicture}[scale=0.45]
+  \ejes{-2.6}{2.8}{-2}{2}
+  \draw[thick,graf,domain=-2.15:2.15,samples=60] plot (\x,{0.4*(\x*\x*\x-3*\x)});
+  \node[below left] at (-1.73,0) {\tiny $x_1$}; \node[below left] at (0,0) {\tiny $x_2$}; \node[below right] at (1.73,0) {\tiny $x_3$};
+\end{tikzpicture} &
+\begin{tikzpicture}[scale=0.45]
+  \ejes{-2.6}{2.8}{-2}{2}
+  \draw[thick,graf,domain=-2.3:1.9,samples=60] plot (\x,{0.4*(\x*\x*\x-3*\x+2)});
+  \node[below] at (-2,0) {\tiny $x_1$}; \node[below] at (1,0) {\tiny $x_2 = x_3$};
+\end{tikzpicture} &
+\begin{tikzpicture}[scale=0.45]
+  \ejes{-2.6}{2.8}{-2}{2}
+  \draw[thick,graf,domain=-1.8:1.6,samples=60] plot (\x,{0.4*(\x*\x*\x+\x+1)});
+  \node[below] at (-0.7,0) {\tiny $x_1$};
+\end{tikzpicture}\\ \hline
+\textcolor{verde}{$a < 0$} &
+\begin{tikzpicture}[scale=0.45]
+  \ejes{-2.6}{2.8}{-2}{2}
+  \draw[thick,graf,domain=-2.15:2.15,samples=60] plot (\x,{-0.4*(\x*\x*\x-3*\x)});
+  \node[below left] at (-1.73,0) {\tiny $x_1$}; \node[below right] at (0,0) {\tiny $x_2$}; \node[below right] at (1.73,0) {\tiny $x_3$};
+\end{tikzpicture} &
+\begin{tikzpicture}[scale=0.45]
+  \ejes{-2.6}{2.8}{-2}{2}
+  \draw[thick,graf,domain=-1.9:2.3,samples=60] plot (\x,{-0.4*(\x*\x*\x-3*\x-2)});
+  \node[below] at (-1,0) {\tiny $x_2 = x_3$}; \node[below] at (2,0) {\tiny $x_1$};
+\end{tikzpicture} &
+\begin{tikzpicture}[scale=0.45]
+  \ejes{-2.6}{2.8}{-2}{2}
+  \draw[thick,graf,domain=-1.6:1.8,samples=60] plot (\x,{-0.4*(\x*\x*\x+\x-1)});
+  \node[below] at (0.7,0) {\tiny $x_1$};
+\end{tikzpicture}\\ \hline
+\end{tabular}
+\end{center}
+
+\begin{itemize}
+  \item Si $\Delta < 0$, $x_1, x_2$ y $x_3 \in \mathbb{R}$ y $x_1 \neq x_2 \neq x_3$
+  \item Si $\Delta = 0$, $x_1, x_2$ y $x_3 \in \mathbb{R}$ y $x_2 = x_3$ y $x_1 = -2x_2$
+  \item Si $\Delta > 0$, $x_1 \in \mathbb{R} \wedge x_2, x_3 \in \mathbb{C}$
+  \textcolor{magenta}{(Imaginarias conjugadas)}
+\end{itemize}
+
+\textbf{Función de grado superior:} Siempre y cuando sea factorizable.
+\[
+\ovalbox{$f(x) = a_0(x - r_1)^{\alpha_1}(x - r_2)^{\alpha_2}(x - r_3)^{\alpha_3}\cdots(x - r_k)^{\alpha_k}$}
+\qquad \ovalbox{$\operatorname{Dom}f = \mathbb{R}$}
+\]
+
+\textcolor{verde}{\textbf{Considere:}}
+
+\textcolor{magenta}{\textbf{i)}} Comportamiento en el extremo derecho:
+\begin{center}
+\begin{tikzpicture}[scale=0.5]
+  \begin{scope}
+    \ejes{-3}{3.5}{-2.5}{3}
+    \draw[->,thick,graf] (1.5,1) -- (2.8,2.8);
+    \node at (0,-3.2) {Si $a_0 > 0$};
+  \end{scope}
+  \begin{scope}[xshift=9cm]
+    \ejes{-3}{3.5}{-2.5}{3}
+    \draw[->,thick,graf] (1.5,-1) -- (2.8,-2.8);
+    \node at (0,-3.2) {Si $a_0 < 0$};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\textcolor{magenta}{\textbf{ii)}} Comportamiento cerca de cada raíz $r_i$:
+
+\begin{minipage}{0.533\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.5]
+  \begin{scope}
+    \ejes{-1}{2.5}{-1}{1.5}
+    \draw[thick,graf] (0.4,-0.6) -- (1.6,0.8); \node[below] at (0.9,0) {\scriptsize $r_i$};
+  \end{scope}
+  \begin{scope}[xshift=4.5cm]
+    \ejes{-1}{2.5}{-1}{1.5}
+    \draw[thick,naranja] (0.4,0.8) -- (1.6,-0.6); \node[below] at (1.1,0) {\scriptsize $r_i$};
+  \end{scope}
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.436\textwidth}
+Si $r_i$ es raíz simple o de multiplicidad impar.
+\end{minipage}
+
+\medskip
+\begin{minipage}{0.533\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.5]
+  \begin{scope}
+    \ejes{-1}{2.5}{-1}{1.5}
+    \draw[thick,graf,domain=0.3:1.7,samples=30] plot (\x,{1.6*(\x-1)*(\x-1)}); \node[below] at (1,0) {\scriptsize $r_i$};
+  \end{scope}
+  \begin{scope}[xshift=4.5cm]
+    \ejes{-1}{2.5}{-1}{1.5}
+    \draw[thick,naranja,domain=0.3:1.7,samples=30] plot (\x,{-1.6*(\x-1)*(\x-1)}); \node[above] at (1,0) {\scriptsize $r_i$};
+  \end{scope}
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.436\textwidth}
+Si $r_i$ es raíz de multiplicidad par.
+\end{minipage}
+
+\medskip
+\textbf{Ejemplo:} \quad
+$f(x) = 3\underset{\text{Simple}}{(x+1)}\underset{\text{M. par}}{(x-3)^2}\underset{\text{M. impar}}{(x-5)^3} \longrightarrow a_0 = 3 > 0$
+
+\begin{center}
+\begin{tikzpicture}[scale=0.8]
+  \draw[->] (-3,0) -- (7,0) node[below] {$x$};
+  \draw[->] (0,-1.5) -- (0,3.5) node[left] {$y$};
+  \draw[thick] plot[smooth,tension=0.7] coordinates {(-2.2,3.2) (-1,0) (1,-1) (3,0) (4,-1) (5,0) (5.8,3.2)};
+  \foreach \p in {-1,3,5} {\fill (\p,0) circle (1.5pt); \node[below] at (\p,-0.05) {\small $\p$};}
+\end{tikzpicture}
+\end{center}
+
+\textbf{Función potencial:}
+\begin{itemize}
+  \item Regla de correspondencia: \ovalbox{$f(x) = x^n$}$;\ n \in \mathbb{Z}^+ \wedge n \geq 2$
+  \item Dominio: \ovalbox{$\operatorname{Dom}f = \mathbb{R}$}
+\end{itemize}
+\begin{center}
+\begin{tikzpicture}[scale=1.1]
+  \begin{scope}
+    \ejes{-2}{2.2}{-0.4}{2.6}
+    \draw[thick,graf,domain=-1.5:1.5,samples=50] plot (\x,{\x*\x}) node[right] {\small $x^2$};
+    \draw[thick,magenta,domain=-1.25:1.25,samples=50] plot (\x,{\x*\x*\x*\x}) node[left] {\small $x^4$};
+    \draw[dashed] (-1,0) -- (-1,1) -- (1,1) -- (1,0);
+    \node[below] at (-1,0) {\scriptsize $-1$}; \node[below] at (1,0) {\scriptsize $1$};
+    \node[above left] at (0,1) {\scriptsize $1$};
+    \node at (-1.6,2.3) {\small $n$ par};
+  \end{scope}
+  \begin{scope}[xshift=5cm,yshift=1cm]
+    \ejes{-2}{2.2}{-1.8}{1.8}
+    \draw[thick,graf,domain=-1.2:1.2,samples=50] plot (\x,{\x*\x*\x}) node[right] {\small $x^3$};
+    \draw[thick,magenta,domain=-1.12:1.12,samples=50] plot (\x,{\x*\x*\x*\x*\x}) node[left] {\small $x^5$};
+    \draw[dashed] (-1,0) -- (-1,-1) -- (0,-1); \draw[dashed] (1,0) -- (1,1) -- (0,1);
+    \node[above] at (-1,0) {\scriptsize $-1$}; \node[below] at (1,0) {\scriptsize $1$};
+    \node[left] at (0,1) {\scriptsize $1$}; \node[right] at (0,-1) {\scriptsize $-1$};
+    \node at (-1.6,1.5) {\small $n$ impar};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Desplazamiento y reflejos de la gráfica de una función}
+Conociendo la gráfica donde: $F: y = f(x)$
+\begin{center}
+\begin{tikzpicture}[scale=0.7]
+  \ejes{-1.5}{3}{-1.2}{1.8}
+  \rampa{0}{0}{graf}
+\end{tikzpicture}
+\end{center}
+y considerando un número positivo $h$, entonces:
+
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{Desplazamiento horizontal:}
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-4}{4.5}{-1.5}{2.3}
+  \rampa{0}{0}{graf}
+  \rampa{-2.2}{0}{magenta,dashed}
+  \rampa{2.2}{0}{magenta,dashed}
+  \node[below] at (-2.2,0) {\small $-h$}; \node[below] at (2.2,0) {\small $h$};
+  \node[above] at (-1.5,1.1) {\scriptsize $f(x+h)$};
+  \node[above] at (1.1,1.1) {\scriptsize $f(x)$};
+  \node[above] at (3.4,1.1) {\scriptsize $f(x-h)$};
+\end{tikzpicture}
+
+{\small ``$h$'' unidades a la izquierda \quad ``$h$'' unidades a la derecha}
+\end{center}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{Desplazamiento vertical:}
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-2}{4}{-3}{3.5}
+  \rampa{0}{0}{graf}
+  \rampa{0}{1.6}{magenta,dashed}
+  \rampa{0}{-1.6}{magenta,dashed}
+  \node[left] at (0,1.6) {\small $h$}; \node[left] at (0,-1.6) {\small $-h$};
+  \node[right] at (2.3,2.6) {\scriptsize $f(x)+h$};
+  \node[right] at (2.3,1) {\scriptsize $f(x)$};
+  \node[right] at (2.3,-0.6) {\scriptsize $f(x)-h$};
+\end{tikzpicture}
+
+{\small ``$h$'' unidades hacia arriba / ``$h$'' unidades hacia abajo}
+\end{center}
+\end{minipage}
+
+
+% ============================================================
+% Páginas 61-63
+% ============================================================
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{Reflejo con respecto al eje ``$x$'':}
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-2}{4}{-2.5}{2.5}
+  \draw[thick,graf] (-1.2,-1.2) -- (1.2,1.2) -- (2.5,1.2);
+  \draw[thick,magenta,dashed] (-1.2,1.2) -- (1.2,-1.2) -- (2.5,-1.2);
+  \draw[dotted] (-1.2,-1.2) -- (-1.2,1.2);
+  \node[above] at (2.2,1.2) {\small $f(x)$};
+  \node[below] at (2.2,-1.2) {\small $-f(x)$};
+\end{tikzpicture}
+
+{\small El eje ``$x$'' se comporta como un espejo.}
+\end{center}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{Reflejo con respecto al eje ``$y$'':}
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-3.5}{3.5}{-2}{2.5}
+  \draw[thick,graf] (-1,-1) -- (1,1) -- (2.5,1);
+  \draw[thick,magenta,dashed] (1,-1) -- (-1,1) -- (-2.5,1);
+  \draw[dotted] (-1,-1) -- (1,-1);
+  \node[above] at (2.2,1) {\small $f(x)$};
+  \node[above] at (-2.2,1) {\small $f(-x)$};
+\end{tikzpicture}
+
+{\small El eje ``$y$'' se comporta como un espejo.}
+\end{center}
+\end{minipage}
+
+\medskip
+\textbf{Reflejo por valor absoluto:}
+
+\begin{minipage}{0.291\textwidth}
+Si parte de una función se encuentra en el IIIC o IVC.
+\end{minipage}\hfill
+\begin{minipage}{0.388\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-2.5}{4}{-2}{2.5}
+  \draw[thick,graf] (-1.5,-1.5) -- (0,0) -- (1.2,1.2) -- (2.5,1.2);
+  \draw[thick,magenta,dashed] (-1.5,1.5) -- (0,0);
+  \draw[dotted] (-1.5,-1.5) -- (-1.5,1.5);
+  \node[above] at (2.2,1.2) {\small $f(x)$};
+  \node[above] at (-1.2,1.6) {\small $|f(x)|$};
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.291\textwidth}
+El valor absoluto refleja esa parte.
+\end{minipage}
+
+\newpage
+% ------------------------------------------------------------
+\section{Funciones III}
+
+\subsection*{Álgebra de funciones}
+
+\textbf{Igualdad de funciones:} Dos funciones $F$ y $G$ son iguales si cumplen las condiciones:
+\begin{enumerate}[label=\roman*)]
+  \item $\operatorname{Dom}F = \operatorname{Dom}G$
+  \item $F(x) = G(x),\ \forall x \in \operatorname{Dom}F = \operatorname{Dom}G$
+\end{enumerate}
+
+Si $F$ y $G$ son dos funciones que cumplen la condición
+$A = \operatorname{Dom}F \cap \operatorname{Dom}G \neq \varnothing$, se definen operaciones
+entre estas, como sigue:
+
+\begin{minipage}[t]{0.320\textwidth}
+\textbf{Función adición:}
+\begin{gather*}
+(F + G)(x) = F(x) + G(x)\\
+\operatorname{Dom}(F + G) = A
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.320\textwidth}
+\textbf{Función diferencia:}
+\begin{gather*}
+(F - G)(x) = F(x) - G(x)\\
+\operatorname{Dom}(F - G) = A
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.320\textwidth}
+\textbf{Función producto:}
+\begin{gather*}
+(F\cdot G)(x) = F(x)\cdot G(x)\\
+\operatorname{Dom}(F\cdot G) = A
+\end{gather*}
+\end{minipage}
+
+\begin{minipage}[t]{0.388\textwidth}
+\textbf{Función cociente:}
+\begin{gather*}
+(F/G)(x) = F(x)/G(x)\\
+\operatorname{Dom}(F/G) = A - \{x \,/\, G(x) = 0\}
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.582\textwidth}
+\textbf{Potencia de una función:}
+\begin{gather*}
+F(x)^n = \underbrace{F(x)\cdot F(x)\cdot F(x)\cdots F(x)}_{\text{``$n$'' veces}};\ \forall n \in \mathbb{Z}^+\\
+\operatorname{Dom}(F^n) = \operatorname{Dom}(F)
+\end{gather*}
+\end{minipage}
+
+\medskip
+\textbf{Ejemplo:}
+\[
+\left.
+\begin{array}{l}
+f = \{(0;2), (1;-2), (2;3), (3;0)\}\\
+g = \{(0;-1), (1;0), (2;1), (3;4)\}
+\end{array}
+\right\}
+\ovalbox{$\operatorname{Dom}f \cap \operatorname{Dom}g = \{0; 1; 2; 3\}$}
+\]
+\begin{minipage}[t]{0.485\textwidth}
+\begin{itemize}
+  \item $f + g = \{(0;1), (1;-2), (2;4), (3;4)\}$
+  \item $f - g = \{(0;3), (1;-2), (2;2), (3;-4)\}$
+  \item $f\cdot g = \{(0;-2), (1;0), (2;3), (3;0)\}$
+  \item $f^2 = \{(0;4), (1;4), (2;9), (3;0)\}$
+  \item $2f = \{(0;4), (1;-4), (2;6), (3;0)\}$
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\begin{itemize}
+  \item $\dfrac{f}{g} = \{(0;-2), (2;3), (3;0)\}$
+  \item $\dfrac{g}{f} = \left\{\left(0;-\tfrac{1}{2}\right), (1;0), \left(2;\tfrac{1}{3}\right)\right\}$
+  \item $g^3 = \{(0;-1), (1;0), (2;1), (3;64)\}$
+  \item $3g = \{(0;-3), (1;0), (2;3), (3;12)\}$
+\end{itemize}
+\end{minipage}
+
+\medskip
+\textbf{Composición de funciones:} Dadas las funciones $F$ y $G$ definimos la función
+compuesta $F$ con $G$ (en ese orden y denotada $F\circ G$) a aquella que cumple:
+\[
+\ovalbox{$\operatorname{Dom}(F\circ G) = \{x \,/\, x \in \operatorname{Dom}G \wedge G(x) \in \operatorname{Dom}F\}$}
+\qquad
+\ovalbox{$F\circ G(x) = F(G(x))$}
+\]
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, scale=0.9]
+  \draw[graf] (0,0) ellipse (0.9 and 1.5); \node[rojo] at (0,-1.8) {\small $\operatorname{Dom}G$};
+  \draw[graf] (3,0) ellipse (0.9 and 1.5); \node[rojo] at (2.8,-1.8) {\small $\operatorname{Ran}G$};
+  \draw[magenta] (4.1,0) ellipse (0.9 and 1.5); \node[rojo] at (4.3,-1.8) {\small $\operatorname{Dom}F$};
+  \draw[magenta] (7,0) ellipse (0.9 and 1.5); \node[rojo] at (7,-1.8) {\small $\operatorname{Ran}F$};
+  \node (x) at (0,0.3) {$x$};
+  \node (g) at (3.6,0.3) {\small $G(x)$};
+  \node (f) at (7,0.3) {\small $F(G(x))$};
+  \draw[->] (x) -- (g); \draw[->] (g) -- (f);
+  \draw[->,rojo!60!black] (0.2,1.6) to[bend left=20] node[above] {$G$} (2.8,1.6);
+  \draw[->,rojo!60!black] (4.2,1.6) to[bend left=20] node[above] {$F$} (6.8,1.6);
+  \draw[->,verde,thick] (0.3,-1.4) to[bend right=25] node[below] {$F\circ G$} (6.6,-1.2);
+\end{tikzpicture}
+\end{center}
+
+\textbf{Teoremas:}
+
+\begin{minipage}[t]{0.485\textwidth}
+\begin{itemize}[label=$\ast$]
+  \item $\exists\, F\circ G \leftrightarrow \operatorname{Ran}G \cap \operatorname{Dom}F \neq \varnothing$
+  \item $F\circ G \neq G\circ F$
+  \item $(F\circ G)\circ H = F\circ(G\circ H)$
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\begin{itemize}[label=$\ast$]
+  \item $F\circ I = I\circ F$
+  \item $(F + G)\circ H = F\circ H + G\circ H$
+  \item $(F\cdot G)\circ H = (F\circ H)(G\circ H)$
+\end{itemize}
+\end{minipage}
+
+\medskip
+\textbf{Ejemplo:}
+
+\begin{minipage}[t]{0.436\textwidth}
+\begin{gather*}
+f(x) = x^2 - 3;\ x \in [-2; 7\rangle\\
+g(x) = 2x - 1;\ x \in [-1; 5\rangle\\[6pt]
+\textcolor{naranja}{\text{¿}\operatorname{Dom}(f\circ g)\text{?}}
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.533\textwidth}
+\begin{gather*}
+x \in \operatorname{Dom}g \;\wedge\; g(x) \in \operatorname{Dom}f\\
+x \in [-1; 5\rangle \;\wedge\; 2x - 1 \in [-2; 7\rangle\\
+2x \in [-1; 8\rangle\\
+x \in [-1/2; 4\rangle
+\end{gather*}
+\end{minipage}
+
+\begin{center}
+\begin{tikzpicture}[x=1cm]
+  \draw[<->] (-0.5,0) -- (7,0);
+  \node[below] at (-0.3,0) {\small $-\infty$}; \node[below] at (6.8,0) {\small $+\infty$};
+  \foreach \p/\l in {1/-1, 2.2/-1/2, 4.2/4, 5.6/5} \node[below] at (\p,-0.1) {\small $\l$};
+  \draw[thick,graf] (1,0) -- (1,0.6) -- (5.6,0.6) -- (5.6,0);
+  \draw[thick,magenta] (2.2,0) -- (2.2,0.8) -- (4.2,0.8) -- (4.2,0);
+  \fill[pattern=north east lines] (2.2,0) rectangle (4.2,0.6);
+  \fill[graf] (1,0) circle (2pt); \draw[graf,fill=white] (5.6,0) circle (2pt);
+  \fill[magenta] (2.2,0) circle (2pt); \draw[magenta,fill=white] (4.2,0) circle (2pt);
+\end{tikzpicture}
+\end{center}
+\[\therefore\ \operatorname{Dom}f\circ g = [-1/2; 4\rangle\]
+\begin{gather*}
+f\circ g(x) = f(g(x)) = g^2(x) - 3\\
+f\circ g(x) = (2x - 1)^2 - 3\\
+\therefore\ f\circ g(x) = 4x^2 - 4x - 2
+\end{gather*}
+
+\subsection*{Función inversa}
+
+\textbf{Función inyectiva (Univalente):}
+\[
+\ovalbox{$x_1 \neq x_2 \in \operatorname{Dom}f \longrightarrow f(x_1) \neq f(x_2)$}
+\;\ldots\text{negando}\ldots\;
+\ovalbox{$f(x_1) = f(x_2) \longrightarrow x_1 = x_2$}
+\]
+Ejemplo:
+
+\begin{minipage}[t]{0.320\textwidth}
+\begin{gather*}
+f(x) = x^2 - 4x - 2\\
+f(x) = (x-2)^2 - 6\\
+f(x_1) = f(x_2)
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.359\textwidth}
+\begin{gather*}
+(x_1 - 2)^2 - 6 = (x_2 - 2)^2 - 6\\
+\sqrt{\phantom{x}}:\ |x_1 - 2| = |x_2 - 2|\\
+x_1 - 2 = x_2 - 2 \;\vee\; x_1 - 2 = 2 - x_2
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.291\textwidth}
+\begin{gather*}
+x_1 = x_2 \;\vee\; \boxed{x_1 + x_2 = 4}\\
+\therefore\ f \text{ no es inyectiva}
+\end{gather*}
+\end{minipage}
+
+
+% ============================================================
+% Páginas 64-66
+% ============================================================
+\textcolor{naranja}{\textbf{Gráficamente:}}
+
+\begin{minipage}{0.436\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.55]
+  \draw[<->] (-1.5,0) -- (6,0) node[right] {$x$};
+  \draw[->] (0,-4) -- (0,4.5) node[left] {$y$};
+  \draw[thick,graf,domain=-0.5:4.5,samples=60] plot (\x,{0.9*((\x-2)*(\x-2)-6)*0.5});
+  \draw[<->,thick] (-1,2.8) -- (5.5,2.8);
+  \fill (-0.27,2.8) circle (2pt) node[above left] {\scriptsize $x_1$};
+  \fill (4.27,2.8) circle (2pt) node[above right] {\scriptsize $x_2$};
+  \node[rojo] at (2,-3.6) {\small No es inyectiva};
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.533\textwidth}
+\begin{gather*}
+f(x) = 0\\
+(x-2)^2 - 6 = 0\\
+x_1 = 2 + \sqrt{6} \;\vee\; x_2 = 2 - \sqrt{6}
+\end{gather*}
+$\ast$ Toda recta horizontal corta al gráfico de una función inyectiva en un punto.
+\end{minipage}
+
+\medskip
+\textbf{Función suryectiva (Sobreyectiva, Epiyectiva):}
+\[f: A \longrightarrow B \text{ es suryectiva cuando } \ovalbox{$B = \operatorname{Ran}f$}\]
+
+\textbf{Función biyectiva:} $f$ es biyectiva cuando es inyectiva y suryectiva.
+
+\textbf{Función inversa:} Sea la función $f$, si es biyectiva entonces posee inversa
+simbolizada por $f^*$ y está definida por:
+\[
+\ovalbox{$f: A \to B$} \qquad\qquad \ovalbox{$f^*: B \to A$}
+\]
+\[
+\ovalbox{$f = \{(x;y) \,/\, y = f(x);\ x \in \operatorname{Dom}f\}$}
+\quad
+\ovalbox{$f^{-1} = f^* = \{(y;x) \,/\, x = f^*(y);\ y \in \operatorname{Dom}f^* = \operatorname{Ran}f\}$}
+\]
+\begin{center}
+\begin{tikzpicture}[>=Stealth]
+  \draw[graf] (0,0) ellipse (0.9 and 1.5); \node at (0,1.8) {$A$};
+  \draw[graf] (5,0) ellipse (0.9 and 1.5); \node at (5,1.8) {$B$};
+  \node at (0,0) {$x$}; \node at (5,0) {$y = f(x)$};
+  \draw[->] (0.6,0.6) -- node[above] {$f$} (4.6,0.6);
+  \draw[<-] (0.6,-0.6) -- node[below] {$f^{-1}$} (4.6,-0.6);
+\end{tikzpicture}
+\end{center}
+\[
+\ovalbox{$\operatorname{Dom}f^{-1} = \operatorname{Ran}f$}
+\qquad
+\ovalbox{$\operatorname{Ran}f^{-1} = \operatorname{Dom}f$}
+\]
+
+\textcolor{rojo}{\textbf{Teoremas:}} La gráfica de una función $f$ y la gráfica de su inversa
+son simétricas con respecto a la recta identidad $y = x$.
+
+\subsection*{\textcolor{magenta}{Método para calcular la inversa de una función}}
+\begin{enumerate}
+  \item Sustituye $f(x)$ por $y$.
+  \item Intercambia entre ellas todas las $x$ por las $y$.
+  \item Despeja para $y$.
+  \item Sustituye $y$ por $f^{-1}(x)$.
+\end{enumerate}
+
+\textcolor{naranja}{\textbf{Teoremas:}} Sean $f$ y $g$ biyectivas, también $f\circ g$ existe.
+
+\begin{minipage}[t]{0.533\textwidth}
+\begin{enumerate}
+  \item $(f^{-1})^{-1} = f$
+  \item $(f^{-1}\circ f)(x) = x;\ x \in \operatorname{Dom}f$
+  \item $(f\circ f^{-1})(x) = x;\ x \in \operatorname{Dom}f^{-1}$
+  \item $(f\circ g)^{-1} = g^{-1}\circ f^{-1}$
+  \item $h = f\circ g \rightarrow f = h\circ g^{-1}$
+  \item $h = f\circ g \rightarrow g = f^{-1}\circ h$
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.436\textwidth}
+\begin{enumerate}\setcounter{enumi}{6}
+  \item $f^*\circ f = I$
+  \item $g\circ g^* = I$
+\end{enumerate}
+\end{minipage}
+
+\medskip
+\textbf{Ejemplo:}
+
+\begin{minipage}[t]{0.380\textwidth}\small
+\begin{gather*}
+f(x) = x^2 - 4x - 2;\ x \in [3; 6\rangle\\
+f(x) = (x-2)^2 - 6
+\end{gather*}
+\begin{itemize}
+  \item $f(x_1) = f(x_2) \rightarrow x_1 = x_2$
+  \begin{gather*}
+  (x_1 - 2)^2 - 6 = (x_2 - 2)^2 - 6\\
+  \sqrt{\phantom{x}}:\ |\overset{+}{x_1 - 2}| = |\overset{+}{x_2 - 2}|\\
+  x_1 = x_2 \;:\; f \text{ es inyectiva}
+  \end{gather*}
+\end{itemize}
+\begin{center}
+\begin{tikzpicture}[scale=0.55]
+  \draw[->] (-1,0) -- (5,0) node[right] {$x$};
+  \draw[->] (0,-1.5) -- (0,5) node[left] {$y$};
+  \draw[thick] (-1,-1) -- (4.8,4.8) node[right] {\small $y = x$};
+  \draw[thick,rojo!70!black,domain=1.8:3.2,samples=40] plot (\x,{1.8*(\x-1.8)*(\x-1.8)+1.8*0}) node[right] {\small $f$};
+  \draw[thick,naranja,domain=1.8:3.2,samples=40] plot ({1.8*(\x-1.8)*(\x-1.8)},{\x}) ;
+  \node[naranja] at (-0.5,2.6) {\small $f^*$};
+\end{tikzpicture}
+\end{center}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.330\textwidth}\small
+\begin{itemize}
+  \item $y = (x-2)^2 - 6$
+  \begin{gather*}
+  3 \leq x < 6 \rightarrow 1 \leq x - 2 < 4\\
+  1 \leq (x-2)^2 < 16 \rightarrow -5 \leq y < 10\\
+  \operatorname{Ran}f = [-5; 10\rangle : \operatorname{Dom}f^*
+  \end{gather*}
+  \item $y + 6 = (x - 2)^2$
+  \[\sqrt{\phantom{x}}:\ \sqrt{y + 6} = |\overset{+}{x - 2}|\]
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.250\textwidth}
+\begin{gather*}
+x = 2 + \sqrt{y + 6}\\
+\downarrow\\
+y = 2 + \sqrt{x + 6}\\[6pt]
+f^*(x) = 2 + \sqrt{x + 6}
+\end{gather*}
+\end{minipage}
+
+\[
+f\circ f^* = f(2 + \sqrt{x + 6}) = (2 + \sqrt{x + 6} - 2)^2 - 6 = x
+\]
+
+
+\newpage
+% ------------------------------------------------------------
+\section{Logaritmos en $\mathbb{R}$}
+
+\textbf{Definición:} El logaritmo de un número ``$x$'' en una base dada ``$b$'', es el exponente
+real ``$y$'' al que se debe elevarse la base para obtener el número dado.
+\[\fbox{$\log_b x = y \longleftrightarrow b^y = x$}\]
+\begin{center}
+\fbox{\begin{tabular}{l}
+Número: $x > 0$\\
+Base: $b > 0,\ b \neq 1$\\
+Logaritmo: $y \in \mathbb{R}$
+\end{tabular}}
+\end{center}
+
+\textbf{Teoremas:} Los números del logaritmo son positivos y las bases positivas y diferentes
+de 1.
+
+\begin{minipage}[t]{0.485\textwidth}
+\begin{enumerate}
+  \item \textcolor{magenta}{Identidad fundamental:} \ $b^{\log_b N} = N$
+  \item $\log_b \dfrac{M}{N} = \log_b M - \log_b N$
+  \item $\log_b (M\cdot N) = \log_b M + \log_b N$
+  \item $\log_b N^M = M\log_b N$
+  \[\log_b \sqrt[M]{N} = \frac{1}{M}\log_b N\]
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\begin{enumerate}\setcounter{enumi}{4}
+  \item $\log_b N = \log_{b^a} N^a = \log_{\sqrt[a]{b}} \sqrt[a]{N}$
+  \item $\log_{b^q} N^p = \dfrac{p}{q}\log_b N;\ q \neq 0$
+  \item $p^{\log_b N} = N^{\log_b p}$
+  \item \textcolor{magenta}{Cambio de base:}
+  \[\log_b N = \frac{\log_k N}{\log_k b}\;; \quad \log_b N = \frac{1}{\log_N b}\]
+\end{enumerate}
+\end{minipage}
+\begin{enumerate}\setcounter{enumi}{8}
+  \item \textcolor{magenta}{Regla de cadena:} \ $\log_b a\cdot\log_c b\cdot\log_d c = \log_d a$
+\end{enumerate}
+
+\textbf{Sistemas de logaritmos:} Dependen del valor de la base, por tanto, existen infinitos
+sistemas de logaritmos, siendo los principales:
+
+\textbf{I. Logaritmos decimales:}
+
+Base: $10$, \ Notación: \ \fbox{$\log_{10} N = \log N$}
+\[\log 2 = 0{,}30103\ldots \qquad \log 3 = 0{,}47712\ldots \qquad \log 5 = 1 - \log 2\]
+
+\textbf{II. Logaritmos neperianos o naturales:}
+
+Base: $e = 2{,}71828\ldots$, \ Notación: \ \fbox{$\log_e N = \ln N = L\,N$}
+
+
+% ============================================================
+% Páginas 67-69
+% ============================================================
+\textcolor{naranja}{\textbf{Cologaritmo:}} \quad
+\fbox{$\operatorname{Colog}_b N = \log_b\left(\dfrac{1}{N}\right) = -\log_b N$}
+
+\quad Donde: $N > 0;\ b > 0;\ b \neq 1$
+\[\ast\ \operatorname{Colog}_2\left(\tfrac{1}{16}\right) = -\log_2\left(\tfrac{1}{16}\right) = 4\]
+
+\textcolor{naranja}{\textbf{Antilogaritmo:}} \quad \fbox{$\operatorname{Antilog}_b x = b^x$}
+
+\quad Donde: $x \in \mathbb{R};\ b > 0;\ b \neq 1$
+\[\ast\ \operatorname{Antilog}_4(-3) = 4^{-3} = \frac{1}{64}\]
+
+\subsection*{Función logarítmica y exponencial}
+
+\textbf{Función exponencial:} \ \fbox{$f(x) = b^x$}$,\ \operatorname{Dom}f = \mathbb{R},\
+b \in \mathbb{R}^+ - \{1\},\ \operatorname{Ran}f = \mathbb{R}^+$
+
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{I.} $b > 1$
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-3.5}{3.5}{-0.5}{3.5}
+  \draw[thick,rojo!70!black,<->,domain=-3.3:1.6,samples=60] plot (\x,{pow(2,\x)});
+  \fill (0,1) circle (2pt); \node[above left,rojo] at (0,1) {\small 1};
+  \draw[dashed,gray] (-0.5,-0.5) -- (3.3,3.3);
+\end{tikzpicture}
+
+\fbox{$b^{x_1} > b^{x_2} \longrightarrow x_1 > x_2$}
+\end{center}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{II.} $0 < b < 1$
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-3.5}{3.5}{-0.5}{3.5}
+  \draw[thick,rojo!70!black,<->,domain=-1.6:3.3,samples=60] plot (\x,{pow(0.5,\x)});
+  \fill (0,1) circle (2pt); \node[above right,rojo] at (0,1) {\small 1};
+\end{tikzpicture}
+
+\fbox{$b^{x_1} > b^{x_2} \longrightarrow x_1 < x_2$}
+\end{center}
+\end{minipage}
+
+\medskip
+\textbf{Función logarítmica:} \ \fbox{$f(x) = \log_b x$}$,\ x \in \mathbb{R}^+,\
+b \in \mathbb{R}^+ - \{1\},\ \operatorname{Ran}f = \mathbb{R}$
+
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{I.} $b > 1$
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-0.5}{4}{-3}{2.5}
+  \draw[thick,rojo!70!black,->,domain=0.12:3.6,samples=60] plot (\x,{ln(\x)/ln(2)});
+  \fill (1,0) circle (2pt); \node[below right,rojo] at (1,0) {\small 1};
+  \draw[dashed,gray] (-0.5,-0.5) -- (2.5,2.5) node[above] {\scriptsize $y = x$};
+\end{tikzpicture}
+
+\fbox{$\log_b x_1 > \log_b x_2 \longrightarrow x_1 > x_2$}
+\end{center}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textbf{II.} $0 < b < 1$
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \ejes{-0.5}{4}{-3}{2.5}
+  \draw[thick,rojo!70!black,->,domain=0.12:3.6,samples=60] plot (\x,{-ln(\x)/ln(2)});
+  \fill (1,0) circle (2pt); \node[above right,rojo] at (1,0) {\small 1};
+  \draw[dashed,gray] (-0.5,-0.5) -- (2.5,2.5) node[above] {\scriptsize $y = x$};
+\end{tikzpicture}
+
+\fbox{$\log_b x_1 > \log_b x_2 \longrightarrow x_1 < x_2$}
+\end{center}
+\end{minipage}
+
+\newpage
+% ------------------------------------------------------------
+\section{Números complejos}
+
+\textbf{Unidad imaginaria:} \quad \fcolorbox{magenta}{white}{$i = \sqrt{-1} = (0;1)$}
+
+\textbf{Cantidades imaginarias:} \quad \fcolorbox{magenta}{white}{$\sqrt{-k} = \sqrt{k}\cdot i$}$;\ k > 0$
+
+\textbf{Potencias de la unidad imaginaria:}
+\[
+\left.
+\begin{array}{llll}
+i^1 = i & i^5 = i & \cdots & i^{\overset{\circ}{4}+1} = i\\
+i^2 = -1 & i^6 = -1 & \cdots & i^{\overset{\circ}{4}+2} = -1\\
+i^3 = -i & i^7 = -i & \cdots & i^{\overset{\circ}{4}+3} = -i\\
+i^4 = 1 & i^8 = 1 & \cdots & \fcolorbox{magenta}{white}{$i^{\overset{\circ}{4}} = 1$}
+\end{array}
+\right]
+\;\fcolorbox{magenta}{white}{$i^{\overset{\circ}{4}+m} = i^m$}
+\]
+
+\textbf{Número complejo:} Es un par ordenado de componentes reales;
+\ \fcolorbox{magenta}{white}{$Z = (a;b)$}
+
+\qquad \textcolor{azul}{Parte real:} $\operatorname{Re}(Z) = a$ \qquad
+\textcolor{azul}{Parte imaginaria:} $\operatorname{Im}(Z) = b$
+
+\textcolor{naranja}{\textbf{Conjunto complejo:}} \quad
+\fcolorbox{magenta}{white}{$\mathbb{C} = \{(a;b) \,/\, a, b \in \mathbb{R}\}$}
+
+\subsection*{Formas de representar un número complejo}
+
+\textbf{I. Forma binomial:}
+\[
+Z = (a;b) \text{ en su forma binomial } \fcolorbox{magenta}{white}{$Z = a + bi$}
+\rightarrow \fcolorbox{magenta}{white}{$Z = \operatorname{Re}(Z) + \operatorname{Im}(Z)\cdot i$}
+\]
+\[
+Z_1 = (6;1) = 6 + 1\cdot i \qquad\qquad Z_2 = (-2;\sqrt{3}) = -2 + \sqrt{3}\,i
+\]
+
+\textcolor{rojo}{\textbf{Clases de números complejos:}}
+
+\begin{minipage}[t]{0.485\textwidth}
+\textcolor{azul}{Complejo real:} \ \fcolorbox{magenta}{white}{$Z = a + 0\cdot i$}
+
+\textcolor{azul}{Complejo imaginario puro:} \ \fcolorbox{magenta}{white}{$Z = 0 + bi$}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textcolor{azul}{Número imaginario:} \ \fcolorbox{magenta}{white}{$\operatorname{Im}(Z) \neq 0$}
+
+\textcolor{azul}{Complejo nulo:} \ \fcolorbox{magenta}{white}{$Z = (0;0) = 0 + 0\cdot i$}
+\end{minipage}
+
+\medskip
+\textcolor{rojo}{\textbf{Relaciones entre complejos:}}
+\begin{itemize}[label={}]
+  \item \textcolor{azul}{Complejos iguales:} $Z_1 = a + bi \quad Z_2 = c + di$ \quad
+  \fcolorbox{magenta}{white}{$Z_1 = Z_2 \leftrightarrow a = c \wedge b = d$}
+  \item \textcolor{azul}{Complejos conjugados:} $Z = a + bi$ \quad
+  \fcolorbox{magenta}{white}{$\overline{Z} = a - bi$}
+  \item \textcolor{azul}{Complejos opuestos:} $Z = a + bi$ \quad
+  \fcolorbox{magenta}{white}{$Z^* = -a - bi$}
+\end{itemize}
+
+\textcolor{rojo}{\textbf{Representación gráfica de un complejo:}} Sea: $Z = a + bi$
+
+\begin{minipage}{0.436\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.8]
+  \draw[->] (-0.3,0) -- (4.5,0) node[below] {\scriptsize $x$ (eje real)};
+  \draw[->] (0,-0.3) -- (0,3.6) node[above] {\scriptsize $y$ (eje imaginario)};
+  \draw[thick] (0,0) -- (3,2.5) node[above right] {$(a;b)$};
+  \draw[dashed] (3,0) -- (3,2.5) -- (0,2.5);
+  \node at (1.3,1.4) {$r$};
+  \draw (0.5,0) arc (0:40:0.5); \node at (0.75,0.25) {\scriptsize $\theta$};
+  \draw[|-|] (0,-0.4) -- node[below] {$a$} (3,-0.4);
+  \draw[|-|] (-0.4,0) -- node[left] {$b$} (-0.4,2.5);
+  \node[below left] at (0,0) {$O$};
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.533\textwidth}
+$r$: Radio vector, módulo o norma.
+
+$\theta$: Argumento o amplitud.
+
+De la figura: \ \fcolorbox{magenta}{white}{$r = |Z| = \sqrt{a^2 + b^2}$}
+\end{minipage}
+
+\medskip
+\textcolor{rojo}{\textbf{Teoremas:}}
+
+\begin{minipage}[t]{0.320\textwidth}
+\begin{enumerate}
+  \item $|Z| \geq 0$
+  \item $|Z_1 + Z_2| \leq |Z_1| + |Z_2|$
+  \item $|Z| = |\overline{Z}| = |Z^*|$
+  \item $\dfrac{|Z_1|}{|Z_2|} = \left|\dfrac{Z_1}{Z_2}\right|$
+  \item $|Z_1\cdot Z_2| = |Z_1||Z_2|$
+  \item $|Z^n| = |Z|^n$
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.359\textwidth}
+\begin{enumerate}\setcounter{enumi}{6}
+  \item $\operatorname{Re}(Z_1 + Z_2) = \operatorname{Re}(Z_1) + \operatorname{Re}(Z_2)$
+  \item $\overline{(Z_1 \pm Z_2)} = \overline{Z_1} \pm \overline{Z_2}$
+  \item $Z + \overline{Z} = 2\operatorname{Re}(Z)$
+  \item $Z - \overline{Z} = 2\operatorname{Im}(Z)\cdot i$
+  \item $Z\cdot\overline{Z} = |Z|^2$
+  \item $(1 + i)^2 = 2i$
+\end{enumerate}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.291\textwidth}
+\begin{enumerate}\setcounter{enumi}{12}
+  \item $(1 - i)^2 = -2i$
+  \item $(1 + i)^3 = -2 + 2i$
+  \item $(1 - i)^3 = -2 - 2i$
+  \item $(1 + i)^4 = (1 - i)^4 = -4$
+  \item $\dfrac{1 + i}{1 - i} = i$
+  \item $\dfrac{1 - i}{1 + i} = -i$
+\end{enumerate}
+\end{minipage}
+
+\medskip
+\textbf{II. Forma polar o trigonométrica de un complejo:} Sea: $Z = a + bi$
+
+\begin{minipage}{0.436\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.8]
+  \draw[->] (-0.3,0) -- (4.5,0) node[right] {\small Re};
+  \draw[->] (0,-0.3) -- (0,3.6) node[left] {\small Im};
+  \draw[thick] (0,0) -- node[above left] {$|Z|$} (3.3,2.5) node[above] {\small Afijo};
+  \fill (3.3,2.5) circle (2pt);
+  \draw[dashed] (3.3,0) -- (3.3,2.5) -- (0,2.5);
+  \draw (0.5,0) arc (0:37:0.5); \node at (0.75,0.25) {\scriptsize $\theta$};
+  \node[below,rojo] at (1.65,0) {\small $|Z|\cos\theta$};
+  \node[right,rojo] at (3.3,1.25) {\small $|Z|\operatorname{sen}\theta$};
+  \node[below left] at (0,0) {\small Polo};
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.533\textwidth}
+\begin{gather*}
+Z = |Z|\cdot\cos\theta + |Z|\operatorname{sen}\theta\cdot i\\
+\fcolorbox{magenta}{white}{$Z = |Z|(\cos\theta + i\operatorname{sen}\theta)$}\\
+\fcolorbox{magenta}{white}{$Z = |Z|\operatorname{Cis}\theta$}\\
+\fcolorbox{verde}{verde!15}{$\theta = \operatorname{Arg}(Z)$} \rightarrow
+\fcolorbox{verde}{verde!15}{$\tan\theta = \dfrac{b}{a}$}
+\end{gather*}
+\end{minipage}
+
+\medskip
+\textbf{III. Forma exponencial de un número complejo:} \quad
+\fcolorbox{magenta}{white}{$e^{\theta i} = \cos\theta + i\operatorname{sen}\theta$}
+\ \textcolor{azul}{\small (Teorema de Euler)}
+
+El número complejo no nulo se puede escribir como: \quad
+\fcolorbox{magenta}{white}{$Z = |Z|\cdot e^{\theta i}$}
+
+
+% ============================================================
+% Páginas 70-72
+% ============================================================
+\textcolor{magenta}{$\theta$}: Argumento en radianes. \qquad
+\textcolor{magenta}{$e$}: Número de Neper: $2{,}71828\ldots$
+
+\textcolor{rojo}{\textbf{Operaciones en forma polar o exponencial:}} Dados
+$Z_1 = r_1\cdot\operatorname{Cis}\theta;\ Z_2 = r_2\cdot\operatorname{Cis}\alpha$
+\begin{enumerate}
+  \item \textcolor{azul}{Multiplicación:} \
+  \fcolorbox{magenta}{white}{$Z_1\cdot Z_2 = r_1\cdot r_2\operatorname{Cis}(\theta + \alpha)$}
+  \item \textcolor{azul}{División:} \
+  \fcolorbox{magenta}{white}{$\dfrac{Z_1}{Z_2} = \dfrac{r_1}{r_2}\operatorname{Cis}(\theta - \alpha)$}
+  \item \textcolor{azul}{Potenciación:} Teorema de De Moivre
+
+  Dado: \ \fcolorbox{magenta}{white}{$Z = r\cdot\operatorname{Cis}\theta \rightarrow Z^n = r^n\operatorname{Cis}(n\cdot\theta)$}
+  \item \textcolor{azul}{Raíz enésima de un complejo:} Todo complejo no nulo admite ``$n$''
+  raíces distintas dadas por:
+  \[
+  \fcolorbox{magenta}{white}{$\sqrt[n]{Z} = \sqrt[n]{r}\operatorname{Cis}\left(\dfrac{\theta + 2\pi k}{n}\right)$}
+  \quad \{k = 0; 1; 2; \ldots; (n-1)\}
+  \]
+  \item \textcolor{azul}{Teorema:} Si tenemos dos números complejos en forma polar:
+  $Z_1 = \operatorname{Cis}\theta;\ Z_2 = \operatorname{Cis}\alpha$, entonces:
+  \[
+  \fcolorbox{magenta}{white}{$\operatorname{Cis}\theta + \operatorname{Cis}\alpha = 2\cos\left(\dfrac{\theta - \alpha}{2}\right)\operatorname{Cis}\left(\dfrac{\theta + \alpha}{2}\right)$}
+  \]
+\end{enumerate}
+
+\textcolor{rojo}{\textbf{Raíces cúbicas de la unidad real:}}
+\[Z = 1 \rightarrow \sqrt[3]{Z} = \operatorname{Cis}\frac{2\pi k}{3} = \cos\frac{2\pi k}{3} + i\operatorname{sen}\frac{2\pi k}{3}\]
+\begin{align*}
+k = 0 &\rightarrow \sqrt[3]{Z} = \cos 0 + i\cdot\operatorname{sen}0 = 1 & W_1 &= 1\\
+k = 1 &\rightarrow \sqrt[3]{Z} = \cos\frac{2\pi}{3} + i\cdot\operatorname{sen}\frac{2\pi}{3} = -\frac{1}{2} + \frac{\sqrt{3}}{2}i & W_2 &= -\frac{1}{2} + \frac{\sqrt{3}}{2}i\\
+k = 2 &\rightarrow \sqrt[3]{Z} = \cos\frac{4\pi}{3} + i\cdot\operatorname{sen}\frac{4\pi}{3} = -\frac{1}{2} - \frac{\sqrt{3}}{2}i & W_3 &= -\frac{1}{2} - \frac{\sqrt{3}}{2}i
+\end{align*}
+
+\textcolor{rojo}{\textbf{Propiedades de las raíces cúbicas de la unidad:}}
+\begin{enumerate}
+  \item Si una raíz compleja es ``$W$'' la otra es ``$W^2$'' y la tercera es 1, así:
+  $\sqrt[3]{1} = 1, W, W^2$
+\end{enumerate}
+\[
+\text{2. } 1 + W + W^2 = 0 \qquad
+\text{3. } W^3 = 1 \rightarrow W^{3k} = 1 \qquad
+\text{4. } W^{3k + r} = W^r
+\]
+
+\begin{center}
+\begin{tikzpicture}[scale=1.1]
+  \begin{scope}
+    \draw[->] (-1.6,0) -- (1.6,0); \draw[->] (0,-1.5) -- (0,1.6);
+    \draw (0,0) circle (1);
+    \coordinate (A) at (0:1); \coordinate (B) at (120:1); \coordinate (C) at (240:1);
+    \draw[magenta,thick] (A) -- (B) -- (C) -- cycle;
+    \foreach \p in {A,B,C} \draw[->,graf,thick] (0,0) -- (\p);
+    \node[right] at (A) {\scriptsize 1};
+    \node[above left] at (B) {\scriptsize $-\frac{1}{2} + \frac{\sqrt{3}}{2}i$};
+    \node[below left] at (C) {\scriptsize $-\frac{1}{2} - \frac{\sqrt{3}}{2}i$};
+    \node[azul] at (1.2,1.6) {\small Raíces cúbicas de la unidad};
+  \end{scope}
+  \begin{scope}[xshift=5.5cm]
+    \draw[->] (-1.6,0) -- (1.6,0); \draw[->] (0,-1.5) -- (0,1.6);
+    \draw (0,0) circle (1);
+    \draw[magenta,thick] (1,0) -- (0,1) -- (-1,0) -- (0,-1) -- cycle;
+    \foreach \a in {0,90,180,270} \draw[->,graf,thick] (0,0) -- (\a:1);
+    \node[above right] at (1,0) {\scriptsize 1}; \node[above left] at (0,1) {\scriptsize $i$};
+    \node[above left] at (-1,0) {\scriptsize $-1$}; \node[below left] at (0,-1) {\scriptsize $-i$};
+    \node[azul] at (1.2,1.6) {\small Raíces cuartas de la unidad};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\textcolor{rojo}{\textbf{Teorema:}} Los afijos de las raíces $n$-ésimas de un número complejo
+son los vértices de un polígono regular de $n$ lados.
+
+\begin{minipage}{0.436\textwidth}
+\centering
+\begin{tikzpicture}[scale=1.4]
+  \draw[->] (-1.4,0) -- (1.5,0) node[right] {$x$};
+  \draw[->] (0,-1.2) -- (0,1.4) node[left] {$y$};
+  \draw[graf] (0,0) circle (1);
+  \foreach \k in {0,...,11} \draw (0,0) -- ({20+30*\k}:1);
+  \foreach \k/\l in {0/Z_0,1/Z_1,2/Z_2,3/Z_3,4/Z_4,5/Z_5} \node at ({20+30*\k}:1.18) {\scriptsize $\l$};
+  \node at (-10:1.25) {\scriptsize $Z_{n-1}$};
+  \draw[->,azul] (0.3,0) arc (0:20:0.3); \node[azul] at (0.45,0.08) {\scriptsize $\theta$};
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.533\textwidth}
+Del gráfico se observa:
+\[\theta = \frac{360^\circ}{n} \;\Leftrightarrow\; \frac{2\pi\,\text{rad}}{n}\]
+El área de un polígono de $n$ lados:
+\[S = \frac{n|Z_0|^2}{2}\operatorname{sen}\left(\frac{2\pi}{n}\right)\]
+$Z_0$: Es una de las raíces de $Z$.
+
+También se cumple:
+\begin{gather*}
+Z_0^n = Z_1^n = Z_2^n = Z_3^n = \cdots = Z_{n-1}^n = Z\\
+Z_0 + Z_1 + Z_2 + Z_3 + \cdots + Z_{n-1} = 0
+\end{gather*}
+\end{minipage}
+
+\newpage
+% ------------------------------------------------------------
+\section{MCD, MCM y fracciones}
+
+\textbf{Factor de un polinomio:} \quad $P(x) \equiv Q(x)\cdot H(x)$; \quad $H(x)$: polinomio no nulo.
+
+\textbf{Factor común de dos o más polinomios:}
+\[P(x) = M(x)\cdot f(x);\quad Q(x) = M(x)\cdot g(x);\quad \text{Factor común: } M(x)\]
+\begin{gather*}
+P(x) = (2x - 1)^2(x - 3)^3(5x + 2)\\
+Q(x) = (x - 2)(2x - 1)(5x + 2)^5
+\end{gather*}
+\begin{center}
+Factores comunes: $(2x - 1)$, $(5x + 2)$, $(2x - 1)(5x + 2)$
+\end{center}
+
+\textbf{Múltiplo de un polinomio:}
+\[P(x) = (x + 2)(x - 5) \qquad \text{Múltiplos: } (x+2)(x-5),\ (x+2)^2(x-5),\ (x+2)(x-5)x, \ldots\]
+
+\textbf{Polinomio múltiplo común:}
+\begin{gather*}
+P(x) = (x + 1)(x^2 + 3) \qquad Q(x) = (x - 1)(x + 1)\\
+\text{Múltiplos de los dos: } (x-1)(x+1)(x^2+3),\ (x-1)^2(x+1)(x^2+3),\ (x-1)(x+1)^2(x^2+3)^3, \ldots
+\end{gather*}
+
+\textbf{Máximo común divisor (MCD):}
+
+\begin{minipage}{0.485\textwidth}
+\begin{gather*}
+P(x) = (2x + 7)^4(x - 1)^2(3x - 1)\\
+Q(x) = (2x - 1)^5(3x - 1)^2(x - 1)^2
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}{0.485\textwidth}
+\[\operatorname{MCD}(P;Q) = (x - 1)^2(3x - 1)\]
+\end{minipage}
+
+\textbf{Mínimo común múltiplo (MCM):}
+
+\begin{minipage}{0.485\textwidth}
+\begin{gather*}
+P(x) = (2x - 1)(x + 1)^3\\
+Q(x) = (x - 1)(x + 1)^2
+\end{gather*}
+\end{minipage}\hfill
+\begin{minipage}{0.485\textwidth}
+\[\operatorname{MCM}(P;Q) = (2x - 1)(x - 1)(x + 1)^3\]
+\end{minipage}
+
+\textcolor{rojo}{\textbf{Teorema:}} \quad $P(x)\cdot Q(x) = \operatorname{MCD}(P;Q)\cdot\operatorname{MCM}(P;Q)$
+
+\textbf{Fracciones \hl{algebraicas}:} \quad
+$f(x) = \dfrac{N(x)}{D(x)}$ \quad
+\begin{tabular}{l}
+$N(x)$: Numerador\\
+$D(x)$: Denominador (no nulo ni constante)
+\end{tabular}
+
+\begin{itemize}[label=\checkmark]
+  \item $N(x)$ y $D(x)$ son expresiones algebraicas racionales enteras.
+  \item NO es una división exacta.
+  \item $\text{CVA}(f) = \mathbb{U} - \{D(x) = 0\}$
+\end{itemize}
+
+
+% ============================================================
+% Páginas 73-75
+% ============================================================
+\textbf{Fracciones algebraicas reducibles:}
+\[f(x) = \frac{N(x)}{D(x)}: \text{ reducible si } N(x) \wedge D(x) \text{ poseen factores comunes.}\]
+
+\textcolor{naranja}{\textbf{Clasificación de fracciones algebraicas:}}
+\begin{itemize}[label={}]
+  \item \textcolor{verde}{Propias:} $[N(x)]^\circ < [D(x)]^\circ$ \hfill
+  $\dfrac{x+1}{x^2+2};\ \dfrac{1}{x^5}$ \hspace*{3cm}
+  \item \textcolor{verde}{Impropias:} $[N(x)]^\circ > [D(x)]^\circ$ \hfill
+  $\dfrac{x^2-1}{x};\ \dfrac{x^2+2x+4}{x-3}$ \hspace*{3cm}
+  \item \textcolor{verde}{Homogéneas:} $\dfrac{1}{x+1};\ \dfrac{x+2}{x+1};\ \dfrac{x^2}{x+1}$
+  \item \textcolor{verde}{Heterogéneas:} $\dfrac{2}{x+2};\ \dfrac{5x}{x+3};\ \dfrac{6}{x+1}$
+\end{itemize}
+
+\textcolor{magenta}{\textbf{Teorema:}}
+\[
+\text{Si } f(x;y) = \frac{a_1x + b_1xy + c_1y + d_1}{a_2x + b_2xy + c_2y + d_2}
+\text{ no depende ni de $x$ ni de $y$} \rightarrow
+\frac{a_1}{a_2} = \frac{b_1}{b_2} = \frac{c_1}{c_2} = \frac{d_1}{d_2} = k
+\]
+\[a_2 \neq 0;\ b_2 \neq 0;\ c_2 \neq 0;\ d_2 \neq 0\]
+
+\subsection*{Descomposición en fracciones parciales}
+
+\textcolor{azul}{\textbf{Caso I:}} Para fracciones propias; el $D(x)$ sólo posee factores de la
+forma ``$ax + b$''.
+\[
+\frac{3x+4}{x^2+3x+2} = \frac{3x+4}{(x+1)(x+2)} = \frac{A}{(x+1)} + \frac{B}{(x+2)}
+= \frac{(A+B)x + (2A+B)}{(x+1)(x+2)} = \frac{1}{x+1} + \frac{2}{x+2}
+\]
+\[A + B = 3;\quad 2A + B = 4;\quad A = 1;\ B = 2\]
+
+El $D(x)$ posee factores de la forma $(ax+b)^n \wedge a \neq 0$
+\[
+\frac{3x+1}{(x-1)^2} = \frac{A}{(x-1)} + \frac{B}{(x-1)^2} = \frac{Ax + (B-A)}{(x-1)^2}
+= \frac{3}{x-1} + \frac{4}{(x-1)^2}
+\]
+\begin{itemize}[label=\checkmark]
+  \item Los dos anteriores se pueden mezclar.
+  \item No necesariamente es para ``$ax + b$'', también lo es para ``$ax^2 + bx + c$'' y
+  ``$ax^3 + bx^2 + cx + d$'' mientras sean no factorizables.
+\end{itemize}
+
+\textcolor{azul}{\textbf{Caso II:}} Para fracciones impropias.
+\[
+f(x) = \frac{N(x)}{D(x)} = q(x) + \underbrace{\frac{R(x)}{D(x)}}_{\substack{\text{Fracción}\\ \text{propia}}}
+\;:\; \text{Se trabaja como el caso I}
+\]
+
+\newpage
+% ------------------------------------------------------------
+\section{Sucesiones}
+
+\textbf{Sucesión de números reales:} Es de la forma: \
+$x: \mathbb{N} \to \mathbb{R};\ n \to x(n)$
+\[\ovalbox{$x = \{(n, x(n)) \mid n \in \mathbb{N}\}$ \ además \ $x(n) = x_n$}\]
+
+\textcolor{naranja}{\textbf{Convergencia:}} Se dice que una sucesión $\{x_n\}_{n\in\mathbb{N}}$
+es una sucesión convergente si existe el siguiente límite:
+\[
+\lim_{n\to+\infty} x_n = L \in \mathbb{R}\;; \qquad
+\forall \varepsilon > 0,\ \exists n_0 \in \mathbb{N},\ \forall n \geq n_0 \rightarrow |x_n - L| < \varepsilon
+\]
+
+\textcolor{magenta}{\textbf{Ejemplos:}}
+\[
+\lim_{n\to+\infty}\frac{1}{n} = 0 \qquad
+\lim_{n\to+\infty}\sqrt[n]{n} = 1 \qquad
+\lim_{n\to+\infty}\sqrt[n]{a} = 1 \qquad
+\lim_{n\to+\infty}a^n = 0 \ \ \textcolor{rojo!60!black}{(0 \leq a < 1)}
+\]
+
+\textbf{Teorema:} Sean $p(n)$ y $q(n)$ polinomios no nulos. Se tiene que:
+\begin{itemize}
+  \item $\operatorname{gr}(p) = \operatorname{gr}(q)$
+  \[\lim_{n\to+\infty}\frac{p(n)}{q(n)} = \frac{\text{Coeficiente principal de } p}{\text{Coeficiente principal de } q}\]
+\end{itemize}
+\begin{minipage}[t]{0.485\textwidth}
+\begin{itemize}
+  \item $\operatorname{gr}(p) < \operatorname{gr}(q)$
+  \[\lim_{n\to+\infty}\frac{p(n)}{q(n)} = 0\]
+\end{itemize}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\begin{itemize}
+  \item $\operatorname{gr}(p) > \operatorname{gr}(q)$
+  \[\lim_{n\to+\infty}\frac{p(n)}{q(n)} = +\infty\ (-\infty)\]
+\end{itemize}
+\end{minipage}
+
+\textcolor{verde}{\textbf{Teorema del Sándwich:}} Si $x_n \leq y_n \leq z_n,\ \forall n \in \mathbb{N}$ y
+\[
+\lim_{n\to+\infty}x_n = \lim_{n\to+\infty}z_n = L \quad \text{entonces:} \quad \lim_{n\to+\infty}y_n = L
+\]
+
+\textcolor{naranja}{\textbf{Acotada:}} Se dice que $\{x_n\}_{n\in\mathbb{N}}$ es una sucesión
+acotada si
+\[
+\exists K > 0,\ \forall n \in \mathbb{N},\ |x_n| \leq K \quad \text{o también:} \quad
+\exists a, b \in \mathbb{R},\ \forall n \in \mathbb{N},\ a \leq x_n \leq b
+\]
+\begin{minipage}[t]{0.485\textwidth}
+\textcolor{azul}{Acotada inferiormente:}
+\[\exists a \in \mathbb{R},\ \forall n \in \mathbb{N},\ a \leq x_n\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\textcolor{azul}{Acotada superiormente:}
+\[\exists b \in \mathbb{R},\ \forall n \in \mathbb{N},\ x_n \leq b\]
+\end{minipage}
+
+
+% ============================================================
+% Páginas 76-79
+% ============================================================
+\textbf{Teorema:} Si una sucesión es convergente, entonces la sucesión es acotada.
+
+\textbf{Nota:} El recíproco del teorema es falso.
+
+\textcolor{magenta}{\textbf{Sucesión monótona:}} Se dice que la sucesión
+$\{x_n\}_{n\in\mathbb{N}}$ es una sucesión monótona si cumple alguno de los siguientes casos.
+\[
+\begin{array}{lll}
+\bullet & \textcolor{rojo}{\text{Estrictamente creciente}} & \forall n \in \mathbb{N}\quad x_n < x_{n+1}\\
+\bullet & \textcolor{rojo}{\text{Estrictamente decreciente}} & \forall n \in \mathbb{N}\quad x_n > x_{n+1}\\
+\bullet & \textcolor{rojo}{\text{Creciente}} & \forall n \in \mathbb{N}\quad x_n \leq x_{n+1}\\
+\bullet & \textcolor{rojo}{\text{Decreciente}} & \forall n \in \mathbb{N}\quad x_n \geq x_{n+1}
+\end{array}
+\]
+
+\textbf{Observación \#1:} Para analizar la monotonía se calcula la siguiente expresión:
+\[M = x_{n+1} - x_n\]
+\[
+\begin{array}{lll}
+\bullet & \text{Si } M > 0, & \text{Estrictamente creciente}\\
+\bullet & \text{Si } M < 0, & \text{Estrictamente decreciente}\\
+\bullet & \text{Si } M \geq 0, & \text{Creciente}\\
+\bullet & \text{Si } M \leq 0, & \text{Decreciente}
+\end{array}
+\]
+
+\textbf{Observación \#2:} Para analizar la monotonía se calcula la siguiente expresión:
+\[M = \frac{x_{n+1}}{x_n}\;; \quad \text{donde \hl{los términos de la sucesión son positivos.}}\]
+\[
+\begin{array}{lll}
+\bullet & \text{Si } M > 1, & \text{Estrictamente creciente.}\\
+\bullet & \text{Si } M < 1, & \text{Estrictamente decreciente.}\\
+\bullet & \text{Si } M \geq 1, & \text{Creciente.}\\
+\bullet & \text{Si } M \leq 1, & \text{Decreciente.}
+\end{array}
+\]
+
+\textbf{Teorema:} Si una sucesión es acotada y monótona, entonces la sucesión es convergente.
+\begin{itemize}
+  \item Si $\{x_n\}_{n\in\mathbb{N}}$ es creciente (o E. creciente) y acotada superiormente,
+  entonces es convergente.
+  \item Si $\{x_n\}_{n\in\mathbb{N}}$ es decreciente (o E. decreciente) y acotada
+  inferiormente, entonces es convergente.
+\end{itemize}
+
+\textbf{Teorema:} Si $\displaystyle\lim_{n\to+\infty}x_n = L$, entonces:
+\[
+\bullet\ \lim_{n\to+\infty}\frac{x_1 + x_2 + \cdots + x_n}{n} = L
+\qquad\qquad
+\bullet\ \lim_{n\to+\infty}\sqrt[n]{x_1\cdot x_2\cdots x_n} = L
+\]
+
+\textcolor{magenta}{\textbf{El número neperiano:}}
+
+Se tiene que la sucesión es acotada y monótona:
+\[
+x_n = \left(1 + \frac{1}{n}\right)^n \qquad\qquad
+\lim_{n\to+\infty}\left(1 + \frac{1}{n}\right)^n = e
+\]
+En general: \quad $\displaystyle\lim_{n\to+\infty}\left(1 + \frac{x}{n}\right)^n = e^x$
+
+\textcolor{verde}{\textbf{Teorema:}} Si $\displaystyle\lim_{n\to+\infty}a_n = 1$ y
+$\displaystyle\lim_{n\to+\infty}b_n = +\infty$, entonces:
+\[\lim_{n\to+\infty}(a_n)^{b_n} = e^{\lim\limits_{n\to+\infty}(a_n - 1)b_n}\]
+
+\textcolor{magenta}{\textbf{Criterio de la raíz o razón:}}
+
+Sea \quad $\displaystyle\lim_{n\to+\infty}\left|\frac{a_{n+1}}{a_n}\right| = L$ \quad o \quad
+$\displaystyle\lim_{n\to+\infty}\sqrt[n]{|a_n|} = L$
+\begin{enumerate}[label=\cn{\arabic*}]
+  \item Si $0 \leq L < 1$, entonces $\displaystyle\lim_{n\to+\infty}a_n = 0$
+  \item Si $L > 1$, entonces la sucesión $\{a_n\}_{n\in\mathbb{N}}$ es una sucesión divergente.
+\end{enumerate}
+
+\newpage
+% ------------------------------------------------------------
+\section{Series}
+
+Una serie $\{S_n\}_{n\in\mathbb{N}}$ es una sucesión con la siguiente regla de correspondencia
+\[S_n = \sum_{k=1}^{n}a_k\]
+
+\textbf{Convergencia:} Se dice que $\{S_n\}_{n\in\mathbb{N}}$ es una serie convergente si existe
+el siguiente límite.
+\[\lim_{n\to+\infty}S_n = L \in \mathbb{R}\;: \quad \textcolor{magenta}{L = \sum_{k=1}^{\infty}a_k}\]
+
+\textbf{Series geométricas:} Sea $|R| < 1$, se cumple
+\begin{itemize}
+  \item $A_n = \displaystyle\sum_{k=0}^{n}R^k \qquad \lim_{n\to+\infty}A_n = \frac{1}{1 - R}$
+  \item $A_n = \displaystyle\sum_{k=m}^{n}R^k \qquad \lim_{n\to+\infty}A_n = \frac{R^m}{1 - R}$
+\end{itemize}
+
+\textbf{Nota:} Si $\displaystyle\lim_{n\to+\infty}a_n = 0$, entonces \quad
+\fbox{$\displaystyle\lim_{n\to+\infty}\sum_{k=1}^{n}(a_k - a_{k+1}) = a_1$}
+
+\textbf{Teorema:} Si la serie $S_n = \displaystyle\sum_{k=1}^{n}a_k$ es convergente, entonces
+\[\lim_{n\to+\infty}a_n = 0\]
+\begin{itemize}
+  \item El recíproco es falso.
+\end{itemize}
+
+\textbf{Serie $n^p$:} Sea $p \in \mathbb{R}$ y la serie:
+
+\begin{minipage}{0.436\textwidth}
+\[S_k = \sum_{n=1}^{k}\frac{1}{n^p}\]
+\end{minipage}\hfill
+\begin{minipage}{0.533\textwidth}
+Se tiene que:
+\begin{itemize}
+  \item Si $p \leq 1$, entonces $S_k$ diverge.
+  \item Si $p > 1$, entonces $S_k$ converge.
+\end{itemize}
+\end{minipage}
+
+\textbf{Comparación:} Sean $\forall n \in \mathbb{N},\ 0 \leq a_n \leq b_n$
+\begin{itemize}
+  \item Si la serie $\displaystyle\sum_{k=1}^{n}b_k$ es convergente entonces
+  $\displaystyle\sum_{k=1}^{n}a_k$ converge.
+  \item Si la serie $\displaystyle\sum_{k=1}^{n}a_k$ es divergente entonces
+  $\displaystyle\sum_{k=1}^{n}b_k$ diverge.
+\end{itemize}
+
+\textcolor{verde}{\textbf{Teorema de Leibnitz:}} Si $\displaystyle\lim_{n\to+\infty}a_n = 0$ y
+$\forall n \in \mathbb{N}$ y $a_n \geq a_{n+1} \geq 0$
+\[\text{entonces:} \quad \sum_{k=1}^{n}(-1)^k a_k \text{ es una serie convergente}\]
+
+\textcolor{magenta}{\textbf{Criterio de la raíz o razón:}}
+
+Sea la serie $S_n = \displaystyle\sum_{k=1}^{n}a_k$
+\[
+\lim_{k\to+\infty}\left|\frac{a_{k+1}}{a_k}\right| = L \quad \text{o} \quad
+\lim_{k\to+\infty}\sqrt[k]{|a_k|} = L
+\]
+\begin{itemize}
+  \item Si $0 \leq L < 1$, entonces la serie $S_n$ es convergente.
+  \item Si $L > 1$, entonces la serie $S_n$ es divergente.
+\end{itemize}
+
+\textbf{Observación:}
+\[\sum_{k=0}^{\infty}\frac{1}{k!} = e \qquad\qquad \sum_{k=0}^{\infty}\frac{x^k}{k!} = e^x\]
+
+\textcolor{magenta}{\textbf{Sucesión de Fibonacci:}}
+
+Sea: \quad $t_{n+2} = t_{n+1} + t_n$ \quad con $t_1 = 1,\ t_2 = 1$
+\[
+t_n = \frac{1}{\sqrt{5}}\left(\frac{1 + \sqrt{5}}{2}\right)^n - \frac{1}{\sqrt{5}}\left(\frac{1 - \sqrt{5}}{2}\right)^n
+\]
+
+\end{document}
