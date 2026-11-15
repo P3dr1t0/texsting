@@ -25,7 +25,7 @@ TL = os.path.join(WORK, "tl")  # TeX Live del runner (x86_64)
 # Paquetes de LaTeX incluidos en esta prueba (además de la base).
 EXTRA = ["collection-latex", "babel-spanish", "hyphen-spanish", "geometry", "booktabs", "xcolor",
          "amsmath", "tools", "graphics", "hyperref", "fancyhdr", "enumitem", "caption", "float",
-         "multirow", "siunitx", "lm", "cm-super", "titlesec", "parskip", "csquotes"]
+         "multirow", "siunitx", "lm", "cm-super", "titlesec", "parskip", "csquotes", "mylatexformat"]
 
 def sh(cmd, **kw):
     print("+", cmd if isinstance(cmd, str) else " ".join(cmd), flush=True)
@@ -181,6 +181,9 @@ for rel in keep:
     if os.path.isfile(os.path.join(TL, rel)): by[os.path.dirname(rel)] += os.path.getsize(os.path.join(TL, rel))
 for d, n in by.most_common(20): print(f"  {n/1e6:6.2f} MB  {d}")
 keep |= {"texmf-dist/web2c/texmf.cnf", "texmf-dist/web2c/fmtutil.cnf"}
+# mylatexformat: para guardar el preámbulo de cada proyecto ya cargado (compilar más rápido)
+for f in os.listdir(os.path.join(TL, "texmf-dist/tex/latex/mylatexformat")):
+    keep.add("texmf-dist/tex/latex/mylatexformat/" + f)
 for name in ["cp227.tcx", "pdftexconfig.tex", "language.dat", "language.def", "pdftex.map"]:
     p = subprocess.run([os.path.join(BIN, "kpsewhich"), name], capture_output=True, text=True, env=envtl).stdout.strip()
     if p: keep.add(os.path.relpath(p, TL))
@@ -398,6 +401,22 @@ ok = os.path.exists(pdfp) and not errs
 print("Prueba de paquetes al vuelo:", "PDF OK" if ok else "FALLÓ", "| instalados:", instalados, "| errores:", errs[:5])
 print("  avisos de fuente:", shapes[:6], "| fuentes en el PDF:", [f.decode() for f in fonts])
 if not ok: raise SystemExit("La prueba de paquetes al vuelo falló")
+
+# Preámbulo guardado (como buildPre() en MotorPlugin.java): se arma y se compila con él.
+eh = dict(env, TEXMFHOME=home_dir)
+def correr(args):
+    t = time.time()
+    rr = subprocess.run([os.path.join(fake, "libtx_pdftex.so")] + args, cwd=dprueba, env=eh, capture_output=True, text=True, errors="replace")
+    return time.time() - t, rr
+normal, _ = correr(["-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "doc.tex"])
+armar, _ = correr(["-ini", "-interaction=nonstopmode", "-jobname=texsting-pre", "-progname=pdflatex", "&pdflatex", "mylatexformat.ltx", "doc.tex"])
+prelog = open(os.path.join(dprueba, "texsting-pre.log"), errors="replace").read()
+pre_errs = re.findall(r"^!.*$", prelog, re.M)
+con, _ = correr(["-progname=pdflatex", "-fmt=texsting-pre", "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "doc.tex"])
+lg2 = open(os.path.join(dprueba, "doc.log"), errors="replace").read()
+errs2 = re.findall(r"^(?:!.*|.*:\d+: .*)$", lg2, re.M)
+print(f"Preámbulo guardado: normal {normal:.2f} s | armarlo {armar:.2f} s | con él {con:.2f} s | errores al armar {pre_errs[:3]} | errores con él {errs2[:3]}")
+if pre_errs or errs2 or not os.path.exists(os.path.join(dprueba, "texsting-pre.fmt")): raise SystemExit("El preámbulo guardado falló")
 
 # ───────────────────────── 4. Empaquetar ─────────────────────────
 zpath = os.path.join(ASSETS, "tl.zip")

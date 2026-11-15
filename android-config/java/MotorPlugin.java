@@ -216,6 +216,7 @@ public class MotorPlugin extends Plugin {
         return found;
     }
     private Map<String, Long> sizes;
+    private Map<String, String[]> deps;
 
     private File home() { return new File(var(), "texmf"); }
     private File installedFile() { return new File(var(), "paquetes-instalados.txt"); }
@@ -231,16 +232,18 @@ public class MotorPlugin extends Plugin {
         if (index != null) return;
         Map<String, String> idx = new HashMap<>();
         Map<String, Long> sz = new HashMap<>();
+        Map<String, String[]> dp = new HashMap<>();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(new GZIPInputStream(getContext().getAssets().open("motor/indice.idx")), StandardCharsets.UTF_8))) {
             String l;
             while ((l = br.readLine()) != null) {
                 int t = l.indexOf('\t');
                 if (t <= 0) continue;
+                if (l.charAt(0) == '+') { dp.put(l.substring(1, t), l.substring(t + 1).split(",")); continue; }
                 if (l.charAt(0) == '@') { try { sz.put(l.substring(1, t), Long.parseLong(l.substring(t + 1))); } catch (NumberFormatException ignored) { } }
                 else idx.put(l.substring(0, t), l.substring(t + 1));
             }
         }
-        index = idx; sizes = sz;
+        index = idx; sizes = sz; deps = dp;
     }
 
     /** TeX corta las líneas del registro a 79 caracteres: se vuelven a unir para buscar los mensajes. */
@@ -368,6 +371,16 @@ public class MotorPlugin extends Plugin {
         return maps;
     }
 
+    /** El paquete y lo que termina pidiendo (tabla calculada al armar el APK), sin los ya instalados. */
+    private List<String> withDeps(String pkg, Set<String> have, List<String> already) {
+        List<String> out = new ArrayList<>();
+        if (pkg == null) return out;
+        if (!have.contains(pkg) && !already.contains(pkg)) out.add(pkg);
+        String[] d = deps.get(pkg);
+        if (d != null) for (String x : d) if (!x.isEmpty() && !have.contains(x) && !already.contains(x) && !out.contains(x)) out.add(x);
+        return out;
+    }
+
     private void install(String pkg) throws Exception {
         Long sz = sizes.get(pkg);
         progress("Descargando el paquete «" + pkg + "»" + (sz != null && sz > 0 ? String.format(Locale.ROOT, " (%.1f MB)", sz / 1e6).replace('.', ',') : "") + "… (solo la primera vez)");
@@ -447,7 +460,7 @@ public class MotorPlugin extends Plugin {
         loadIndex();
         Set<String> have = installedPkgs();
         List<String> pkgs = new ArrayList<>();
-        for (String w : want) { String p = index.get(w); if (p != null && !have.contains(p) && !pkgs.contains(p)) pkgs.add(p); }
+        for (String w : want) for (String p : withDeps(index.get(w), have, pkgs)) pkgs.add(p);
         for (String p : pkgs) {
             try { install(p); installedNow.add(p); } catch (Exception e) { /* se reintenta al compilar */ }
         }
@@ -461,6 +474,66 @@ public class MotorPlugin extends Plugin {
         for (String p : installedPkgs()) a.put(p);
         r.put("instalados", a);
         call.resolve(r);
+    }
+
+
+    // ───────────── Preámbulo precompilado (mylatexformat): los \\usepackage se cargan una sola vez ─────────────
+    private static final String PRE = "texsting-pre";
+
+    private static int countMatches(Pattern p, String s) {
+        Matcher m = p.matcher(s); int n = 0;
+        while (m.find()) n++;
+        return n;
+    }
+
+    private static String sha1(String s) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            StringBuilder b = new StringBuilder();
+            for (byte x : md.digest(s.getBytes(StandardCharsets.UTF_8))) b.append(String.format("%02x", x));
+            return b.toString();
+        } catch (Exception e) { return null; }
+    }
+
+    /** Clave del preámbulo: si cambia (o cambian los paquetes instalados), hay que volver a armarlo. */
+    private String preambleKey(JSArray files, String main) throws Exception {
+        String mainText = null;
+        for (int i = 0; files != null && i < files.length(); i++) {
+            JSONObject f = files.getJSONObject(i);
+            if (f.getString("path").equals(main) && f.has("text")) mainText = f.optString("text", "");
+        }
+        if (mainText == null) return null;
+        int b = mainText.indexOf("\\begin{document}");
+        if (b < 0) return null;
+        String pre = mainText.substring(0, b);
+        // Cosas que no se pueden «congelar» en un formato: mejor compilar normal.
+        if (pre.contains("endofdump") || pre.contains("filecontents") || pre.contains("\\write18") || pre.contains("minted")) return null;
+        StringBuilder k = new StringBuilder(pre);
+        for (int i = 0; files != null && i < files.length(); i++) {
+            JSONObject f = files.getJSONObject(i);
+            String path = f.getString("path");
+            if (path.equals(main) || !f.has("text")) continue;
+            String name = new File(path).getName(), stem = name.replaceAll("\\.[^.]+$", "");
+            if (stem.length() > 1 && pre.contains(stem)) k.append("\u0000").append(path).append('\u0000').append(f.optString("text", ""));
+        }
+        k.append('\u0000').append(assetVersion()).append('\u0000').append(String.join(",", installedPkgs()));
+        return sha1(k.toString());
+    }
+
+    /** Arma el formato con el preámbulo (en segundo plano, después de una compilación normal). */
+    private void buildPre(File mainDir, String mainName, String key) {
+        File info = new File(mainDir, PRE + ".txt"), fmtFile = new File(mainDir, PRE + ".fmt");
+        try {
+            fmtFile.delete();
+            Run r = run(Arrays.asList(pdftex().getAbsolutePath(), "-ini", "-interaction=nonstopmode", "-jobname=" + PRE,
+                    "-progname=pdflatex", "&pdflatex", "mylatexformat.ltx", mainName), mainDir, 3 * 60 * 1000);
+            String lg = readText(new File(mainDir, PRE + ".log"));
+            boolean bad = r.timedOut || !fmtFile.exists() || lg == null || Pattern.compile("^!", Pattern.MULTILINE).matcher(lg).find();
+            if (bad) fmtFile.delete();
+            try (OutputStream o = new FileOutputStream(info)) { o.write(((bad ? "no " : "ok ") + key).getBytes(StandardCharsets.UTF_8)); }
+        } catch (Exception e) {
+            fmtFile.delete();
+        }
     }
 
     @PluginMethod
@@ -505,12 +578,19 @@ public class MotorPlugin extends Plugin {
                 boolean autoinstall = call.getBoolean("autoinstall", true);
                 List<String> installedNow = new ArrayList<>(), failed = new ArrayList<>(), skipped = new ArrayList<>();
                 if (autoinstall) prefetch(dir, files, installedNow);
+                // Preámbulo ya armado para este proyecto: se salta la carga de los paquetes.
+                boolean usePreSetting = call.getBoolean("preambulo", true);
+                String preKey = usePreSetting ? preambleKey(files, main) : null;
+                String preInfo = String.valueOf(readText(new File(mainDir, PRE + ".txt"))).trim();
+                boolean usePre = preKey != null && new File(mainDir, PRE + ".fmt").exists()
+                        && (preInfo.equals("ok " + preKey) || preInfo.equals("verificado " + preKey));
+                boolean usedPre = usePre;
                 while (true) {
                     // Como latexmk: se repite mientras cambien los archivos auxiliares (índice, referencias), hasta 4 veces.
                     int p = 0;
                     while (p < 4) {
                         String before = digest(dir, stem);
-                        r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex",
+                        r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=" + (usePre ? PRE : "pdflatex"),
                                 "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", mainName),
                                 mainDir, 10 * 60 * 1000);
                         p++; passes++;
@@ -542,19 +622,37 @@ public class MotorPlugin extends Plugin {
                     for (String m : miss) {
                         String pkg = index.get(m);
                         if (pkg == null || have.contains(pkg) || installedNow.contains(pkg)) { if (!skipped.contains(m)) failed.add(m); continue; }
-                        try { install(pkg); installedNow.add(pkg); progressed = true; }
-                        catch (Exception e) { failed.add(m); output.append("\n[TeXsting] No se pudo descargar ").append(pkg).append(": ").append(e.getMessage()).append('\n'); }
+                        for (String q : withDeps(pkg, have, installedNow)) {
+                            try { install(q); installedNow.add(q); progressed = true; }
+                            catch (Exception e) { if (q.equals(pkg)) failed.add(m); output.append("\n[TeXsting] No se pudo descargar ").append(q).append(": ").append(e.getMessage()).append('\n'); }
+                        }
                     }
                     if (!progressed) break;
                     rounds++;
+                    usePre = false;  // con paquetes nuevos, el preámbulo guardado ya no vale
                     new File(dir, stem + ".aux").delete();
                     pdf.delete();
                     progress("Compilando de nuevo con " + String.join(", ", installedNow) + "…");
                 }
                 String log = readText(new File(dir, stem + ".log"));
                 if (log == null) log = "";
+                Pattern errPat = Pattern.compile("^(!|.*:\\d+: )", Pattern.MULTILINE);
+                // La primera vez que el preámbulo guardado da errores, se comprueba compilando normal:
+                // si así hay menos errores, el preámbulo de este proyecto no se puede guardar.
+                if (usePre && preInfo.startsWith("ok ") && !timedOut && errPat.matcher(log).find()) {
+                    int withPre = countMatches(errPat, log);
+                    r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex",
+                            "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", mainName), mainDir, 10 * 60 * 1000);
+                    passes++;
+                    String normal = readText(new File(dir, stem + ".log"));
+                    int without = normal == null ? Integer.MAX_VALUE : countMatches(errPat, normal);
+                    boolean preOk = without >= withPre;
+                    try (OutputStream o = new FileOutputStream(new File(mainDir, PRE + ".txt"))) { o.write(((preOk ? "verificado " : "no ") + preKey).getBytes(StandardCharsets.UTF_8)); }
+                    if (!preOk) { new File(mainDir, PRE + ".fmt").delete(); usedPre = false; }
+                    log = normal == null ? "" : normal;
+                }
                 byte[] pdfBytes = readBytes(pdf);
-                boolean hasErrors = java.util.regex.Pattern.compile("^(!|.*:\\d+: )", java.util.regex.Pattern.MULTILINE).matcher(log).find();
+                boolean hasErrors = errPat.matcher(log).find();
                 String status = timedOut ? "timeout" : pdfBytes == null ? "failed" : (hasErrors || r.code != 0) ? "errors" : "success";
                 byte[] sync = readBytes(new File(dir, stem + ".synctex.gz"));
                 JSObject res = new JSObject();
@@ -578,7 +676,15 @@ public class MotorPlugin extends Plugin {
                 res.put("prepararMs", t1 - t0);
                 res.put("texMs", t2 - t1);
                 res.put("preparacion", prep);
+                res.put("preambuloGuardado", usedPre);
                 call.resolve(res);
+                // Después de responder: si el preámbulo cambió, se arma el nuevo para la próxima compilación.
+                String keyNow = usePreSetting ? preambleKey(files, main) : null;
+                String infoNow = String.valueOf(readText(new File(mainDir, PRE + ".txt"))).trim();
+                if (keyNow != null && pdfBytes != null && !timedOut && !infoNow.endsWith(" " + keyNow)) {
+                    final File md = mainDir; final String mn = mainName; final String kn = keyNow;
+                    exec.execute(() -> buildPre(md, mn, kn));
+                }
             } catch (Exception e) {
                 call.reject(String.valueOf(e.getMessage()));
             }
