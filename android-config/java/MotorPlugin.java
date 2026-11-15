@@ -172,7 +172,10 @@ public class MotorPlugin extends Plugin {
 
 
     // ───────────── Paquetes al vuelo (como MiKTeX): se bajan de CTAN la primera vez que hacen falta ─────────────
-    private static final String CTAN = "https://mirror.ctan.org/systems/texlive/tlnet/archive/";
+    private static final String[] CTAN = {
+        "https://mirror.ctan.org/systems/texlive/tlnet/archive/",       // elige un espejo cercano
+        "https://mirrors.mit.edu/CTAN/systems/texlive/tlnet/archive/",  // respaldo
+    };
     private static final Pattern[] MISSING = {
         Pattern.compile("LaTeX Error: File `([^']+)' not found"),
         Pattern.compile("! I can't find file `([^']+)'"),
@@ -332,7 +335,11 @@ public class MotorPlugin extends Plugin {
         progress("Descargando el paquete «" + pkg + "»" + (sz != null && sz > 0 ? String.format(Locale.ROOT, " (%.1f MB)", sz / 1e6).replace('.', ',') : "") + "… (solo la primera vez)");
         File tmp = new File(getContext().getCacheDir(), pkg + ".tar.xz");
         try {
-            download(CTAN + pkg + ".tar.xz", tmp);
+            Exception last = null;
+            for (String m : CTAN) {
+                try { download(m + pkg + ".tar.xz", tmp); last = null; break; } catch (Exception e) { last = e; }
+            }
+            if (last != null) throw last;
             List<File> maps;
             try (InputStream in = new org.tukaani.xz.XZInputStream(new BufferedInputStream(new FileInputStream(tmp), 65536))) {
                 maps = untar(in, home());

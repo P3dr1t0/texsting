@@ -17,6 +17,22 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.41] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 51
+
+### Nuevo
+- **Motor integrado: los paquetes que faltan se descargan solos**, como en MiKTeX o con Termux. Ya no hace falta Termux para usar TikZ, circuitikz, pgfplots y el resto de CTAN.
+  - Al compilar, si falta un paquete, la app lo busca en un índice de TeX Live que viene en el APK: 145 000 archivos de casi 5000 paquetes, en 0,5 MB.
+  - Lo descarga de CTAN y vuelve a compilar. Mientras tanto avisa «Descargando el paquete «pgf» (x MB)… (solo la primera vez)».
+  - Si ese paquete pide otro, también lo baja. Por ejemplo, circuitikz → pgf (TikZ).
+  - Los paquetes quedan guardados en el teléfono: desde la segunda vez compila sin internet.
+  - Si un paquete trae fuentes nuevas, también quedan listas para usar.
+  - Respeta el ajuste «Instalar paquetes faltantes».
+  - Si no hay internet, la app dice qué no pudo descargar.
+- Verificado en la compilación del APK: un documento con circuitikz + pgfplots, sin nada instalado, baja circuitikz, pgf y pgfplots en 3 rondas y compila sin errores.
+
+### Mejorado (optimización, #8)
+- El motor integrado solo reescribe los archivos del proyecto que cambiaron, y borra los que eliminaste en la app.
+
 ## [0.2.40] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 50
 
 ### Corregido
