@@ -17,6 +17,19 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.37] — 15 nov. 2026 · Fase 1: Beta con Termux (primer paso de la Fase 2) · compilación 47
+
+### Nuevo (experimental)
+- **Motor integrado: compilar sin Termux** ([#1](https://github.com/P3dr1t0/texsting/issues/1)). Es la primera prueba de que TeXsting puede compilar sola.
+  - Está en **Ajustes → Motor integrado (experimental)**:
+    - «**Probar motor integrado**» compila un documento de prueba y muestra cuánto tardó.
+    - «**Usar el motor integrado**» hace que el botón Compilar lo use en tus proyectos, sin abrir Termux.
+  - Por ahora solo trae **pdfLaTeX** y los paquetes más comunes: amsmath, amssymb, graphicx, xcolor, geometry, booktabs, multirow, siunitx, hyperref, babel en español, enumitem, fancyhdr, caption, float, titlesec, csquotes, lmodern, entre otros.
+    - Si un documento necesita otro paquete o XeLaTeX/LuaLaTeX, la app lo avisa; desactiva la opción para seguir con Termux.
+  - La primera vez se prepara solo, en unos segundos (descomprime TeX y crea el formato de LaTeX).
+  - Es el mismo TeX Live 2026 de Termux, pero dentro del APK. El APK pasa de ~7 MB a ~14 MB.
+  - Va con Google Play: los programas vienen dentro del APK y no se descargan aparte.
+
 ## [0.2.36] — 14 nov. 2026 · Fase 1: Beta con Termux · compilación 46
 
 ### Corregido

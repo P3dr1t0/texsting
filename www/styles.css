@@ -474,3 +474,5 @@ html.layer-open #app { pointer-events: none; }
   .side-rail .icon-btn:first-child { margin-bottom: 6px; color: var(--accent-strong); }
   .editor-screen:not(.show-sidebar).show-messages .messages { left: 50px; }
 }
+.motor-result { margin: 8px 0 4px; line-height: 1.5; }
+.motor-log { white-space: pre-wrap; font-size: 11px; max-height: 220px; overflow: auto; background: var(--bg2, rgba(0,0,0,.2)); padding: 8px; border-radius: 8px; }

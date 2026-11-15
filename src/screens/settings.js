@@ -3,6 +3,7 @@ import { Clipboard } from '@capacitor/clipboard';
 import { getSettings, setSettings, ensureToken } from '../store.js';
 import { el, icon, toast, esc } from '../ui.js';
 import { ping, serverOutdated } from '../compiler.js';
+import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA } from '../motor.js';
 import { bootstrapCommand, openTermux, TERMUX_FDROID, TERMUX_GITHUB } from '../termux.js';
 import { ENGINES } from '../latex-data.js';
 import { applyTheme, THEMES, ACCENTS, resolvedTheme } from '../theme.js';
@@ -70,6 +71,27 @@ export async function renderSettings(root, _p, navigate) {
   const url = el('input', { class: 'input', value: s.serverUrl, autocapitalize: 'off', onchange: (e) => setSettings({ serverUrl: e.target.value.trim() || 'http://127.0.0.1:8765' }) });
   const token = el('input', { class: 'input mono', value: ensureToken(), autocapitalize: 'off', onchange: (e) => setSettings({ token: e.target.value.trim() }) });
   const result = el('p', { class: 'muted' });
+  const motorResult = el('div', { class: 'muted motor-result' });
+  const seg = (ms) => (ms / 1000).toFixed(1).replace('.', ',') + ' s';
+  async function probarMotor() {
+    motorResult.textContent = 'Comprobando…';
+    const est = await motorEstado();
+    if (!est) { motorResult.textContent = '✘ Esta versión no trae el motor integrado (solo funciona en el APK del teléfono o la tablet).'; return; }
+    motorResult.textContent = est.listo ? 'Compilando el documento de prueba…' : 'Preparando el motor (solo la primera vez, unos segundos)…';
+    try {
+      const prep = await motorPreparar();
+      motorResult.textContent = 'Compilando el documento de prueba…';
+      const r = await motorCompilar({ id: 'prueba-motor', main: 'prueba.tex' }, [{ path: 'prueba.tex', kind: 'text', text: MOTOR_PRUEBA }]);
+      const first = prep.primeraVez ? `<br>Preparación inicial: descomprimir ${seg(prep.unzipMs)} · crear el formato ${seg(prep.fmtMs)}` : '';
+      if (r.pdf) {
+        motorResult.innerHTML = `✔ PDF de ${Math.max(1, Math.round(r.pdf.length / 1024))} KB en ${seg(r.texMs)} (${r.pasadas} pasada${r.pasadas === 1 ? '' : 's'} de pdfLaTeX)${first}${r.status !== 'success' ? '<br>⚠ El registro tiene errores.' : ''}`;
+      } else {
+        motorResult.innerHTML = `✘ No salió el PDF.${first}<pre class="motor-log">${esc(String(r.log || r.output || '').slice(-2000))}</pre>`;
+      }
+    } catch (e) {
+      motorResult.innerHTML = `✘ ${esc(e.message || String(e))}`;
+    }
+  }
 
   root.append(el('div', { class: 'screen settings' },
     header('Ajustes', navigate),
@@ -89,6 +111,11 @@ export async function renderSettings(root, _p, navigate) {
         } catch (e) { result.textContent = '✘ ' + e.message; }
       } }, 'Probar conexión'),
       result,
+      el('h3', { class: 'section-title' }, 'Motor integrado (experimental)'),
+      el('p', { class: 'muted' }, 'Compila dentro de TeXsting, sin Termux. Es una prueba: por ahora solo pdfLaTeX y los paquetes más comunes (amsmath, graphicx, babel en español, hyperref, siunitx, booktabs, geometry, xcolor…).'),
+      row('Usar el motor integrado', toggle('motorIntegrado'), 'Si un documento necesita algo que no trae, desactívalo para usar Termux'),
+      el('button', { class: 'btn', onclick: probarMotor }, 'Probar motor integrado'),
+      motorResult,
       el('h3', { class: 'section-title' }, 'Apariencia'),
       appearance(),
       el('h3', { class: 'section-title' }, 'Editor'),

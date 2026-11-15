@@ -50,6 +50,29 @@ jobs:
       - name: Sincronizar
         run: npx cap sync android
 
+      # Motor integrado (experimental, #1): pdftex de Termux + TeX Live mínimo dentro del APK.
+      - uses: actions/cache@v4
+        id: motorcache
+        with:
+          path: motor-out/paquete
+          key: motor-${{ hashFiles('tools/motor/**') }}
+      - name: Armar el motor integrado
+        if: steps.motorcache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq strace patchelf
+          python3 tools/motor/empaquetar.py motor-out/paquete
+      - name: Poner el motor en el proyecto Android
+        run: |
+          if [ -f motor-out/paquete/assets/motor/tl.zip ]; then
+            mkdir -p android/app/src/main/jniLibs android/app/src/main/assets
+            cp -r motor-out/paquete/jniLibs/. android/app/src/main/jniLibs/
+            cp -r motor-out/paquete/assets/. android/app/src/main/assets/
+            cat motor-out/paquete/assets/motor/version.txt
+          else
+            echo "::warning::El APK sale sin motor integrado"
+          fi
+
       - name: Compilar APK
         run: |
           # Llave fija para que cada versión nueva se instale encima de la anterior

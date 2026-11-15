@@ -1,6 +1,7 @@
 // Cliente del servidor de compilación que corre en Termux.
 import { getSettings } from './store.js';
 import { bytesToBase64, base64ToBytes } from './util.js';
+import { motorCompilar } from './motor.js';
 
 export class CompileError extends Error {
   constructor(message, kind) {
@@ -152,6 +153,19 @@ export function engineExplanation(ch, main) {
  * Devuelve { status, pdf: Uint8Array|null, synctex, log, output, installed, missing, elapsed }.
  */
 export async function compileProject(project, files) {
+  if (getSettings().motorIntegrado) {
+    // Motor integrado (experimental): por ahora solo pdfLaTeX y los paquetes que trae el APK.
+    const chosen = chooseEngine(project, files);
+    if (chosen.engine !== 'pdflatex') {
+      throw new CompileError(`El motor integrado (experimental) por ahora solo tiene pdfLaTeX y este documento necesita ${ENGINE_LABEL[chosen.engine]}. Desactívalo en Ajustes para compilar con Termux.`, 'server');
+    }
+    try {
+      const data = await motorCompilar(project, files);
+      return { ...data, engineReason: chosen.reason, engineChoice: chosen };
+    } catch (e) {
+      throw new CompileError('Motor integrado: ' + (e.message || e), 'server');
+    }
+  }
   if (!(await quickCheck())) {
     throw new CompileError('Termux no está abierto: ábrelo un momento para iniciar el servidor y vuelve a compilar.', 'offline');
   }

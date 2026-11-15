@@ -187,6 +187,7 @@ const DEFAULTS = {
   autoinstall: true,
   defaultEngine: 'pdflatex',
   compileOnSave: false,
+  motorIntegrado: false,
   splitRatio: 0.5,
 };
 

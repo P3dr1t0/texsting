@@ -658,10 +658,14 @@ export async function renderEditor(root, { id }, navigate) {
         renderFiles();
       }
       if (r.installed && r.installed.length) toast('Paquetes instalados: ' + r.installed.join(', '), { ms: 5000 });
+      const via = r.integrado ? ' (motor integrado)' : '';
+      if (r.integrado && r.status !== 'success' && /File `[^']+\.(sty|cls)' not found/.test(r.log || '')) {
+        toast('El motor integrado de prueba todavía no trae ese paquete. Para este documento usa Termux (Ajustes → Motor integrado).', { kind: 'error', ms: 9000 });
+      }
       if (r.status === 'success') {
-        if (engineNote) toast(`Listo en ${r.elapsed} s. ${engineNote.text}`, { kind: 'ok', ms: 9000, action: engineNote.action, onAction: engineNote.onAction });
-        else if (sm.warnings) toast(`Listo en ${r.elapsed} s · ${sm.warnings} advertencia(s)`, { kind: 'ok', ms: 6000, action: 'Ver', onAction: () => openMessages() });
-        else toast(`Listo en ${r.elapsed} s`, { kind: 'ok' });
+        if (engineNote) toast(`Listo en ${r.elapsed} s${via}. ${engineNote.text}`, { kind: 'ok', ms: 9000, action: engineNote.action, onAction: engineNote.onAction });
+        else if (sm.warnings) toast(`Listo en ${r.elapsed} s${via} · ${sm.warnings} advertencia(s)`, { kind: 'ok', ms: 6000, action: 'Ver', onAction: () => openMessages() });
+        else toast(`Listo en ${r.elapsed} s${via}`, { kind: 'ok' });
         if (!WIDE.matches) showPanel('pdf');
       } else if (r.status === 'timeout') {
         toast('La compilación tardó demasiado y se detuvo', { kind: 'error' });
