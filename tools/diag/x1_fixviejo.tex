@@ -117,6 +117,7 @@
   \draw[thick,#3] ({#1-0.6},{#2-0.6}) -- ({#1+1},{#2+1}) -- ({#1+2.2},{#2+1});}
 
 % ============================================================
+\makeatletter\DeclareRobustCommand\underline[1]{\relax\ifmmode\@@underline{#1}\else$\@@underline{\hbox{#1}}\m@th$\fi}\makeatother
 \begin{document}
 
 \begin{center}
@@ -3059,7 +3060,7 @@ la misma primera componente.
     \node (a1) at (0,0.7) {1}; \node (a2) at (0,0) {2}; \node (a3) at (0,-0.7) {3};
     \node (b1) at (2.2,0.35) {4}; \node (b2) at (2.2,-0.35) {5};
     \draw[->] (a1) -- (b1); \draw[->] (a2) -- (b2); \draw[->] (a3) -- (b1);
-    \node at (1.1,-1.9) {\protect\underline{Son funciones}};
+    \node at (1.1,-1.9) {\underline{Son funciones}};
   \end{scope}
   % f2
   \begin{scope}[xshift=4.2cm]
@@ -3078,7 +3079,7 @@ la misma primera componente.
     \node (a1) at (0,0.5) {2}; \node (a2) at (0,-0.5) {3};
     \node (b1) at (2.2,0.7) {8}; \node (b2) at (2.2,0) {7}; \node (b3) at (2.2,-0.7) {6};
     \draw[->] (a1) -- (b1); \draw[->] (a1) -- (b2); \draw[->] (a2) -- (b3);
-    \node at (1.1,-1.9) {\protect\underline{No es función}};
+    \node at (1.1,-1.9) {\underline{No es función}};
   \end{scope}
 \end{tikzpicture}
 \end{center}
