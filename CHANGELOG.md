@@ -17,6 +17,12 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.3.1] — 15 nov. 2026 · Fase 2: Beta con motor integrado · compilación 63
+
+### Más rápido
+- **Los circuitos de circuitikz también se guardan ya dibujados.** Antes solo se guardaban las figuras de TikZ y pgfplots; los `\begin{circuitikz}` se volvían a dibujar en cada compilación, y en informes con varios circuitos eso era la mayor parte del tiempo. Funciona también con opciones (`[scale=0.8]`) y dentro de `\resizebox`.
+  - La primera compilación después de actualizar dibuja una vez los circuitos; las siguientes los reutilizan.
+
 ## [0.3.0] — 15 nov. 2026 · Fase 2: Beta con motor integrado · compilación 62
 
 ### Nuevo: el motor integrado pasa a ser el principal

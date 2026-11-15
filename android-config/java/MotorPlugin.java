@@ -658,13 +658,15 @@ public class MotorPlugin extends Plugin {
     private static final String FIG = "texsting-fig";
     private static final Pattern ERR = Pattern.compile("^(!(?! Package tikz Warning)|.*:\\d+: )", Pattern.MULTILINE);
 
-    /** Se agrega por la línea de comandos, sin tocar tu archivo. circuitikz y similares siguen dibujándose normal. */
+    /** Se agrega por la línea de comandos, sin tocar tu archivo. */
     private static String figInject() {
         // tcolorbox dibuja sus cajas con TikZ: «shield externalize» evita que se intenten guardar como figuras
         // (si no, las cajas «breakable» rompen la compilación).
         return "\\AddToHook{begindocument/before}{\\IfPackageLoadedTF{tikz}{\\usetikzlibrary{external}"
                 + "\\tikzexternalize[mode=list and make,prefix=" + FIG + "/]"
-                + "\\IfPackageLoadedTF{tcolorbox}{\\tcbset{shield externalize}}{}}{}}";
+                + "\\IfPackageLoadedTF{tcolorbox}{\\tcbset{shield externalize}}{}"
+                // circuitikz es \begin{tikzpicture} con otro nombre: así sus circuitos también se guardan.
+                + "\\IfPackageLoadedTF{circuitikz}{\\RenewDocumentEnvironment{circuitikz}{+b}{\\begin{tikzpicture}#1\\end{tikzpicture}}{}}{}}{}}";
     }
     static String safeJob(String name) {
         String s = name.replaceAll("[^A-Za-z0-9._-]", "_");
