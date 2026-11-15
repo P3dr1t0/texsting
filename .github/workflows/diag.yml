@@ -6,17 +6,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq texlive-latex-extra texlive-lang-spanish texlive-pictures > /dev/null
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq texlive-latex-extra texlive-lang-spanish texlive-pictures cm-super > /dev/null
       - name: Probar
         shell: bash {0}
         run: |
+          curl -sI https://mirror.ctan.org/fonts/ps-type1/cm-super/pfb/sfrm1095.pfb | head -5
+          curl -sL -o /tmp/x.pfb https://mirror.ctan.org/fonts/ps-type1/cm-super/pfb/sfrm1095.pfb; ls -la /tmp/x.pfb; head -c 40 /tmp/x.pfb | od -c | head -2
           cd tools/diag
-          b=ul
-          pdflatex -interaction=nonstopmode $b.tex > /dev/null; echo "== normal: $(grep -c '^!' $b.log)"
-          pdftex -ini -interaction=nonstopmode -jobname=texsting-pre "&pdflatex" mylatexformat.ltx $b.tex > /dev/null; echo "== armar pre: $(grep -c '^!' texsting-pre.log)"; grep -A4 "^!" texsting-pre.log | head -10
-          pdflatex -fmt=texsting-pre -interaction=nonstopmode $b.tex > /dev/null; echo "== con pre: $(grep -c '^!' $b.log)"; grep -A6 "^!" $b.log | head -16
-          INJ='\AddToHook{begindocument/before}{\IfPackageLoadedTF{tikz}{\usetikzlibrary{external}\tikzexternalize[mode=list and make,prefix=texsting-fig/]}{}}'
-          mkdir -p texsting-fig
-          pdflatex -interaction=nonstopmode -jobname=$b "${INJ}\input{$b.tex}" > /dev/null; echo "== lista: $(grep -c '^!' $b.log)"; grep -A6 "^!" $b.log | head -16
-          for f in $(cat $b.figlist); do pdflatex -interaction=batchmode -halt-on-error -jobname="$f" "${INJ}\def\tikzexternalrealjob{$b}\input{$b.tex}" > /dev/null; echo "== fig $f: $(grep -c '^!' $f.log)"; grep -A6 "^!" $f.log | head -16; done
-          pdflatex -interaction=nonstopmode -jobname=$b "${INJ}\input{$b.tex}" > /dev/null; echo "== con figuras: $(grep -c '^!' $b.log)"; grep -A6 "^!" $b.log | head -16
+          b=cuaderno
+          t0=$(date +%s.%N); pdflatex -interaction=nonstopmode $b.tex > /dev/null; echo "== normal: $(grep -c '^!' $b.log) errores, $(echo "$(date +%s.%N)-$t0"|bc) s"; grep -A8 "^!" $b.log | head -40
+          grep -c "Font shape" $b.log
