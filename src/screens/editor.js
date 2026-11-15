@@ -50,7 +50,7 @@ export async function renderEditor(root, { id }, navigate) {
       el('button', { class: 'icon-btn wide-only', title: 'Asistentes', 'aria-label': 'Asistentes', html: icon('wand'), onclick: () => wizardsMenu() }),
       msgBtn,
       compileBtn,
-      el('button', { class: 'icon-btn', title: 'Compartir PDF', 'aria-label': 'Compartir PDF', html: icon('share'), onclick: () => sharePdf() }),
+      el('button', { class: 'icon-btn', title: 'Compartir', 'aria-label': 'Compartir', html: icon('share'), onclick: () => shareMenu() }),
       el('button', { class: 'icon-btn', title: 'Más opciones', 'aria-label': 'Más opciones', html: icon('more'), onclick: () => moreMenu() })));
 
   const filesList = el('div', { class: 'side-list' });
@@ -797,24 +797,61 @@ export async function renderEditor(root, { id }, navigate) {
     await shareBytes(out, slug(project.name) + '.pdf', 'application/pdf', project.name);
   }
 
+  // Compartir: el PDF, el código .tex y, si el proyecto tiene varios archivos, todo en un .zip.
+  async function shareMenu() {
+    saveSoon.flush();
+    await saveCurrent();
+    files = await listFiles(project.id);
+    const multi = files.length > 1;
+    const mainFile = files.find((f) => f.path === project.main);
+    const cur = files.find((f) => f.path === currentPath);
+    const items = [
+      { label: 'PDF', hint: 'El documento listo para entregar o imprimir', icon: 'pdf', value: 'pdf' },
+      { label: 'Código .tex', hint: mainFile ? mainFile.path.split('/').pop() + (multi ? ' (archivo principal)' : '') : 'El archivo principal', icon: 'code', value: 'tex' },
+    ];
+    if (multi && cur && cur.path !== project.main && cur.kind !== 'binary') {
+      items.push({ label: 'Este archivo', hint: cur.path, icon: 'file', value: 'current' });
+    }
+    if (multi) items.push({ label: 'Proyecto completo (.zip)', hint: `Los ${files.length} archivos, para seguir editándolo en otra app u Overleaf`, icon: 'zip', value: 'zip' });
+    items.push({ label: multi ? 'Proyecto + PDF (.zip)' : 'Código + PDF (.zip)', hint: 'Todo junto, para entregar el trabajo', icon: 'download', value: 'zippdf' });
+    const choice = await sheet('Compartir', items);
+    if (!choice) return;
+    const name = slug(project.name);
+    const bytesOf = (f) => (f.kind === 'binary' ? f.data : enc.encode(f.text));
+    if (choice === 'pdf') return sharePdf();
+    if (choice === 'tex') {
+      if (!mainFile) { toast('Este proyecto no tiene archivo principal'); return; }
+      return shareBytes(bytesOf(mainFile), mainFile.path.split('/').pop(), 'text/x-tex', project.name);
+    }
+    if (choice === 'current') return shareBytes(bytesOf(cur), cur.path.split('/').pop(), 'text/plain', project.name);
+    const entries = files.map((f) => ({ path: f.path, data: bytesOf(f) }));
+    if (choice === 'zippdf') {
+      const out = lastResult && lastResult.pdf ? lastResult.pdf : (await getOutput(project.id))?.pdf;
+      if (!out) { toast('Primero compila el documento para incluir el PDF'); return; }
+      const pdfName = (project.main || 'documento.tex').split('/').pop().replace(/\.tex$/, '') + '.pdf';
+      entries.push({ path: entries.some((e) => e.path === pdfName) ? name + '.pdf' : pdfName, data: out });
+    }
+    return shareBytes(createZip(entries), name + '.zip', 'application/zip', project.name);
+  }
+
   async function moreMenu() {
     const engineName = ENGINE_LABEL[currentEngine().engine] || 'pdfLaTeX';
     const choice = await sheet(project.name, [
-      { label: 'Compartir PDF', icon: 'share', value: 'pdf' },
+      { label: 'Compartir…', hint: 'PDF, código .tex o el proyecto en .zip', icon: 'share', value: 'share' },
       { label: 'Ver esta línea en el PDF', hint: WIDE.matches ? 'También: doble clic en el código' : 'Lleva al PDF la línea donde está el cursor', icon: 'pdf', value: 'sync' },
-      { label: 'Motor: ' + engineName, hint: engineExplanation(currentEngine(), project.main) || 'pdfLaTeX, XeLaTeX o LuaLaTeX', icon: 'settings', value: 'engine' },
+      { label: 'Motor: ' + engineName, hint: engineExplanation(currentEngine(), project.main) || 'pdfLaTeX, XeLaTeX o LuaLaTeX', icon: 'chip', value: 'engine' },
       { label: 'Asistentes e inserciones', icon: 'wand', value: 'wizards' },
       { label: 'Buscar y reemplazar', icon: 'search', value: 'search' },
       { label: 'Archivos del proyecto', icon: 'files', value: 'files' },
       { label: 'Exportar proyecto (.zip)', icon: 'download', value: 'zip' },
       { label: 'Guardar como plantilla', icon: 'star', value: 'template' },
       '-',
-      { label: 'Apariencia y tamaño de letra', icon: 'sun', value: 'look' },
+      { label: 'Apariencia y tamaño de letra', icon: 'brush', value: 'look' },
       { label: 'Ajustes', icon: 'settings', value: 'settings' },
     ]);
     if (choice === 'look') panel('Apariencia', appearance({ onFont: (v) => editor.configure({ fontSize: v }) }));
     if (choice === 'template') { saveSoon.flush(); await saveCurrent(); await saveAsTemplate(project); }
-    if (choice === 'pdf') sharePdf();
+    if (choice === 'share') shareMenu();
     if (choice === 'sync') forwardSearch();
     if (choice === 'wizards') wizardsMenu();
     if (choice === 'search') { showPanel('code'); editor.openSearch(); }

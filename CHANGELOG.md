@@ -17,6 +17,22 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.47] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 58
+
+### Nuevo
+- **Compartir ya no es solo el PDF.** El botón de compartir (y ⋮ → «Compartir…») abre un menú:
+  - **PDF**: el documento listo para entregar o imprimir.
+  - **Código .tex**: el archivo principal.
+  - **Este archivo**: el que tienes abierto, si no es el principal (proyectos con varios archivos).
+  - **Proyecto completo (.zip)**: todos los archivos, para seguir editándolo en otra app u Overleaf (proyectos con varios archivos).
+  - **Proyecto + PDF (.zip)** (o «Código + PDF» si es un solo archivo): todo junto, para entregar el trabajo.
+
+### Mejorado
+- **Íconos más claros:**
+  - «Ajustes» ahora es la tuerca de siempre; antes parecía un sol.
+  - «Apariencia y tamaño de letra» es un pincel.
+  - «Motor» usa un chip.
+
 ## [0.2.46] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 57
 
 ### Mejorado
