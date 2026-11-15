@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.39] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 49
+
+### Corregido
+- **Motor integrado: «El registro tiene errores» en la prueba de Ajustes.**
+  - **Primera prueba en el Poco X7 Pro:** el motor funcionó a la primera. El PDF de prueba salió en **0,9 s**.
+  - **Causa del error:** faltaban algunos tamaños de letra (5 y 7 pt), que se usan en subíndices y exponentes de documentos de 10 pt. El paquete solo traía los tamaños que usaron los documentos de prueba.
+  - **Solución:** ahora trae las familias de fuentes completas (Computer Modern, Latin Modern, AMS) y cada paquete de LaTeX entero. También se prueban documentos de 10, 11 y 12 pt con todos los tamaños y estilos.
+  - **Tamaño:** el APK pasa de ~13 a ~30 MB. En la versión final, esta parte se descargará dentro de la app (instalación «básica», #1).
+  - Si la prueba vuelve a dar errores, Ajustes ahora muestra las primeras líneas del error.
+
 ## [0.2.38] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 48
 
 ### Mejorado
