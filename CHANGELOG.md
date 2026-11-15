@@ -17,6 +17,18 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.38] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 48
+
+### Mejorado
+- **Pantalla de inicio más ordenada y simétrica:**
+  - Todo queda en dos columnas iguales: «Nuevo proyecto | Importar», «Recientes | Todos» y «Buscar | Orden».
+  - «Nuevo proyecto» ya no se parte en dos líneas.
+  - Las pestañas ocupan todo el ancho y cada una mide lo mismo.
+  - El buscador tiene lupa y el mismo alto que el botón de orden. El botón ya no queda montado bajo el buscador.
+  - El botón de orden usa textos cortos: «Nombre A → Z», «Editados recientes», «Creados antiguos»…
+  - En la tablet, las pestañas quedan bajo «Nuevo proyecto» y el buscador con el orden bajo «Importar».
+  - El buscador aparece desde 2 proyectos, junto con el botón de orden.
+
 ## [0.2.37] — 15 nov. 2026 · Fase 1: Beta con Termux (primer paso de la Fase 2) · compilación 47
 
 ### Nuevo (experimental)

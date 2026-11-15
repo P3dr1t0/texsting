@@ -383,14 +383,9 @@ a { color: inherit; }
 .pdfv-back[hidden] { display: none; }
 
 /* Inicio: pestañas Recientes / Todos */
-.home-tabs { display: flex; align-items: center; gap: 6px; margin: 14px 0 6px; flex-wrap: wrap; }
-.home-tabs .seg { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 3px; }
-.home-tabs .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; padding: 6px 14px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .home-tabs .seg button .ico { width: 16px; height: 16px; }
 .home-tabs .seg button.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
 .home-tabs .seg button small { font-weight: 500; opacity: .75; }
-.home-search { flex: 1; min-width: 150px; max-width: 320px; margin-left: auto; }
-.home-search input { width: 100%; }
 .home-hint { color: var(--muted); font-size: 12.5px; margin: 2px 2px 8px; }
 .home-more { width: 100%; margin-top: 4px; color: var(--accent-strong); }
 .msg .btn.small { padding: 5px 10px; font-size: 13px; min-height: 0; }
@@ -414,10 +409,6 @@ a { color: inherit; }
 .outline-item small { white-space: nowrap; }
 
 /* Inicio: orden y fijados */
-.home-sort { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 6px 12px; }
-.home-sort .ico { width: 16px; height: 16px; }
-.home-tabs .home-search { margin-left: auto; }
-.home-tabs .home-search[hidden] + .home-sort { margin-left: auto; }
 .home-group { display: flex; align-items: center; gap: 6px; margin: 12px 2px 4px; font-size: 12px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
 .home-group .ico { width: 14px; height: 14px; }
 .project-card .pin-btn .ico { opacity: .35; transform: rotate(30deg); transition: opacity .15s, transform .15s; }
@@ -476,3 +467,21 @@ html.layer-open #app { pointer-events: none; }
 }
 .motor-result { margin: 8px 0 4px; line-height: 1.5; }
 .motor-log { white-space: pre-wrap; font-size: 11px; max-height: 220px; overflow: auto; background: var(--bg2, rgba(0,0,0,.2)); padding: 8px; border-radius: 8px; }
+
+/* Inicio: todo sobre la misma rejilla de dos columnas (botones, pestañas, buscador y orden) */
+.home-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.home-actions .btn.big { padding: 0 10px; gap: 6px; white-space: nowrap; min-width: 0; }
+.home-tabs { display: flex; flex-direction: column; gap: 10px; margin: 14px 0 6px; }
+.home-tabs .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface-2); border-radius: 12px; padding: 3px; }
+.home-tabs .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 14.5px; font-weight: 600; min-height: 38px; padding: 0 10px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+.home-filter { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.home-filter[hidden] { display: none; }
+.home-search { position: relative; min-width: 0; }
+.home-search > .ico { position: absolute; left: 12px; top: 50%; width: 17px; height: 17px; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.home-search input.input { width: 100%; min-width: 0; height: 42px; min-height: 42px; padding-left: 36px; border-radius: 10px; font-size: 14.5px; }
+.home-sort { width: 100%; min-width: 0; height: 42px; padding: 0 12px; gap: 6px; font-size: 14px; font-weight: 600; }
+.home-sort .ico { width: 17px; height: 17px; flex: none; }
+.home-sort span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 760px) {
+  .home-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; }
+}

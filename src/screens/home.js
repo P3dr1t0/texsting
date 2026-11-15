@@ -20,21 +20,25 @@ export async function renderHome(root, _params, navigate) {
   const tabBtn = (key, ic, label) => el('button', { dataset: { key }, onclick: () => { clearSelection(false); tab = key; setSettings({ homeTab: key }); query = ''; searchInput.value = ''; draw(); } });
   const recentBtn = tabBtn('recent');
   const allBtn = tabBtn('all');
-  const searchInput = el('input', { class: 'input small', type: 'search', placeholder: 'Buscar por nombre…', 'aria-label': 'Buscar proyecto',
+  const searchInput = el('input', { class: 'input small', type: 'search', placeholder: 'Buscar…', 'aria-label': 'Buscar proyecto',
     oninput: (e) => { query = e.target.value; draw(); } });
-  const searchBox = el('div', { class: 'home-search' }, searchInput);
+  const searchBox = el('div', { class: 'home-search', html: icon('search') }, searchInput);
   // Orden de «Todos». Los fijados siempre van arriba, con el mismo orden entre ellos.
+  // [clave, texto del menú, texto corto del botón]
   const SORTS = [
-    ['az', 'Nombre (A → Z)'],
-    ['za', 'Nombre (Z → A)'],
-    ['mod-new', 'Modificados: recientes primero'],
-    ['mod-old', 'Modificados: antiguos primero'],
-    ['new', 'Creados: nuevos primero'],
-    ['old', 'Creados: antiguos primero'],
+    ['az', 'Nombre (A → Z)', 'Nombre A → Z'],
+    ['za', 'Nombre (Z → A)', 'Nombre Z → A'],
+    ['mod-new', 'Modificados: recientes primero', 'Editados recientes'],
+    ['mod-old', 'Modificados: antiguos primero', 'Editados antiguos'],
+    ['new', 'Creados: nuevos primero', 'Creados recientes'],
+    ['old', 'Creados: antiguos primero', 'Creados antiguos'],
   ];
   let sortKey = SORTS.some(([k]) => k === getSettings().homeSort) ? getSettings().homeSort : 'az';
   const sortBtn = el('button', { class: 'btn small home-sort', onclick: chooseSort });
-  const tabsRow = el('div', { class: 'home-tabs' }, el('div', { class: 'seg', role: 'tablist' }, recentBtn, allBtn), searchBox, sortBtn);
+  // Mismo esquema de dos columnas que «Nuevo proyecto | Importar»: pestañas a lo ancho y,
+  // debajo, buscador y orden del mismo tamaño.
+  const filterRow = el('div', { class: 'home-filter' }, searchBox, sortBtn);
+  const tabsRow = el('div', { class: 'home-tabs' }, el('div', { class: 'seg', role: 'tablist' }, recentBtn, allBtn), filterRow);
   // Selección múltiple: se entra manteniendo presionado un proyecto.
   const selected = new Set();
   let dropBack = null;
@@ -216,9 +220,10 @@ export async function renderHome(root, _params, navigate) {
     allBtn.innerHTML = `${icon('files')}<span>Todos</span><small>${projects.length}</small>`;
     recentBtn.classList.toggle('active', tab === 'recent');
     allBtn.classList.toggle('active', tab === 'all');
-    searchBox.hidden = tab !== 'all' || projects.length < 6;
-    sortBtn.hidden = tab !== 'all' || projects.length < 2;
-    sortBtn.innerHTML = `${icon('sort')}<span>${(SORTS.find(([k]) => k === sortKey) || SORTS[0])[1]}</span>`;
+    filterRow.hidden = tab !== 'all' || projects.length < 2;
+    const curSort = SORTS.find(([k]) => k === sortKey) || SORTS[0];
+    sortBtn.innerHTML = `${icon('sort')}<span>${curSort[2]}</span>`;
+    sortBtn.title = 'Ordenar: ' + curSort[1];
     if (!projects.length) {
       list.replaceChildren(el('div', { class: 'empty', html: `${icon('file', 'big')}<p>Aún no tienes proyectos.</p><p class="muted">Crea uno con una plantilla o importa un .zip (por ejemplo, descargado de Overleaf) o archivos .tex.</p>` }));
       return;
