@@ -10,7 +10,7 @@ jobs:
       - name: Probar
         shell: bash {0}
         run: |
-          cd tools/motor/diag
+          cd tools/diag
           b=ul
           pdflatex -interaction=nonstopmode $b.tex > /dev/null; echo "== normal: $(grep -c '^!' $b.log)"
           pdftex -ini -interaction=nonstopmode -jobname=texsting-pre "&pdflatex" mylatexformat.ltx $b.tex > /dev/null; echo "== armar pre: $(grep -c '^!' texsting-pre.log)"; grep -A4 "^!" texsting-pre.log | head -10

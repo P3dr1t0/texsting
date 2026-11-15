@@ -17,6 +17,25 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.46] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 57
+
+### Mejorado
+- **Panel «Buscar y reemplazar» nuevo, ordenado y en español.** El de antes quedaba desordenado en el teléfono y la tablet.
+  - Dos columnas iguales: a la izquierda las casillas «Buscar» y «Reemplazar por», a la derecha dos botones del mismo tamaño (↑ ↓ y «Cambiar» / «Todas»).
+  - Debajo, las opciones como botones que se encienden: «Aa» (mayúsculas), «Palabra completa» y «.* Regex». Y «Cerrar» (✕).
+  - Muestra cuántas coincidencias hay y en cuál estás («3 de 12»). Si no hay ninguna, dice «Sin resultados» en rojo.
+  - Atajos: Enter → siguiente; Mayús+Enter → anterior; Enter en «Reemplazar por» → cambia esta; Ctrl+Enter → todas; Esc → cerrar.
+
+### Corregido
+- **Mensajes cortados a la mitad**, como «Giving up on this path. Did you forge».
+  - TeX corta cada línea del registro a 79 caracteres. Ahora la app las vuelve a unir antes de leerlas, así que esos errores salen completos y explicados en español.
+  - Ese mismo arreglo mejoró varias de las pruebas de errores:
+    - opción mal escrita: «¿Quisiste decir «resistor»?», «xlabel»;
+    - falta «;»: ahora marca la línea correcta;
+    - texto antes del primer \item;
+    - «\begin{enumerate} se cerró con \end{itemize}».
+- **Motor integrado:** la «versión» de TeX se calcula según su contenido. Así la app solo se vuelve a preparar al actualizar cuando TeX cambió de verdad.
+
 ## [0.2.45] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 56
 
 ### Mejorado (optimización, #8): figuras guardadas

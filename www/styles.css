@@ -506,4 +506,4 @@ html.layer-open #app { pointer-events: none; }
 .ts-s-grow { flex: 1; }
 .ts-s-close { width: 34px; height: 34px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .ts-s-close .ico, .ts-s-close svg { width: 16px; height: 16px; }
-@media (max-width: 420px) { .ts-search { grid-template-columns: minmax(0, 1fr) 132px; } .ts-s-input { padding-right: 76px; } .ts-s-count { max-width: 70px; } }
+@media (max-width: 420px) { .ts-search { grid-template-columns: minmax(0, 1fr) 146px; } .ts-s-btn { font-size: 13.5px; padding: 0 4px; } .ts-s-input { padding-right: 76px; } .ts-s-count { max-width: 70px; } }

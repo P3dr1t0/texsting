@@ -453,7 +453,14 @@ with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for dp, _, fs in os.walk(sub):
         for f in fs:
             full = os.path.join(dp, f); z.write(full, os.path.relpath(full, sub))
-h = hashlib.sha256(open(zpath, "rb").read()).hexdigest()[:12]
+# Versión según el CONTENIDO (no los bytes del zip, que cambian con la fecha): así la app solo se
+# vuelve a preparar cuando TeX cambió de verdad.
+hh = hashlib.sha256()
+for dp, _, fs in sorted(os.walk(sub)):
+    for f in sorted(fs):
+        full = os.path.join(dp, f)
+        hh.update(os.path.relpath(full, sub).encode()); hh.update(b"\0"); hh.update(open(full, "rb").read())
+h = hh.hexdigest()[:12]
 open(os.path.join(ASSETS, "version.txt"), "w").write(f"{h}\n{year}\ntexlive-bin {texlive_bin_version}\n")
 jsize = sum(os.path.getsize(os.path.join(JNI, f)) for f in os.listdir(JNI))
 print(f"Listo: binarios {jsize/1e6:.1f} MB, datos {os.path.getsize(zpath)/1e6:.1f} MB comprimidos (versión {h})")
