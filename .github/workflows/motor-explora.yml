@@ -1,17 +1,19 @@
-name: Motor integrado — exploración (#1)
+name: Motor integrado — paquete de prueba (#1)
 on:
   workflow_dispatch:
 jobs:
-  explorar:
+  paquete:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Explorar binarios de TeX Live para Android (Termux aarch64)
-        run: mkdir -p motor-out && python3 tools/motor/explorar.py | tee motor-out/informe.txt || true
+      - name: Herramientas
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq strace patchelf
+      - name: Armar el motor (binario de Termux + TeX Live mínimo) y probarlo
+        run: python3 tools/motor/empaquetar.py motor-out/paquete 2>&1 | tee informe.txt; exit ${PIPESTATUS[0]}
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: motor-exploracion
+          name: motor-paquete
           path: |
-            motor-out/informe.txt
-            motor-out/cierre-aarch64.tar.xz
-          if-no-files-found: warn
+            informe.txt
+            motor-out/paquete
