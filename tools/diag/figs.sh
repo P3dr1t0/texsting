@@ -1,19 +1,11 @@
 #!/bin/bash
-# Variantes del modo figuras para aislar «\caption outside float».
 INJ='\AddToHook{begindocument/before}{\IfPackageLoadedTF{tikz}{\usetikzlibrary{external}\tikzexternalize[mode=list and make,prefix=texsting-fig/]}{}}'
-prueba() { local n="$1" inj="$2"; D=$(mktemp -d); cp "$n.tex" "$D/"; cd "$D"; mkdir -p texsting-fig
-  pdflatex -interaction=nonstopmode -file-line-error -jobname="$n" "$inj\\input{$n}" > /dev/null 2>&1
-  echo "== $n: errores $(grep -c ':[0-9]*: ' "$n.log") · figlist $(wc -l < "$n.figlist" 2>/dev/null)"; cd - > /dev/null; }
-python3 - <<'PY'
-d=open('fisica.tex').read()
-P='\\usepackage{float}'
-open('f_preambulo.tex','w').write(d.replace(P, P+'\n\\usetikzlibrary{external}\\tikzexternalize[mode=list and make,prefix=texsting-fig/]',1))
-open('f_sinH.tex','w').write(d.replace('\\begin{figure}[H]','\\begin{figure}[htbp]'))
-open('f_sinhyperref.tex','w').write(d.replace('\\usepackage[hidelinks]{hyperref}',''))
-open('f_sintcb.tex','w').write(d.replace('\\usepackage[most]{tcolorbox}','\\usepackage[most]{tcolorbox}\\renewenvironment{obs}{}{}'))
-open('f_sinpgfplots.tex','w').write(d.replace('\\usepackage{pgfplots}','\\usepackage{pgfplots}\\tikzset{external/export next=false}'))
-PY
-prueba fisica "$INJ"
-D=$(mktemp -d); cp fisica.tex $D; (cd $D; mkdir -p texsting-fig; pdflatex -interaction=nonstopmode -file-line-error -jobname=fisica "$INJ\\input{fisica}" >/dev/null 2>&1; grep -n -m1 -B30 'caption outside' fisica.log | cut -c1-150)
-prueba f_preambulo ""
-for v in f_sinH f_sinhyperref f_sintcb; do prueba $v "$INJ"; done
+for f in m_*.tex; do n=${f%.tex}; D=$(mktemp -d); cp $f $D; (cd $D; mkdir -p texsting-fig
+  pdflatex -interaction=nonstopmode -file-line-error -jobname=$n "$INJ\\input{$n}" > /dev/null 2>&1
+  echo "== $n: errores $(grep -c ':[0-9]*: ' $n.log)"; grep -m2 -A3 ':[0-9]*: ' $n.log | cut -c1-120); done
+D=$(mktemp -d); cp m_base.tex $D; (cd $D; mkdir -p texsting-fig; pdflatex -interaction=nonstopmode -file-line-error -jobname=m_base "$INJ\\input{m_base}" >/dev/null 2>&1; grep -n -A12 'caption outside' m_base.log | head -30)
+# Nombres con espacios: jobname seguro
+D=$(mktemp -d); cp fisica.tex "$D/fisica (1).tex"; cd $D
+pdftex -ini -interaction=nonstopmode -jobname=texsting-pre -progname=pdflatex '&pdflatex' mylatexformat.ltx '"fisica (1).tex"' >/dev/null 2>&1; echo "pre con comillas: $(ls texsting-pre.fmt 2>/dev/null) $(grep -m1 '^!' texsting-pre.log)"
+pdflatex -fmt=texsting-pre -interaction=nonstopmode -file-line-error -synctex=1 -recorder -jobname=fisica_1 "fisica (1).tex" >/dev/null 2>&1; echo "compila pre jobname seguro: pdf=$(ls fisica_1.pdf 2>/dev/null) errores=$(grep -c ':[0-9]*: ' fisica_1.log) $(grep -m1 -o 'Output written.*' fisica_1.log)"
+pdflatex -interaction=nonstopmode -file-line-error -synctex=1 -recorder -jobname=fisica_2 "fisica (1).tex" >/dev/null 2>&1; echo "normal jobname seguro: $(grep -m1 -o 'Output written.*' fisica_2.log) · synctex: $(zcat fisica_2.synctex.gz | grep -m1 '^Input')"
