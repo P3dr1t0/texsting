@@ -68,7 +68,7 @@ pdftex = os.path.realpath(os.path.join(usr, "bin", "texlive", "pdftex"))
 texlive_bin_version = pkgs["texlive-bin"]["Version"]
 
 def needed(path):
-    out = subprocess.run(["readelf", "-d", path], capture_output=True, text=True).stdout
+    out = subprocess.run(["readelf", "-d", path], capture_output=True, text=True, errors="replace").stdout
     return re.findall(r"\(NEEDED\)\s+Shared library: \[(.+?)\]", out)
 
 SYSTEM = {"libc.so", "libm.so", "libdl.so", "liblog.so"}  # las pone Android
@@ -96,7 +96,7 @@ for f in os.listdir(JNI):
     if f in [rename[n] for n in closure if rename[n] != n]:
         sh(["patchelf", "--set-soname", f, p])
     # Alineación de segmentos (Android 15+ con páginas de 16 KB necesita 0x4000)
-    seg = subprocess.run(["readelf", "-lW", p], capture_output=True, text=True).stdout
+    seg = subprocess.run(["readelf", "-lW", p], capture_output=True, text=True, errors="replace").stdout
     aligns = sorted(set(re.findall(r"LOAD\s+.*\s(0x[0-9a-f]+)$", seg, re.M)))
     print(f"  {f:32s} {os.path.getsize(p)/1e6:6.2f} MB  alineación {aligns}  NEEDED {needed(p)}")
 
@@ -127,7 +127,7 @@ tlpdbopt_autobackup 0
 BIN = os.path.join(TL, "bin", "x86_64-linux")
 envtl = dict(os.environ, PATH=BIN + ":" + os.environ["PATH"])
 sh(["fmtutil-sys", "--byfmt", "pdflatex"], env=envtl)
-year = subprocess.run([os.path.join(BIN, "tex"), "--version"], capture_output=True, text=True).stdout.splitlines()[0]
+year = subprocess.run([os.path.join(BIN, "tex"), "--version"], capture_output=True, text=True, errors="replace").stdout.splitlines()[0]
 print("TeX Live del runner:", year, "| texlive-bin de Termux:", texlive_bin_version)
 
 # Documentos de prueba: lo que se lea al compilarlos queda dentro del APK.
@@ -209,7 +209,7 @@ shutil.copy(os.path.join(BIN, "pdftex"), os.path.join(fake, "libtx_pdftex.so")) 
 var = os.path.join(check, "var"); fdir = os.path.join(var, "texmf-var", "web2c", "pdftex"); os.makedirs(fdir)
 env = app_env(os.path.join(check, "tl"), var)
 r = subprocess.run([os.path.join(fake, "libtx_pdftex.so"), "-ini", "-jobname=pdflatex", "-progname=pdflatex",
-                    "-translate-file=cp227.tcx", "*pdflatex.ini"], cwd=fdir, env=env, capture_output=True, text=True)
+                    "-translate-file=cp227.tcx", "*pdflatex.ini"], cwd=fdir, env=env, capture_output=True, text=True, errors="replace")
 print(r.stdout[-1500:])
 if not os.path.exists(os.path.join(fdir, "pdflatex.fmt")): raise SystemExit("No se pudo crear el formato con los datos reducidos")
 proj = os.path.join(check, "docs"); shutil.copytree(tests, proj)
@@ -219,7 +219,7 @@ for d in docs:
     for _ in range(2):
         r = subprocess.run([os.path.join(fake, "libtx_pdftex.so"), "-progname=pdflatex", "-fmt=pdflatex",
                             "-interaction=nonstopmode", "-file-line-error", "-synctex=1", d],
-                           cwd=proj, env=env, capture_output=True, text=True)
+                           cwd=proj, env=env, capture_output=True, text=True, errors="replace")
     pdf = os.path.join(proj, d[:-4] + ".pdf")
     # Igual que la app: cualquier «! …» o «archivo:línea:» del registro cuenta como error.
     logtxt = open(os.path.join(proj, d[:-4] + ".log"), errors="replace").read()
@@ -305,7 +305,7 @@ def faltantes(txt):
 instalados = []
 for ronda in range(10):
     r = subprocess.run([os.path.join(fake, "libtx_pdftex.so"), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode",
-                        "-file-line-error", "circuito.tex"], cwd=proj, env=env, capture_output=True, text=True)
+                        "-file-line-error", "circuito.tex"], cwd=proj, env=env, capture_output=True, text=True, errors="replace")
     logtxt = open(os.path.join(proj, "circuito.log"), errors="replace").read()
     miss = faltantes(logtxt + "\n" + r.stdout)
     nuevos = list(dict.fromkeys(index.get(m) for m in miss if index.get(m) and index.get(m) not in instalados))
