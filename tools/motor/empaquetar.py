@@ -326,8 +326,10 @@ for ronda in range(10):
             for f in fs:
                 if f.endswith(".map") and f"/{p_}" in dp + "/":
                     with open(vmap, "a") as o: o.write("\n" + open(os.path.join(dp, f), errors="replace").read())
-errs = re.findall(r"^(?:! .*|.*:\d+: .*)$", logtxt, re.M)
+errs = re.findall(r"^(?:!.*|.*:\d+: .*)$", logtxt, re.M)
 shapes = re.findall(r"Font shape `[^']+' undefined", logtxt)
+embebidas = sorted(set(os.path.basename(x) for x in re.findall(r"<([^<>\s]+\.pf[ab])>", r.stdout)))
+print("  fuentes incrustadas:", embebidas)
 pdfp = os.path.join(proj, "circuito.pdf")
 fonts = sorted(set(re.findall(rb"/BaseFont\s*/(?:[A-Z]{6}\+)?([A-Za-z0-9\-]+)", open(pdfp, "rb").read()))) if os.path.exists(pdfp) else []
 ok = os.path.exists(pdfp) and not errs
