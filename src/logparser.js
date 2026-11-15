@@ -901,6 +901,31 @@ export function parseLog(log, main = 'main.tex', sources = null) {
         const hits = findLines(new RegExp('\\\\label\\{' + escapeRe(dup[1]) + '\\}'), sources, main);
         if (hits.length > 1) { w.file = hits[1].file; w.line = hits[1].line; }
       }
+      // Tamaño de letra que Computer Modern no trae (p. ej. \fontsize{38}): LaTeX usa el más cercano.
+      const fsz = msg.match(/Font shape `([^']+)' in size <([\d.]+)> not available.*?size <([\d.]+)> substituted/);
+      if (fsz) {
+        const cm = /\/cm[a-z]*\//.test(fsz[1]);
+        w.hint = `La letra no viene en tamaño ${fsz[2]} pt y LaTeX usó ${fsz[3]} pt (se ve casi igual).` + (cm ? ' Para el tamaño exacto, agrega \\RequirePackage{fix-cm} antes de \\documentclass' : '');
+        const ls = sources && (sources[main] || '').split('\n');
+        const k = ls ? ls.findIndex((l) => /^\s*\\documentclass/.test(l)) : -1;
+        if (cm && k >= 0 && !/\\RequirePackage\s*\{fix-cm\}/.test(sources[main])) {
+          w.fix = { file: main, line: k + 1, find: ls[k].trim(), replace: '\\RequirePackage{fix-cm}\n' + ls[k].trim(), label: 'Agregar \\RequirePackage{fix-cm}' };
+        }
+      }
+      // Una tilde dentro de una fórmula (\operatorname{Máx}, $\mathrm{Mín}$…): en modo matemático
+      // las letras con tilde no existen; con \text{…} se escribe como texto normal.
+      if (/Command \\\S+ invalid in math mode/.test(msg) && sources && w.line) {
+        const l = (sources[w.file || main] || '').split('\n')[w.line - 1] || '';
+        const op = l.match(/\\(operatorname\*?|mathrm|mathit|mathbf)\s*\{([^{}]*[^\x00-\x7f][^{}]*)\}/);
+        const acc = [...l].find((c) => /[áéíóúÁÉÍÓÚñÑüÜ]/.test(c));
+        if (op) {
+          w.hint = `La «${acc || '?'}» de \\${op[1]}{${op[2]}} está dentro de una fórmula, donde las tildes no funcionan: escríbelo como texto con \\text{${op[2]}}`;
+          const rep = op[1].startsWith('operatorname') ? `\\${op[1]}{\\text{${op[2]}}}` : `\\text{${op[2]}}`;
+          w.fix = { file: w.file || main, line: w.line, find: op[0], replace: rep, label: `Usar \\text{${op[2]}}` };
+        } else if (acc && /\$|\\\[|\\\(/.test(l)) {
+          w.hint = `La «${acc}» está dentro de una fórmula, donde las tildes no funcionan: escribe esa palabra con \\text{…} (o cierra el $ antes si es texto)`;
+        }
+      }
       out.push(w);
       continue;
     }

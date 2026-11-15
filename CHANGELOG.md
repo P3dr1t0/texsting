@@ -17,6 +17,13 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.2.49] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 60
+
+### Mejorado
+- **Avisos más claros, con arreglo de un toque:**
+  - **Tilde dentro de una fórmula** (`\operatorname{Máx}`, `\mathrm{Mín}`…): antes decía «probablemente falta cerrar un $», que no era la causa. Ahora explica que en una fórmula las tildes no funcionan y ofrece **«Usar \text{Máx}»**.
+  - **Tamaño de letra no disponible** (p. ej. un título con `\fontsize{38}`): antes salía en inglés. Ahora dice qué tamaño usó LaTeX en su lugar y ofrece **«Agregar \RequirePackage{fix-cm}»** para tener el tamaño exacto.
+
 ## [0.2.48] — 15 nov. 2026 · Fase 1: Beta con Termux · compilación 59
 
 ### Corregido
