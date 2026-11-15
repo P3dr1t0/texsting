@@ -409,9 +409,20 @@ def correr(args):
     rr = subprocess.run([os.path.join(fake, "libtx_pdftex.so")] + args, cwd=dprueba, env=eh, capture_output=True, text=True, errors="replace")
     return time.time() - t, rr
 normal, _ = correr(["-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "doc.tex"])
-armar, _ = correr(["-ini", "-interaction=nonstopmode", "-jobname=texsting-pre", "-progname=pdflatex", "&pdflatex", "mylatexformat.ltx", "doc.tex"])
-prelog = open(os.path.join(dprueba, "texsting-pre.log"), errors="replace").read()
-pre_errs = re.findall(r"^!.*$", prelog, re.M)
+for intento in range(3):
+    armar, _ = correr(["-ini", "-interaction=nonstopmode", "-jobname=texsting-pre", "-progname=pdflatex", "&pdflatex", "mylatexformat.ltx", "doc.tex"])
+    prelog = open(os.path.join(dprueba, "texsting-pre.log"), errors="replace").read()
+    pre_errs = re.findall(r"^!.*$", prelog, re.M)
+    if not pre_errs: break
+    # Como buildPre(): las letras que la clase deja listas (Courier, Helvetica en IEEEtran) se bajan y se reintenta.
+    extra = []
+    for m in faltantes(prelog):
+        p_ = index.get(m)
+        for q in ([p_] + deps.get(p_, [])) if p_ else []:
+            if q not in extra and not os.path.isdir(os.path.join(WORK, "ya", q)): extra.append(q)
+    print("  al armar el preámbulo faltan:", faltantes(prelog), "→", extra)
+    if not extra: break
+    for q in extra: bajar(q, home_dir); os.makedirs(os.path.join(WORK, "ya", q), exist_ok=True)
 con, _ = correr(["-progname=pdflatex", "-fmt=texsting-pre", "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "doc.tex"])
 lg2 = open(os.path.join(dprueba, "doc.log"), errors="replace").read()
 errs2 = re.findall(r"^(?:!.*|.*:\d+: .*)$", lg2, re.M)

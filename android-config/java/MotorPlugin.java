@@ -272,7 +272,10 @@ public class MotorPlugin extends Plugin {
         return found;
     }
 
+    private volatile boolean quiet;
+
     private void progress(String text) {
+        if (quiet) return;
         JSObject d = new JSObject();
         d.put("texto", text);
         notifyListeners("progreso", d);
@@ -516,7 +519,7 @@ public class MotorPlugin extends Plugin {
             String name = new File(path).getName(), stem = name.replaceAll("\\.[^.]+$", "");
             if (stem.length() > 1 && pre.contains(stem)) k.append("\u0000").append(path).append('\u0000').append(f.optString("text", ""));
         }
-        k.append('\u0000').append(assetVersion()).append('\u0000').append(String.join(",", installedPkgs()));
+        k.append('\u0000').append(assetVersion());
         return sha1(k.toString());
     }
 
@@ -524,11 +527,26 @@ public class MotorPlugin extends Plugin {
     private void buildPre(File mainDir, String mainName, String key) {
         File info = new File(mainDir, PRE + ".txt"), fmtFile = new File(mainDir, PRE + ".fmt");
         try {
-            fmtFile.delete();
-            Run r = run(Arrays.asList(pdftex().getAbsolutePath(), "-ini", "-interaction=nonstopmode", "-jobname=" + PRE,
-                    "-progname=pdflatex", "&pdflatex", "mylatexformat.ltx", mainName), mainDir, 3 * 60 * 1000);
-            String lg = readText(new File(mainDir, PRE + ".log"));
-            boolean bad = r.timedOut || !fmtFile.exists() || lg == null || Pattern.compile("^!", Pattern.MULTILINE).matcher(lg).find();
+            boolean bad = true;
+            for (int attempt = 0; attempt < 3; attempt++) {
+                fmtFile.delete();
+                Run r = run(Arrays.asList(pdftex().getAbsolutePath(), "-ini", "-interaction=nonstopmode", "-jobname=" + PRE,
+                        "-progname=pdflatex", "&pdflatex", "mylatexformat.ltx", mainName), mainDir, 3 * 60 * 1000);
+                String lg = readText(new File(mainDir, PRE + ".log"));
+                bad = r.timedOut || !fmtFile.exists() || lg == null || Pattern.compile("^!", Pattern.MULTILINE).matcher(lg).find();
+                if (!bad || r.timedOut || lg == null) break;
+                // Al guardar el formato, LaTeX deja listas las letras de la clase (p. ej. IEEEtran: Courier y
+                // Helvetica) aunque el documento no las use: si faltan, se bajan en silencio y se reintenta.
+                loadIndex();
+                Set<String> have = installedPkgs();
+                List<String> got = new ArrayList<>();
+                List<String> want = findMissing(lg);
+                want.addAll(findShapes(lg));
+                for (String m : want) for (String q : withDeps(index.get(m), have, got)) {
+                    try { quiet = true; install(q); got.add(q); } catch (Exception ignored) { } finally { quiet = false; }
+                }
+                if (got.isEmpty()) break;
+            }
             if (bad) fmtFile.delete();
             try (OutputStream o = new FileOutputStream(info)) { o.write(((bad ? "no " : "ok ") + key).getBytes(StandardCharsets.UTF_8)); }
         } catch (Exception e) {
