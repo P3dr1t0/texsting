@@ -22,6 +22,27 @@ import org.json.JSONObject;
 @CapacitorPlugin(name = "Motor")
 public class MotorPlugin extends Plugin {
     private final ExecutorService exec = Executors.newSingleThreadExecutor();
+    // Trabajo en segundo plano (preámbulo, figuras): se corta en cuanto llega una compilación.
+    private final ExecutorService bg = Executors.newSingleThreadExecutor(r -> new Thread(r, "texsting-bg"));
+    private final Object work = new Object();
+    private volatile int gen;
+    private volatile Process bgProc;
+
+    private void cancelBackground() {
+        gen++;
+        Process p = bgProc;
+        if (p != null) p.destroyForcibly();
+    }
+
+    private void background(Runnable task) {
+        final int g = gen;
+        bg.execute(() -> {
+            synchronized (work) {
+                if (g != gen) return;
+                try { task.run(); } catch (Exception ignored) { } finally { bgProc = null; }
+            }
+        });
+    }
 
     private File libDir() { return new File(getContext().getApplicationInfo().nativeLibraryDir); }
     private File pdftex() { return new File(libDir(), "libtx_pdftex.so"); }
@@ -82,6 +103,7 @@ public class MotorPlugin extends Plugin {
         pb.environment().clear();
         pb.environment().putAll(env());
         Process p = pb.start();
+        if (Thread.currentThread().getName().startsWith("texsting-bg")) bgProc = p;
         p.getOutputStream().close();
         final ByteArrayOutputStream buf = new ByteArrayOutputStream();
         Thread reader = new Thread(() -> {
@@ -576,9 +598,86 @@ public class MotorPlugin extends Plugin {
         }
     }
 
+
+    // ───────────── Figuras guardadas (TikZ/pgfplots «external»): solo se redibujan las que cambian ─────────────
+    private static final String FIG = "texsting-fig";
+    private static final Pattern ERR = Pattern.compile("^(!(?! Package tikz Warning)|.*:\\d+: )", Pattern.MULTILINE);
+
+    /** Se agrega por la línea de comandos, sin tocar tu archivo. circuitikz y similares siguen dibujándose normal. */
+    private static String figInject() {
+        return "\\AddToHook{begindocument/before}{\\IfPackageLoadedTF{tikz}{\\usetikzlibrary{external}"
+                + "\\tikzexternalize[mode=list and make,prefix=" + FIG + "/]}{}}";
+    }
+    private static File figStatus(File mainDir) { return new File(mainDir, FIG + ".txt"); }
+
+    private static List<String> figList(File mainDir, String job) {
+        List<String> out = new ArrayList<>();
+        String t = readText(new File(mainDir, job + ".figlist"));
+        if (t != null) for (String l : t.split("\n")) if (!l.trim().isEmpty()) out.add(l.trim());
+        return out;
+    }
+
+    /** Figuras sin PDF o cuyo código cambió (TikZ reescribe el .md5 cuando cambia la figura). */
+    private static List<String> staleFigs(File mainDir, String job) {
+        List<String> out = new ArrayList<>();
+        for (String f : figList(mainDir, job)) {
+            File pdf = new File(mainDir, f + ".pdf"), md5 = new File(mainDir, f + ".md5");
+            if (!pdf.exists() || (md5.exists() && md5.lastModified() > pdf.lastModified())) out.add(f);
+        }
+        return out;
+    }
+
+    private boolean figsReady(File mainDir, String job) {
+        return "ok".equals(String.valueOf(readText(figStatus(mainDir))).trim())
+                && new File(mainDir, job + ".figlist").exists() && !figList(mainDir, job).isEmpty() && staleFigs(mainDir, job).isEmpty();
+    }
+
+    private boolean makeFig(File mainDir, String job, String mainName, String fig) throws Exception {
+        new File(mainDir, FIG).mkdirs();
+        new File(mainDir, fig + ".pdf").delete();
+        Run r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=batchmode",
+                "-halt-on-error", "-jobname=" + fig, figInject() + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"),
+                mainDir, 3 * 60 * 1000);
+        return !r.timedOut && new File(mainDir, fig + ".pdf").exists();
+    }
+
+    private Run mainWithFigs(File mainDir, String job, String mainName) throws Exception {
+        new File(mainDir, FIG).mkdirs();
+        return run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode",
+                "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, figInject() + "\\input{" + mainName + "}"),
+                mainDir, 10 * 60 * 1000);
+    }
+
+    /** En segundo plano: lista las figuras, dibuja cada una y comprueba que el resultado no tenga más errores. */
+    private void buildFigs(File mainDir, String job, String mainName, int normalErrors) throws Exception {
+        final int g = gen;
+        Run r = mainWithFigs(mainDir, job, mainName);
+        if (g != gen || r.timedOut) return;
+        List<String> figs = figList(mainDir, job);
+        if (figs.isEmpty()) return;
+        for (String f : figs) {
+            if (g != gen) return;
+            if (!makeFig(mainDir, job, mainName, f)) {
+                if (g != gen) return;
+                try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write("no".getBytes(StandardCharsets.UTF_8)); }
+                return;
+            }
+        }
+        r = mainWithFigs(mainDir, job, mainName);
+        if (g != gen || r.timedOut) return;
+        String lg = readText(new File(mainDir, job + ".log"));
+        boolean ok = lg != null && countMatches(ERR, lg) <= normalErrors && staleFigs(mainDir, job).isEmpty();
+        try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write((ok ? "ok" : "no").getBytes(StandardCharsets.UTF_8)); }
+    }
+
     @PluginMethod
     public void compilar(PluginCall call) {
-        exec.execute(() -> {
+        cancelBackground();
+        exec.execute(() -> { synchronized (work) { compilarAhora(call); } });
+    }
+
+    private void compilarAhora(PluginCall call) {
+        {
             try {
                 long t0 = System.currentTimeMillis();
                 JSObject prep = prepare();
@@ -624,13 +723,17 @@ public class MotorPlugin extends Plugin {
                 String preInfo = String.valueOf(readText(new File(mainDir, PRE + ".txt"))).trim();
                 boolean usePre = preKey != null && new File(mainDir, PRE + ".fmt").exists()
                         && (preInfo.equals("ok " + preKey) || preInfo.equals("verificado " + preKey));
-                boolean usedPre = usePre;
+                String job = new File(main).getName().replaceAll("\\.tex$", "");
+                boolean useFigs = autoinstall && figsReady(mainDir, job);
+                if (useFigs) usePre = false;
+                boolean usedPre = usePre, usedFigs = useFigs;
                 while (true) {
                     // Como latexmk: se repite mientras cambien los archivos auxiliares (índice, referencias), hasta 4 veces.
                     int p = 0;
                     while (p < 4) {
                         String before = digest(dir, stem);
-                        r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=" + (usePre ? PRE : "pdflatex"),
+                        r = useFigs ? mainWithFigs(mainDir, job, mainName)
+                                : run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=" + (usePre ? PRE : "pdflatex"),
                                 "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", mainName),
                                 mainDir, 10 * 60 * 1000);
                         p++; passes++;
@@ -670,13 +773,32 @@ public class MotorPlugin extends Plugin {
                     if (!progressed) break;
                     rounds++;
                     usePre = false;  // con paquetes nuevos, el preámbulo guardado ya no vale
+                    useFigs = false; usedFigs = false;
                     new File(dir, stem + ".aux").delete();
                     pdf.delete();
                     progress("Compilando de nuevo con " + String.join(", ", installedNow) + "…");
                 }
+                if (useFigs && !timedOut) {
+                    List<String> stale = staleFigs(mainDir, job);
+                    if (!stale.isEmpty()) {
+                        progress(stale.size() == 1 ? "Dibujando la figura que cambió…" : "Dibujando las " + stale.size() + " figuras que cambiaron…");
+                        boolean ok = true;
+                        for (String f : stale) if (!makeFig(mainDir, job, mainName, f)) { ok = false; break; }
+                        if (ok) { r = mainWithFigs(mainDir, job, mainName); passes++; }
+                        else {
+                            // Esta figura no se puede guardar aparte: el proyecto vuelve a compilar como siempre.
+                            try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write("no".getBytes(StandardCharsets.UTF_8)); }
+                            usedFigs = false;
+                            r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex",
+                                    "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", mainName), mainDir, 10 * 60 * 1000);
+                            passes++;
+                        }
+                        output.append(r.out);
+                    }
+                }
                 String log = readText(new File(dir, stem + ".log"));
                 if (log == null) log = "";
-                Pattern errPat = Pattern.compile("^(!|.*:\\d+: )", Pattern.MULTILINE);
+                Pattern errPat = ERR;
                 // La primera vez que el preámbulo guardado da errores, se comprueba compilando normal:
                 // si así hay menos errores, el preámbulo de este proyecto no se puede guardar.
                 if (usePre && preInfo.startsWith("ok ") && !timedOut && errPat.matcher(log).find()) {
@@ -716,18 +838,27 @@ public class MotorPlugin extends Plugin {
                 res.put("prepararMs", t1 - t0);
                 res.put("texMs", t2 - t1);
                 res.put("preparacion", prep);
-                res.put("preambuloGuardado", usedPre);
+                res.put("preambuloGuardado", usedPre || usedFigs);
+                res.put("figurasGuardadas", usedFigs);
                 call.resolve(res);
                 // Después de responder: si el preámbulo cambió, se arma el nuevo para la próxima compilación.
                 String keyNow = usePreSetting ? preambleKey(files, main) : null;
                 String infoNow = String.valueOf(readText(new File(mainDir, PRE + ".txt"))).trim();
+                final File md = mainDir; final String mn = mainName; final String jb = job;
                 if (keyNow != null && pdfBytes != null && !timedOut && !infoNow.endsWith(" " + keyNow)) {
-                    final File md = mainDir; final String mn = mainName; final String kn = keyNow;
-                    exec.execute(() -> buildPre(md, mn, kn));
+                    final String kn = keyNow;
+                    background(() -> buildPre(md, mn, kn));
+                }
+                // Si el documento usa TikZ/pgfplots, se guardan sus figuras ya dibujadas para las próximas veces.
+                String figSt = String.valueOf(readText(figStatus(mainDir))).trim();
+                boolean usesTikz = log.contains("/tikz.sty") || log.contains("pgfplots.sty");
+                if (autoinstall && !usedFigs && usesTikz && pdfBytes != null && !timedOut && !figSt.equals("no")) {
+                    final int nErr = countMatches(ERR, log);
+                    background(() -> { try { buildFigs(md, jb, mn, nErr); } catch (Exception ignored) { } });
                 }
             } catch (Exception e) {
                 call.reject(String.valueOf(e.getMessage()));
             }
-        });
+        }
     }
 }

@@ -429,6 +429,24 @@ errs2 = re.findall(r"^(?:!.*|.*:\d+: .*)$", lg2, re.M)
 print(f"Preámbulo guardado: normal {normal:.2f} s | armarlo {armar:.2f} s | con él {con:.2f} s | errores al armar {pre_errs[:3]} | errores con él {errs2[:3]}")
 if pre_errs or errs2 or not os.path.exists(os.path.join(dprueba, "texsting-pre.fmt")): raise SystemExit("El preámbulo guardado falló")
 
+# Figuras guardadas (como buildFigs()/mainWithFigs() en MotorPlugin.java)
+INJ = r"\AddToHook{begindocument/before}{\IfPackageLoadedTF{tikz}{\usetikzlibrary{external}\tikzexternalize[mode=list and make,prefix=texsting-fig/]}{}}"
+os.makedirs(os.path.join(dprueba, "texsting-fig"), exist_ok=True)
+principal = ["-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-jobname=doc", INJ + r"\input{doc.tex}"]
+lista, _ = correr(principal)
+figs = [l.strip() for l in open(os.path.join(dprueba, "doc.figlist")).read().split("\n") if l.strip()] if os.path.exists(os.path.join(dprueba, "doc.figlist")) else []
+t_figs = 0
+for f in figs:
+    dt, _ = correr(["-progname=pdflatex", "-fmt=pdflatex", "-interaction=batchmode", "-halt-on-error", "-jobname=" + f,
+                    INJ + r"\def\tikzexternalrealjob{doc}\input{doc.tex}"])
+    t_figs += dt
+hechas = [f for f in figs if os.path.exists(os.path.join(dprueba, f + ".pdf"))]
+con_figs, _ = correr(principal)
+lg3 = open(os.path.join(dprueba, "doc.log"), errors="replace").read()
+errs3 = re.findall(r"^(?:!(?! Package tikz Warning).*|.*:\d+: .*)$", lg3, re.M)
+print(f"Figuras guardadas: {len(hechas)}/{len(figs)} figuras ({t_figs:.2f} s) | normal {normal:.2f} s | con figuras {con_figs:.2f} s | errores {errs3[:3]}")
+if len(hechas) != len(figs) or errs3: raise SystemExit("Las figuras guardadas fallaron")
+
 # ───────────────────────── 4. Empaquetar ─────────────────────────
 zpath = os.path.join(ASSETS, "tl.zip")
 with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:

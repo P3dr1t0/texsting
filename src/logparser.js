@@ -747,7 +747,7 @@ function enrich(entry, head, sources, main, top = '') {
   }
 }
 
-const NOISE = [/==> Fatal error occurred/, /Writing or overwriting file/, /^\s*$/];
+const NOISE = [/==> Fatal error occurred/, /Writing or overwriting file/, /^\s*$/, /Package tikz Warning: Some images are not up-to-date/];
 
 /** Busca en el código el fragmento que TeX muestra tras "Runaway argument?" para ubicar la línea. */
 function locate(snippet, sources) {
