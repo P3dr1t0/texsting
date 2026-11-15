@@ -13,7 +13,7 @@ con pdfLaTeX SIN Termux.
 Uso: python3 tools/motor/empaquetar.py <salida>
   <salida>/jniLibs/arm64-v8a/*.so   y   <salida>/assets/motor/{tl.zip,version.txt}
 """
-import collections, gzip, hashlib, lzma, os, re, shutil, subprocess, sys, tarfile, urllib.request, zipfile
+import collections, gzip, hashlib, lzma, os, time, re, shutil, subprocess, sys, tarfile, urllib.request, zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "motor-out/paquete")
@@ -255,31 +255,32 @@ print(f"Índice: {len(index)} archivos de {len(sizes)} paquetes, {os.path.getsiz
 # Prueba de «paquete al vuelo»: circuitikz no viene en el APK; se baja de CTAN como lo hará la app
 # (archive/<paquete>.tar.xz → TEXMFHOME, sin ls-R) y se compila con el mismo ambiente.
 home_dir = os.path.join(var, "texmf")
-def bajar(pkg):
-    arch = get(f"{CTAN}/archive/{pkg}.tar.xz", os.path.join(WORK, pkg + ".tar.xz"))
-    with tarfile.open(arch) as t:
+def bajar(pkg, home):
+    """Como install() en MotorPlugin.java: el .tar.xz de tlnet va a TEXMFHOME. Devuelve sus .map."""
+    dest = os.path.join(WORK, "archivos", pkg + ".tar.xz"); os.makedirs(os.path.dirname(dest), exist_ok=True)
+    if not os.path.exists(dest): get(f"{CTAN}/archive/{pkg}.tar.xz", dest)
+    maps = []
+    with tarfile.open(dest) as t:
         for m in t.getmembers():
             # Los paquetes «reubicables» de tlnet guardan las rutas sin texmf-dist/ (tex/latex/…).
             rel = m.name[2:] if m.name.startswith("./") else m.name
             rel = rel[len("texmf-dist/"):] if rel.startswith("texmf-dist/") else rel
             if m.isfile() and not rel.startswith(("tlpkg/", "bin/")):
-                dst = os.path.join(home_dir, rel); os.makedirs(os.path.dirname(dst), exist_ok=True)
+                dst = os.path.join(home, rel); os.makedirs(os.path.dirname(dst), exist_ok=True)
                 with t.extractfile(m) as src, open(dst, "wb") as out: shutil.copyfileobj(src, out)
-open(os.path.join(proj, "circuito.tex"), "w").write(r"""\documentclass[conference]{IEEEtran}
-\usepackage{cite}
-\usepackage{amsmath,amssymb}
-\usepackage{algorithmic}
-\usepackage[american]{circuitikz}
-\usetikzlibrary{calc,arrows.meta,positioning}
-\usepackage{pgfplots}\pgfplotsset{compat=1.18}
-\begin{document}
-\title{Prueba IEEE}\author{TeXsting}\maketitle
-\begin{abstract}Resumen con \textbf{negrita}, \textit{cursiva} y \textsc{versalitas}, 25\textdegree.\end{abstract}
-\section{Circuito}
-\begin{circuitikz} \draw (0,0) to[R=$R_1$] (2,0) to[C=$C$] (2,-2) -- (0,-2) to[V=$V$] (0,0); \end{circuitikz}
-\begin{tikzpicture}\begin{axis}[width=5cm]\addplot {x^2};\end{axis}\end{tikzpicture}
-\end{document}
-""")
+                if rel.endswith(".map") and "fonts/map/" in rel: maps.append(dst)
+    vmap = os.path.join(var, "texmf-var", "fonts", "map", "pdftex", "updmap", "pdftex.map")
+    if maps:
+        if not os.path.exists(vmap):
+            os.makedirs(os.path.dirname(vmap), exist_ok=True)
+            shutil.copy(os.path.join(sub, "texmf-var", "fonts", "map", "pdftex", "updmap", "pdftex.map"), vmap)
+        known = {l.split()[0] for l in open(vmap, errors="replace") if l.strip() and not l.lstrip().startswith("%")}
+        with open(vmap, "a") as o:
+            for f in maps:
+                for l in open(f, errors="replace"):
+                    x = l.strip()
+                    if x and not x.startswith("%") and x.split()[0] not in known:
+                        known.add(x.split()[0]); o.write(x + "\n")
 # Lo que ya trae el APK (como bundledNames() en MotorPlugin.java)
 bundled = set()
 for tree in ("texmf-dist", "texmf-var"):
@@ -306,31 +307,84 @@ def faltantes(txt):
         fd = (m.group(1) + m.group(2)).lower() + ".fd"
         if fd not in bundled: out.append(fd)
     return list(dict.fromkeys(out))
-instalados = []
-for ronda in range(10):
-    r = subprocess.run([os.path.join(fake, "libtx_pdftex.so"), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode",
-                        "-file-line-error", "circuito.tex"], cwd=proj, env=env, capture_output=True, text=True, errors="replace")
-    logtxt = open(os.path.join(proj, "circuito.log"), errors="replace").read()
-    miss = faltantes(logtxt + "\n" + r.stdout)
-    nuevos = list(dict.fromkeys(index.get(m) for m in miss if index.get(m) and index.get(m) not in instalados))
-    print(f"  ronda {ronda}: faltan {miss} → {nuevos}")
-    if not nuevos: break
-    for p_ in nuevos:
-        bajar(p_); instalados.append(p_)
-        # .map de las fuentes nuevas → copia propia de pdftex.map (como install() en MotorPlugin.java)
-        vmap = os.path.join(var, "texmf-var", "fonts", "map", "pdftex", "updmap", "pdftex.map")
-        if not os.path.exists(vmap):
-            os.makedirs(os.path.dirname(vmap), exist_ok=True)
-            shutil.copy(os.path.join(sub, "texmf-var", "fonts", "map", "pdftex", "updmap", "pdftex.map"), vmap)
-        known = {l.split()[0] for l in open(vmap, errors="replace") if l.strip() and not l.lstrip().startswith("%")}
-        for dp, _, fs in os.walk(os.path.join(home_dir, "fonts", "map")):
-            for f in fs:
-                if f.endswith(".map") and f"/{p_}" in dp + "/":
-                    with open(vmap, "a") as o:
-                        for l in open(os.path.join(dp, f), errors="replace"):
-                            x = l.strip()
-                            if x and not x.startswith("%") and x.split()[0] not in known:
-                                known.add(x.split()[0]); o.write(x + "\n")
+
+def resolver(nombre, texto, home, verbose=False):
+    """Compila y baja lo que falte, ronda por ronda (como compilar() en MotorPlugin.java)."""
+    d = os.path.join(WORK, "dep", nombre); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
+    open(os.path.join(d, "doc.tex"), "w").write(texto)
+    e = dict(env, TEXMFHOME=home)
+    instalados, r, logtxt = [], None, ""
+    for ronda in range(12):
+        r = subprocess.run([os.path.join(fake, "libtx_pdftex.so"), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode",
+                            "-file-line-error", "doc.tex"], cwd=d, env=e, capture_output=True, text=True, errors="replace", timeout=300)
+        logtxt = open(os.path.join(d, "doc.log"), errors="replace").read() if os.path.exists(os.path.join(d, "doc.log")) else ""
+        miss = faltantes(logtxt + "\n" + r.stdout)
+        nuevos = list(dict.fromkeys(index.get(m) for m in miss if index.get(m) and index.get(m) not in instalados))
+        if verbose: print(f"  ronda {ronda}: faltan {miss} → {nuevos}")
+        if not nuevos: break
+        for p_ in nuevos: bajar(p_, home); instalados.append(p_)
+    return instalados, r, logtxt, d
+
+# Dependencias de los paquetes y clases más usados: lo que cada uno termina pidiendo (pgf para circuitikz,
+# la letra Times para IEEEtran…). La app las baja todas antes de compilar, en vez de una ronda por cada una.
+CLASES = ["IEEEtran", "beamer", "memoir", "scrartcl", "scrreprt", "scrbook", "elsarticle", "llncs", "moderncv", "exam",
+          "extarticle", "standalone", "tufte-handout", "revtex4-2", "acmart", "amsart", "letter", "jsarticle"]
+PAQUETES = ["tikz", "pgfplots", "circuitikz", "tcolorbox", "listings", "algorithm2e", "algpseudocode", "algorithmic", "algorithm",
+            "siunitx", "mathtools", "physics", "cancel", "enumitem", "cleveref", "natbib", "cite", "biblatex", "fancyhdr",
+            "titlesec", "tocloft", "longtable", "tabularx", "multirow", "makecell", "subcaption", "wrapfig", "geometry",
+            "microtype", "lmodern", "times", "helvet", "mathptmx", "newtxtext", "newtxmath", "mathpazo", "fontawesome5",
+            "tikz-cd", "chemfig", "mhchem", "pgfgantt", "karnaugh-map", "tikz-timing", "bytefield", "steinmetz", "lipsum",
+            "blindtext", "todonotes", "thmtools", "mdframed", "framed", "fancyvrb", "pdfpages", "multicol", "setspace",
+            "ragged2e", "datetime2", "glossaries", "acro", "nomencl", "appendix", "forest", "tabularray", "nicematrix",
+            "xltabular", "colortbl", "sectsty", "fontenc", "pgfornament", "smartdiagram", "schemabloc", "tikz-3dplot",
+            "pst-node", "bm", "esint", "upgreek", "gensymb", "textcomp", "eurosym", "float", "hyperref", "babel", "csquotes"]
+deps = {}
+t0 = time.time()
+for c in CLASES + PAQUETES:
+    es_clase = c in CLASES
+    pkg = index.get(c + (".cls" if es_clase else ".sty"))
+    if not pkg: continue
+    doc = (f"\\documentclass{{{c}}}\n" if es_clase else f"\\documentclass{{article}}\n\\usepackage{{{c}}}\n") + \
+        "\\begin{document}\nHola \\textbf{negrita} \\textit{cursiva} \\textsc{Versalitas} $x^2$.\n\\end{document}\n"
+    try:
+        inst, r, lg, _ = resolver(c, doc, os.path.join(WORK, "dep-home", c))
+    except Exception as ex:
+        print("  dep", c, "falló:", ex); continue
+    extra = [x for x in inst if x != pkg]
+    if extra: deps[pkg] = sorted(set(deps.get(pkg, [])) | set(extra))
+print(f"Dependencias: {len(deps)} paquetes en {time.time() - t0:.0f} s →", {k: v for k, v in list(deps.items())[:12]})
+with gzip.open(os.path.join(ASSETS, "indice.idx"), "wt", encoding="utf-8", compresslevel=9) as z:
+    for k in sorted(index): z.write(f"{k}\t{index[k]}\n")
+    for k in sorted(sizes): z.write(f"@{k}\t{sizes[k]}\n")
+    for k in sorted(deps): z.write(f"+{k}\t{','.join(deps[k])}\n")
+
+open(os.path.join(proj, "circuito.tex"), "w").write(r"""\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{algorithmic}
+\usepackage[american]{circuitikz}
+\usetikzlibrary{calc,arrows.meta,positioning}
+\usepackage{pgfplots}\pgfplotsset{compat=1.18}
+\begin{document}
+\title{Prueba IEEE}\author{TeXsting}\maketitle
+\begin{abstract}Resumen con \textbf{negrita}, \textit{cursiva} y \textsc{versalitas}, 25\textdegree.\end{abstract}
+\section{Circuito}
+\begin{circuitikz} \draw (0,0) to[R=$R_1$] (2,0) to[C=$C$] (2,-2) -- (0,-2) to[V=$V$] (0,0); \end{circuitikz}
+\begin{tikzpicture}\begin{axis}[width=5cm]\addplot {x^2};\end{axis}\end{tikzpicture}
+\end{document}
+""")
+# La prueba con IEEE: primero se bajan juntos los paquetes declarados y sus dependencias (como prefetch()).
+decl = ["IEEEtran.cls", "cite.sty", "amsmath.sty", "amssymb.sty", "algorithmic.sty", "circuitikz.sty", "pgfplots.sty"]
+pre_pkgs = []
+for f in decl:
+    if f in bundled: continue
+    p_ = index.get(f)
+    for q in ([p_] + deps.get(p_, [])) if p_ else []:
+        if q not in pre_pkgs: pre_pkgs.append(q)
+for q in pre_pkgs: bajar(q, home_dir)
+print("  antes de compilar se bajan:", pre_pkgs)
+instalados, r, logtxt, dprueba = resolver("ieee", open(os.path.join(proj, "circuito.tex")).read(), home_dir, verbose=True)
+print("  rondas extra:", instalados)
 errs = re.findall(r"^(?:!.*|.*:\d+: .*)$", logtxt, re.M)
 shapes = re.findall(r"Font shape `[^']+' undefined", logtxt)
 plano = "".join(l + ("" if len(l) == 79 else "\n") for l in r.stdout.split("\n"))
@@ -338,7 +392,7 @@ embebidas = sorted(set(os.path.basename(x) for x in re.findall(r"<([^<>\s]+\.pf[
 print("  final de la salida:", r.stdout[-700:].replace("\n", " | "))
 print("  avisos pdfTeX:", re.findall(r"pdfTeX warning.*", plano)[:5])
 print("  fuentes incrustadas:", embebidas)
-pdfp = os.path.join(proj, "circuito.pdf")
+pdfp = os.path.join(dprueba, "doc.pdf")
 fonts = sorted(set(re.findall(rb"/BaseFont\s*/(?:[A-Z]{6}\+)?([A-Za-z0-9\-]+)", open(pdfp, "rb").read()))) if os.path.exists(pdfp) else []
 ok = os.path.exists(pdfp) and not errs
 print("Prueba de paquetes al vuelo:", "PDF OK" if ok else "FALLÓ", "| instalados:", instalados, "| errores:", errs[:5])
