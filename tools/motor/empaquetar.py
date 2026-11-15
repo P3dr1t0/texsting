@@ -158,6 +158,23 @@ for f in used:
     if not os.path.isfile(f) or rel.startswith(("bin/", "tlpkg/", "texmf-var/web2c/")) or rel.endswith((".fmt", ".log")):
         continue
     if rel.split("/")[0] in ("texmf-dist", "texmf-var"): keep.add(rel)
+# strace solo ve lo que usaron estos documentos (p. ej. solo los tamaños de letra de 11 pt).
+# Para no quedarse corto, cada carpeta usada entra completa: todas las fuentes de una familia
+# y todos los archivos de un paquete. Las carpetas enormes (cm-super) quedan como estaban.
+def dir_size(d):
+    return sum(os.path.getsize(os.path.join(d, f)) for f in os.listdir(d) if os.path.isfile(os.path.join(d, f)))
+expanded = set()
+for rel in list(keep):
+    d = os.path.dirname(rel)
+    if d in expanded or not rel.startswith("texmf-dist/") or "/web2c" in d: continue
+    full = os.path.join(TL, d)
+    if dir_size(full) > 12e6:
+        print("  carpeta grande, solo lo usado:", d, round(dir_size(full) / 1e6, 1), "MB"); continue
+    expanded.add(d)
+    for f in os.listdir(full):
+        if os.path.isfile(os.path.join(full, f)) and not f.endswith((".log", ".fmt")):
+            keep.add(os.path.join(d, f))
+print(f"Carpetas completas: {len(expanded)}")
 keep |= {"texmf-dist/web2c/texmf.cnf", "texmf-dist/web2c/fmtutil.cnf"}
 for name in ["cp227.tcx", "pdftexconfig.tex", "language.dat", "language.def", "pdftex.map"]:
     p = subprocess.run([os.path.join(BIN, "kpsewhich"), name], capture_output=True, text=True, env=envtl).stdout.strip()
@@ -199,7 +216,9 @@ for d in docs:
                             "-interaction=nonstopmode", "-file-line-error", "-synctex=1", d],
                            cwd=proj, env=env, capture_output=True, text=True)
     pdf = os.path.join(proj, d[:-4] + ".pdf")
-    errs = [l for l in r.stdout.splitlines() if l.startswith("!") or re.match(r"^\./.*:\d+:", l)]
+    # Igual que la app: cualquier «! …» o «archivo:línea:» del registro cuenta como error.
+    logtxt = open(os.path.join(proj, d[:-4] + ".log"), errors="replace").read()
+    errs = re.findall(r"^(?:! .*|.*:\d+: .*)$", logtxt, re.M)
     print(f"Prueba {d}: {'PDF OK' if os.path.exists(pdf) else 'SIN PDF'}  errores={errs[:5]}")
     if not os.path.exists(pdf) or errs:
         print(r.stdout[-3000:]); raise SystemExit("La prueba con los datos reducidos falló: " + d)

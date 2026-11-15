@@ -84,7 +84,7 @@ export async function renderSettings(root, _p, navigate) {
       const r = await motorCompilar({ id: 'prueba-motor', main: 'prueba.tex' }, [{ path: 'prueba.tex', kind: 'text', text: MOTOR_PRUEBA }]);
       const first = prep.primeraVez ? `<br>Preparación inicial: descomprimir ${seg(prep.unzipMs)} · crear el formato ${seg(prep.fmtMs)}` : '';
       if (r.pdf) {
-        motorResult.innerHTML = `✔ PDF de ${Math.max(1, Math.round(r.pdf.length / 1024))} KB en ${seg(r.texMs)} (${r.pasadas} pasada${r.pasadas === 1 ? '' : 's'} de pdfLaTeX)${first}${r.status !== 'success' ? '<br>⚠ El registro tiene errores.' : ''}`;
+        motorResult.innerHTML = `✔ PDF de ${Math.max(1, Math.round(r.pdf.length / 1024))} KB en ${seg(r.texMs)} (${r.pasadas} pasada${r.pasadas === 1 ? '' : 's'} de pdfLaTeX)${first}${r.status !== 'success' ? `<br>⚠ El registro tiene errores:<pre class="motor-log">${esc((String(r.log || '').match(/^(?:! .*|.*:\d+: .*)$/gm) || []).slice(0, 4).join('\n'))}</pre>` : ''}`;
       } else {
         motorResult.innerHTML = `✘ No salió el PDF.${first}<pre class="motor-log">${esc(String(r.log || r.output || '').slice(-2000))}</pre>`;
       }
