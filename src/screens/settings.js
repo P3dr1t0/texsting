@@ -85,10 +85,11 @@ export async function renderSettings(root, _p, navigate) {
       const first = prep.primeraVez ? `<br>Preparación inicial: descomprimir ${seg(prep.unzipMs)} · crear el formato ${seg(prep.fmtMs)}` : '';
       const lineas = [];
       const pruebas = [['pdflatex', MOTOR_PRUEBA]];
+      if ((est.motores || []).includes('xelatex')) pruebas.push(['xelatex', MOTOR_PRUEBA_LUA]);
       if ((est.motores || []).includes('lualatex')) pruebas.push(['lualatex', MOTOR_PRUEBA_LUA]);
       for (const [eng, doc] of pruebas) {
-        const L = eng === 'lualatex' ? 'LuaLaTeX' : 'pdfLaTeX';
-        motorResult.innerHTML = lineas.join('<br>') + (lineas.length ? '<br>' : '') + `Compilando con ${L}…` + (eng === 'lualatex' ? ' (la primera vez prepara LuaLaTeX: puede tardar un poco)' : '');
+        const L = { lualatex: 'LuaLaTeX', xelatex: 'XeLaTeX' }[eng] || 'pdfLaTeX';
+        motorResult.innerHTML = lineas.join('<br>') + (lineas.length ? '<br>' : '') + `Compilando con ${L}…` + (eng !== 'pdflatex' ? ` (la primera vez prepara ${L}: puede tardar un poco)` : '');
         const r = await motorCompilar({ id: 'prueba-motor-' + eng, main: 'prueba.tex' }, [{ path: 'prueba.tex', kind: 'text', text: doc }], { engine: eng });
         if (r.pdf) {
           lineas.push(`✔ ${L}: PDF de ${Math.max(1, Math.round(r.pdf.length / 1024))} KB en ${seg(r.texMs)} (${r.pasadas} pasada${r.pasadas === 1 ? '' : 's'})${r.status !== 'success' ? `<br>⚠ El registro tiene errores:<pre class="motor-log">${esc((String(r.log || '').match(/^(?:! .*|.*:\d+: .*)$/gm) || []).slice(0, 4).join('\n'))}</pre>` : ''}`);
@@ -106,15 +107,15 @@ export async function renderSettings(root, _p, navigate) {
     header('Ajustes', navigate),
     el('div', { class: 'settings-body' },
       el('h3', { class: 'section-title' }, 'Compilación'),
-      row('Compilar con', compilador, 'Automático: el motor integrado de TeXsting (pdfLaTeX y LuaLaTeX); Termux solo si un documento usa algo exclusivo de XeLaTeX'),
+      row('Compilar con', compilador, 'Automático: el motor integrado de TeXsting (pdfLaTeX, XeLaTeX y LuaLaTeX); Termux queda solo como respaldo'),
       row('Motor para proyectos nuevos', engine, 'Cada proyecto puede cambiarlo en ⋮ → Motor'),
       row('Instalar paquetes faltantes', toggle('autoinstall'), 'Si falta un paquete, se descarga solo al compilar (necesita internet esa vez)'),
       row('Compilar al guardar (Ctrl+S)', toggle('compileOnSave')),
-      el('p', { class: 'muted' }, 'El motor integrado compila dentro de TeXsting, sin instalar nada más: pdfLaTeX y LuaLaTeX (fuentes OpenType con fontspec), BibTeX y makeindex. Los paquetes que falten (TikZ, pgfplots, circuitikz…) se descargan solos de CTAN la primera vez que los uses.'),
+      el('p', { class: 'muted' }, 'El motor integrado compila dentro de TeXsting, sin instalar nada más: pdfLaTeX, XeLaTeX y LuaLaTeX (fuentes OpenType con fontspec, incluso las del teléfono como Roboto o Noto), BibTeX y makeindex. Los paquetes que falten (TikZ, pgfplots, circuitikz…) se descargan solos de CTAN la primera vez que los uses.'),
       el('button', { class: 'btn', onclick: probarMotor }, 'Probar motor integrado'),
       motorResult,
       el('h3', { class: 'section-title' }, 'Termux (opcional)'),
-      el('p', { class: 'muted' }, 'Solo hace falta para documentos con algo exclusivo de XeLaTeX (xeCJK, mathspec, \\XeTeX…). Los demás documentos «de XeLaTeX» (fontspec, unicode-math, polyglossia) se compilan con LuaLaTeX en el motor integrado.'),
+      el('p', { class: 'muted' }, 'Ya no hace falta para compilar: el motor integrado trae pdfLaTeX, XeLaTeX y LuaLaTeX. Termux queda como respaldo opcional, con TeX Live completo y sin descargas al vuelo.'),
       el('button', { class: 'btn', html: icon('terminal') + '<span>Instalar o reparar TeX en Termux</span>', onclick: () => navigate('termux') }),
       row('Dirección del servidor', url),
       row('Token', token, 'Debe coincidir con el de Termux'),

@@ -49,15 +49,55 @@ public class MotorPlugin extends Plugin {
     private File luatex() { return new File(libDir(), "libtx_luahbtex.so"); }
     private File luaFmtDir() { return new File(var(), "texmf-var/web2c/luahbtex"); }
 
-    /** Orden para el motor elegido: pdfTeX (pdflatex) o LuaHBTeX (lualatex). fmt = null: el formato normal. */
+    private File xetex() { return new File(libDir(), "libtx_xetex.so"); }
+    private File xdvipdfmx() { return new File(libDir(), "libtx_xdvipdfmx.so"); }
+    private File xeFmtDir() { return new File(var(), "texmf-var/web2c/xetex"); }
+
+    /** Orden para el motor elegido: pdfTeX (pdflatex), LuaHBTeX (lualatex) o XeTeX (xelatex). fmt = null: el normal. */
     private List<String> tex(String eng, String fmt, String... rest) {
         List<String> c = new ArrayList<>();
-        boolean lua = "lualatex".equals(eng);
-        c.add((lua ? luatex() : pdftex()).getAbsolutePath());
-        c.add(lua ? "-progname=lualatex" : "-progname=pdflatex");
-        c.add("-fmt=" + (fmt != null ? fmt : lua ? "lualatex" : "pdflatex"));
+        if ("lualatex".equals(eng)) {
+            c.add(luatex().getAbsolutePath()); c.add("-progname=lualatex"); c.add("-fmt=" + (fmt != null ? fmt : "lualatex"));
+        } else if ("xelatex".equals(eng)) {
+            // XeTeX escribe un .xdv y llama a xdvipdfmx para el PDF: se le dice dónde está (no está en el PATH).
+            c.add(xetex().getAbsolutePath()); c.add("-progname=xelatex"); c.add("-fmt=" + (fmt != null ? fmt : "xelatex"));
+            c.add("-output-driver=" + xdvipdfmx().getAbsolutePath() + " -q -E");
+        } else {
+            c.add(pdftex().getAbsolutePath()); c.add("-progname=pdflatex"); c.add("-fmt=" + (fmt != null ? fmt : "pdflatex"));
+        }
         c.addAll(Arrays.asList(rest));
         return c;
+    }
+
+    /** XeLaTeX: fontconfig busca las fuentes por nombre en TeX, en las descargadas y en las del sistema (Roboto, Noto…). */
+    private void writeFontsConf() throws IOException {
+        File fc = new File(var(), "fonts.conf");
+        String t = "<?xml version=\"1.0\"?>\n<fontconfig>\n"
+                + "  <dir>" + new File(tl(), "texmf-dist/fonts/opentype").getAbsolutePath() + "</dir>\n"
+                + "  <dir>" + new File(tl(), "texmf-dist/fonts/truetype").getAbsolutePath() + "</dir>\n"
+                + "  <dir>" + new File(home(), "fonts").getAbsolutePath() + "</dir>\n"
+                + "  <dir>/system/fonts</dir>\n"
+                + "  <cachedir>" + new File(var(), "fontconfig").getAbsolutePath() + "</cachedir>\n"
+                + "</fontconfig>\n";
+        if (!t.equals(readText(fc))) try (OutputStream o = new FileOutputStream(fc)) { o.write(t.getBytes(StandardCharsets.UTF_8)); }
+    }
+
+    /** XeLaTeX: su formato se arma la primera vez que se usa. */
+    private void prepareXe() throws Exception {
+        writeFontsConf();
+        String v = assetVersion();
+        File f = new File(xeFmtDir(), "xelatex.fmt"), mk = new File(xeFmtDir(), "version.txt");
+        if (f.exists() && v != null && v.equals(String.valueOf(readText(mk)).trim())) return;
+        progress("Preparando XeLaTeX por primera vez…");
+        xeFmtDir().mkdirs();
+        f.delete();
+        Run fr = run(Arrays.asList(xetex().getAbsolutePath(), "-ini", "-etex", "-jobname=xelatex", "-progname=xelatex", "xelatex.ini"),
+                xeFmtDir(), 5 * 60 * 1000);
+        if (!f.exists()) {
+            String o = fr.out;
+            throw new Exception("No se pudo preparar XeLaTeX (código " + fr.code + "): " + (o.length() > 1500 ? o.substring(o.length() - 1500) : o));
+        }
+        try (OutputStream o = new FileOutputStream(mk)) { o.write(String.valueOf(v).getBytes(StandardCharsets.UTF_8)); }
     }
     /** Lo que se antepone al documento por la línea de comandos (p. ej. biblatex con BibTeX); vacío si nada. */
     private static String extraInject(File mainDir) {
@@ -70,7 +110,8 @@ public class MotorPlugin extends Plugin {
     }
     /** El motor con que se compiló por última vez este proyecto (lo usan también las figuras en segundo plano). */
     private static String engineOf(File mainDir) {
-        return "lualatex".equals(String.valueOf(readText(new File(mainDir, "texsting-motor.txt"))).trim()) ? "lualatex" : "pdflatex";
+        String e = String.valueOf(readText(new File(mainDir, "texsting-motor.txt"))).trim();
+        return e.equals("lualatex") || e.equals("xelatex") ? e : "pdflatex";
     }
 
     /** LuaLaTeX: su formato se arma la primera vez que se usa (unos segundos), no al instalar. */
@@ -138,6 +179,7 @@ public class MotorPlugin extends Plugin {
         // LuaTeX solo deja escribir ahí (en otra carpeta responde «no writeable cache path»).
         e.put("TEXMFHOME", v + "/texmf"); e.put("TEXMFCACHE", v + "/texmf-var");
         new File(v, "texmf-var").mkdirs();
+        e.put("FONTCONFIG_FILE", v + "/fonts.conf");
         e.put("MKTEXTFM", "0"); e.put("MKTEXPK", "0"); e.put("MKTEXMF", "0"); e.put("MKTEXFMT", "0");
         return e;
     }
@@ -262,6 +304,7 @@ public class MotorPlugin extends Plugin {
         JSArray mot = new JSArray();
         mot.put("pdflatex");
         if (luatex().exists()) mot.put("lualatex");
+        if (xetex().exists() && xdvipdfmx().exists()) mot.put("xelatex");
         r.put("motores", mot);
         r.put("datos", assetVersion() != null);
         r.put("listo", ready());
@@ -945,8 +988,11 @@ public class MotorPlugin extends Plugin {
                 File mainDir = new File(dir, main).getParentFile();
                 String mainName = new File(main).getName();
                 // Motor: pdfLaTeX (normal) o LuaLaTeX (fontspec, fuentes OpenType…), si este APK lo trae.
-                String eng = "lualatex".equals(call.getString("engine", "pdflatex")) && luatex().exists() ? "lualatex" : "pdflatex";
+                String want = call.getString("engine", "pdflatex");
+                String eng = "lualatex".equals(want) && luatex().exists() ? "lualatex"
+                        : "xelatex".equals(want) && xetex().exists() && xdvipdfmx().exists() ? "xelatex" : "pdflatex";
                 if (eng.equals("lualatex")) prepareLua();
+                if (eng.equals("xelatex")) prepareXe();
                 try (OutputStream o = new FileOutputStream(new File(mainDir, "texsting-motor.txt"))) { o.write(eng.getBytes(StandardCharsets.UTF_8)); }
                 // biblatex usa biber por defecto, y biber no viene en el motor: se le pide BibTeX, que sí viene.
                 boolean biblatex = false;

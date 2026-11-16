@@ -183,7 +183,11 @@ envlua = dict(envtl, TEXFORMATS=lfmt + ":")
 for d in docs_lua:
     for _ in range(2):
         used_lua |= traced([os.path.join(BIN, "luahbtex"), "-progname=lualatex", "-fmt=lualatex", "-interaction=nonstopmode", d], tests_lua, envlua)
-used |= {f for f in used_lua if not re.search(r"/fonts/(afm|type1|pfm|tfm|vf|enc|map)/", f)}
+# Fuentes OpenType: solo Latin Modern (texto y matemática), las de por defecto. Las demás que se abrieron al
+# buscar fuentes por nombre (fandol, tlwg, tex-gyre…) se bajan al vuelo si un documento las pide.
+def otf_extra(f):
+    return re.search(r"/fonts/(opentype|truetype)/", f) and not re.search(r"/fonts/opentype/public/(lm|lm-math)/", f)
+used |= {f for f in used_lua if not re.search(r"/fonts/(afm|type1|pfm|tfm|vf|enc|map)/", f) and not otf_extra(f)}
 # XeLaTeX: formato y los mismos documentos (fontspec, unicode-math) + polyglossia; xdvipdfmx arma el PDF.
 xfmt = os.path.join(WORK, "fmt-xe"); shutil.rmtree(xfmt, ignore_errors=True); os.makedirs(xfmt)
 used_xe = traced([os.path.join(BIN, "xetex"), "-ini", "-etex", "-jobname=xelatex", "-progname=xelatex", "xelatex.ini"], xfmt, envtl)
@@ -194,7 +198,7 @@ docs_xe = sorted(f for f in os.listdir(tests_xe) if f.endswith(".tex"))
 for d in docs_xe:
     for _ in range(2):
         used_xe |= traced([os.path.join(BIN, "xetex"), "-progname=xelatex", "-fmt=xelatex", "-interaction=nonstopmode", d], tests_xe, envxe)
-used |= {f for f in used_xe if not re.search(r"/fonts/(afm|pfm)/", f)}
+used |= {f for f in used_xe if not re.search(r"/fonts/(afm|pfm)/", f) and not otf_extra(f)}
 keep = set()
 for f in used:
     rel = os.path.relpath(f, TL)

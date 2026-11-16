@@ -330,7 +330,7 @@ export async function renderHome(root, _params, navigate) {
     if (mst) {
       status.className = 'server-chip ok';
       status.onclick = () => navigate('settings');
-      status.innerHTML = `${icon('check')}<span>Motor integrado listo · ${(mst.motores || ['pdflatex']).map((m) => ({ pdflatex: 'pdfLaTeX', lualatex: 'LuaLaTeX' })[m] || m).join(', ')}${getSettings().autoinstall ? ' · paquetes al vuelo' : ''}</span>`;
+      status.innerHTML = `${icon('check')}<span>Motor integrado listo · ${(mst.motores || ['pdflatex']).map((m) => ({ pdflatex: 'pdfLaTeX', lualatex: 'LuaLaTeX', xelatex: 'XeLaTeX' })[m] || m).join(', ')}${getSettings().autoinstall ? ' · paquetes al vuelo' : ''}</span>`;
       return;
     }
     status.onclick = () => navigate('termux');

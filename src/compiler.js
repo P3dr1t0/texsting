@@ -160,9 +160,9 @@ export async function compileProject(project, files) {
     const motores = st.motores || ['pdflatex'];
     let eng = chosen.engine;
     let sustituto = null;
-    // XeLaTeX no viene en el motor integrado, pero fontspec, unicode-math y polyglossia funcionan igual con
-    // LuaLaTeX: se usa ese, salvo que el documento tenga algo que solo existe en XeLaTeX (xeCJK, \XeTeX…).
-    if (eng === 'xelatex' && motores.includes('lualatex') && !(chosen.need && chosen.need.engine === 'xelatex')) {
+    // APK sin XeLaTeX (versiones anteriores): fontspec, unicode-math y polyglossia funcionan igual con LuaLaTeX,
+    // así que se usa ese, salvo que el documento tenga algo que solo existe en XeLaTeX (xeCJK, \XeTeX…).
+    if (eng === 'xelatex' && !motores.includes('xelatex') && motores.includes('lualatex') && !(chosen.need && chosen.need.engine === 'xelatex')) {
       eng = 'lualatex';
       sustituto = 'xelatex';
     }

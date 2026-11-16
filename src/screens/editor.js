@@ -662,7 +662,7 @@ export async function renderEditor(root, { id }, navigate) {
       }
       if (r.installed && r.installed.length) toast('Paquetes instalados: ' + r.installed.join(', '), { ms: 5000 });
       // ⚡: se usó el preámbulo guardado (los \usepackage ya estaban cargados).
-      const via = r.integrado ? ` (motor integrado${r.engine === 'lualatex' ? ', LuaLaTeX' : ''}${r.preambuloGuardado ? ' ⚡' : ''})` : '';
+      const via = r.integrado ? ` (motor integrado${r.engine === 'lualatex' ? ', LuaLaTeX' : r.engine === 'xelatex' ? ', XeLaTeX' : ''}${r.preambuloGuardado ? ' ⚡' : ''})` : '';
       // Si esta compilación tuvo que preparar el motor (tras instalar/actualizar), se dice cuánto fue eso.
       const prepS = r.integrado && r.preparacion && r.preparacion.primeraVez ? Math.round((r.prepararMs || 0) / 1000) : 0;
       const viaP = prepS >= 2 ? `${via}, de ellos ${prepS} s preparando el motor (solo tras actualizar)` : via;

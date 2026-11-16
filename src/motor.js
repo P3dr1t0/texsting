@@ -1,4 +1,4 @@
-// Motor integrado (#1): pdfLaTeX y LuaLaTeX dentro del APK, sin Termux.
+// Motor integrado (#1): pdfLaTeX, XeLaTeX y LuaLaTeX dentro del APK, sin Termux.
 // Lo hace el complemento nativo «Motor» (scripts/patch-android.mjs → MotorPlugin.java).
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { bytesToBase64, base64ToBytes } from './util.js';
@@ -79,7 +79,7 @@ Ver la ecuación~\eqref{e} de la sección~\ref{s}. {\color{blue}Color} y una tab
 \end{document}
 `;
 
-/** Documento para probar LuaLaTeX (fuentes OpenType con fontspec y matemática Unicode). */
+/** Documento para probar XeLaTeX y LuaLaTeX (fuentes OpenType con fontspec y matemática Unicode). */
 export const MOTOR_PRUEBA_LUA = String.raw`\documentclass{article}
 \usepackage{fontspec}
 \usepackage[spanish]{babel}
