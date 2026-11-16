@@ -17,6 +17,21 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.5.0] — 16 nov. 2026 · Fase 2: Beta con motor integrado · compilación 66
+
+### Nuevo: XeLaTeX dentro de la app
+- **XeLaTeX en el motor integrado, sin Termux.** Usa XeTeX real, con xdvipdfmx para armar el PDF: fontspec, polyglossia, unicode-math, xeCJK, mathspec y `\XeTeX…` funcionan como en Overleaf. Con esto, el motor integrado trae los tres: **pdfLaTeX, XeLaTeX y LuaLaTeX**.
+- **Fuentes del teléfono en XeLaTeX.** Se puede usar `\setmainfont{Roboto}`, `{Noto Serif}` y cualquier fuente instalada en Android, además de las de TeX. Las de TeX que falten (TeX Gyre, Libertinus, Fira…) se bajan solas.
+- **Los formatos de XeLaTeX y LuaLaTeX se preparan solos** al abrir la app, en segundo plano, después de pdfLaTeX. Así la primera compilación con esos motores no tiene que esperarlos. Si compilas mientras se preparan, se pausan y siguen la próxima vez.
+- **Ya no se cambia XeLaTeX por LuaLaTeX:** cada documento se compila con el motor que pide.
+
+### Cambios
+- **Ajustes:** «Probar motor integrado» prueba los tres motores. Termux queda como respaldo opcional.
+- **Pantalla de inicio:** el aviso dice «Motor integrado listo · pdfLaTeX, LuaLaTeX, XeLaTeX».
+
+### Nota
+- **APK más grande:** unos 60 MB. Casi todo es ICU (33 MB sin comprimir), la biblioteca de idiomas que XeTeX necesita para cortar líneas y manejar el texto en otros alfabetos. Más adelante se puede recortar ICU a lo que XeTeX usa de verdad, pero ese recorte hay que probarlo en un teléfono.
+
 ## [0.4.1] — 16 nov. 2026 · Fase 2: Beta con motor integrado · compilación 65
 
 ### Más rápido

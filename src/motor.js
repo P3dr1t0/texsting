@@ -30,8 +30,9 @@ export function motorCalentar() {
     calentando = (async () => {
       const st = await motorEstado();
       if (!st) return null;
+      // «todos»: después de pdfLaTeX, en segundo plano, también XeLaTeX y LuaLaTeX.
+      await Motor.preparar({ todos: true });
       if (st.listo) return st;
-      await Motor.preparar();
       return { ...st, listo: true };
     })().catch((e) => { calentando = null; throw e; });
   }

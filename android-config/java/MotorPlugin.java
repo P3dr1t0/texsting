@@ -315,7 +315,15 @@ public class MotorPlugin extends Plugin {
     @PluginMethod
     public void preparar(PluginCall call) {
         exec.execute(() -> {
-            try { call.resolve(prepare()); } catch (Exception e) { call.reject(String.valueOf(e.getMessage())); }
+            try {
+                call.resolve(prepare());
+                // Al abrir la app: también los formatos de XeLaTeX y LuaLaTeX, en segundo plano (si se compila
+                // mientras tanto, esto se corta y se retoma la próxima vez).
+                if (call.getBoolean("todos", false)) background(() -> {
+                    try { quiet = true; if (xetex().exists()) prepareXe(); if (luatex().exists()) prepareLua(); }
+                    catch (Exception ignored) { } finally { quiet = false; }
+                });
+            } catch (Exception e) { call.reject(String.valueOf(e.getMessage())); }
         });
     }
 
