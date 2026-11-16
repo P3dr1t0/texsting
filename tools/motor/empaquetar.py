@@ -1,5 +1,5 @@
-"""Motor integrado (#1): arma lo que va dentro del APK para compilar con pdfLaTeX y LuaLaTeX
-SIN Termux.
+"""Motor integrado (#1): arma lo que va dentro del APK para compilar con pdfLaTeX, LuaLaTeX y
+XeLaTeX SIN Termux.
 
   1. Binario: pdftex de Termux (aarch64, TeX Live 2026) y sus bibliotecas, renombrados
      como lib*.so para que Android los instale en nativeLibraryDir (el único lugar desde
@@ -27,7 +27,9 @@ EXTRA = ["collection-latex", "babel-spanish", "hyphen-spanish", "geometry", "boo
          "amsmath", "tools", "graphics", "hyperref", "fancyhdr", "enumitem", "caption", "float",
          "multirow", "siunitx", "lm", "cm-super", "titlesec", "parskip", "csquotes", "mylatexformat",
          # LuaLaTeX: motor, carga de fuentes OpenType y los paquetes de documentos «XeLaTeX» típicos.
-         "collection-luatex", "fontspec", "unicode-math", "lm-math", "lualatex-math"]
+         "collection-luatex", "fontspec", "unicode-math", "lm-math", "lualatex-math",
+         # XeLaTeX: motor, xdvipdfmx (arma el PDF) y polyglossia.
+         "collection-xetex", "polyglossia"]
 
 def sh(cmd, **kw):
     print("+", cmd if isinstance(cmd, str) else " ".join(cmd), flush=True)
@@ -76,7 +78,7 @@ libdir = os.path.join(usr, "lib")
 pdftex = os.path.realpath(os.path.join(usr, "bin", "texlive", "pdftex"))
 # BibTeX y makeindex: pequeños, usan las mismas bibliotecas que pdfTeX.
 extras = {}
-for b in ["bibtex", "makeindex", "luahbtex"]:
+for b in ["bibtex", "makeindex", "luahbtex", "xetex", "xdvipdfmx"]:
     pb = os.path.join(usr, "bin", "texlive", b)
     if os.path.exists(pb): extras[b] = os.path.realpath(pb)
     else: print("Aviso: Termux no trae", b)
@@ -182,6 +184,17 @@ for d in docs_lua:
     for _ in range(2):
         used_lua |= traced([os.path.join(BIN, "luahbtex"), "-progname=lualatex", "-fmt=lualatex", "-interaction=nonstopmode", d], tests_lua, envlua)
 used |= {f for f in used_lua if not re.search(r"/fonts/(afm|type1|pfm|tfm|vf|enc|map)/", f)}
+# XeLaTeX: formato y los mismos documentos (fontspec, unicode-math) + polyglossia; xdvipdfmx arma el PDF.
+xfmt = os.path.join(WORK, "fmt-xe"); shutil.rmtree(xfmt, ignore_errors=True); os.makedirs(xfmt)
+used_xe = traced([os.path.join(BIN, "xetex"), "-ini", "-etex", "-jobname=xelatex", "-progname=xelatex", "xelatex.ini"], xfmt, envtl)
+envxe = dict(envtl, TEXFORMATS=xfmt + ":")
+tests_xe = os.path.join(WORK, "docs-xe"); shutil.rmtree(tests_xe, ignore_errors=True)
+shutil.copytree(os.path.join(HERE, "docs-xe"), tests_xe)
+docs_xe = sorted(f for f in os.listdir(tests_xe) if f.endswith(".tex"))
+for d in docs_xe:
+    for _ in range(2):
+        used_xe |= traced([os.path.join(BIN, "xetex"), "-progname=xelatex", "-fmt=xelatex", "-interaction=nonstopmode", d], tests_xe, envxe)
+used |= {f for f in used_xe if not re.search(r"/fonts/(afm|pfm)/", f)}
 keep = set()
 for f in used:
     rel = os.path.relpath(f, TL)
@@ -219,7 +232,8 @@ for d in ["texmf-dist/bibtex/bst/base"]:
 # mylatexformat: para guardar el preámbulo de cada proyecto ya cargado (compilar más rápido)
 for f in os.listdir(os.path.join(TL, "texmf-dist/tex/latex/mylatexformat")):
     keep.add("texmf-dist/tex/latex/mylatexformat/" + f)
-for name in ["cp227.tcx", "pdftexconfig.tex", "language.dat", "language.def", "pdftex.map", "language.dat.lua", "lualatex.ini"]:
+for name in ["cp227.tcx", "pdftexconfig.tex", "language.dat", "language.def", "pdftex.map", "language.dat.lua", "lualatex.ini",
+             "xelatex.ini", "dvipdfmx.cfg"]:
     p = subprocess.run([os.path.join(BIN, "kpsewhich"), name], capture_output=True, text=True, env=envtl).stdout.strip()
     if p: keep.add(os.path.relpath(p, TL))
 
@@ -291,6 +305,38 @@ for d in docs_lua:
     print(fonts[:800])
     if not os.path.exists(pdf) or errs:
         print(r.stdout[-3000:]); raise SystemExit("La prueba de LuaLaTeX con los datos reducidos falló: " + d)
+
+# XeLaTeX con los datos reducidos: formato en web2c/xetex, xdvipdfmx con otro nombre y fontconfig propio.
+shutil.copy(os.path.join(BIN, "xetex"), os.path.join(fake, "libtx_xetex.so"))
+shutil.copy(os.path.realpath(os.path.join(BIN, "xdvipdfmx")), os.path.join(fake, "libtx_xdvipdfmx.so"))
+xfd = os.path.join(var, "texmf-var", "web2c", "xetex"); os.makedirs(xfd)
+fc = os.path.join(var, "fonts.conf")
+open(fc, "w").write("<?xml version=\"1.0\"?>\n<fontconfig>\n" + "".join(f"  <dir>{d}</dir>\n" for d in [
+    os.path.join(check, "tl", "texmf-dist", "fonts", "opentype"), os.path.join(check, "tl", "texmf-dist", "fonts", "truetype"),
+    os.path.join(var, "texmf", "fonts")]) + f"  <cachedir>{var}/fontconfig</cachedir>\n</fontconfig>\n")
+envx = dict(env, FONTCONFIG_FILE=fc)
+t0 = time.time()
+r = subprocess.run([os.path.join(fake, "libtx_xetex.so"), "-ini", "-etex", "-jobname=xelatex", "-progname=xelatex", "xelatex.ini"],
+                   cwd=xfd, env=envx, capture_output=True, text=True, errors="replace")
+print(f"Formato de XeLaTeX: {'OK' if os.path.exists(os.path.join(xfd, 'xelatex.fmt')) else 'FALLÓ'} en {time.time()-t0:.1f} s")
+if not os.path.exists(os.path.join(xfd, "xelatex.fmt")): print(r.stdout[-3000:]); raise SystemExit("No se pudo crear el formato de XeLaTeX")
+px = os.path.join(check, "docs-xe"); shutil.copytree(tests_xe, px)
+for d in docs_xe:
+    for i in range(2):
+        t0 = time.time()
+        r = subprocess.run([os.path.join(fake, "libtx_xetex.so"), "-progname=xelatex", "-fmt=xelatex",
+                            "-output-driver=" + os.path.join(fake, "libtx_xdvipdfmx.so") + " -q -E",
+                            "-interaction=nonstopmode", "-file-line-error", "-synctex=1", d],
+                           cwd=px, env=envx, capture_output=True, text=True, errors="replace")
+        dt = time.time() - t0
+    pdf = os.path.join(px, d[:-4] + ".pdf")
+    logtxt = open(os.path.join(px, d[:-4] + ".log"), errors="replace").read()
+    errs = re.findall(r"^(?:! .*|.*:\d+: .*)$", logtxt, re.M)
+    fonts = subprocess.run(["pdffonts", pdf], capture_output=True, text=True).stdout if shutil.which("pdffonts") and os.path.exists(pdf) else ""
+    print(f"Prueba XeLaTeX {d}: {'PDF OK' if os.path.exists(pdf) else 'SIN PDF'} ({dt:.1f} s la 2.ª vez) errores={errs[:5]}")
+    print(fonts[:800])
+    if not os.path.exists(pdf) or errs:
+        print(r.stdout[-3000:]); raise SystemExit("La prueba de XeLaTeX con los datos reducidos falló: " + d)
 
 # BibTeX y makeindex con los datos reducidos (con los binarios del runner; en el APK van los de Termux).
 bt = os.path.join(check, "bib"); os.makedirs(bt)
