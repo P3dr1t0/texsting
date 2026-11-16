@@ -20,13 +20,12 @@ jobs:
           E="env -i PATH=/usr/bin:/bin HOME=$V TMPDIR=$V TEXMFCNF=$T/texmf-dist/web2c TEXMFROOT=$T TEXMFDIST=$T/texmf-dist TEXMFSYSVAR=$T/texmf-var TEXMFSYSCONFIG=$T/texmf-config TEXMFLOCAL=$T/texmf-local TEXMFVAR=$V/texmf-var TEXMFCONFIG=$V/texmf-config TEXMFHOME=$V/texmf TEXMFCACHE=$V/cache MKTEXTFM=0 MKTEXPK=0 MKTEXMF=0 MKTEXFMT=0"
           cd $V/fmt && $E $B/luahbtex -ini -jobname=lualatex -progname=lualatex lualatex.ini > /dev/null; ls -la lualatex.fmt
           cp $GITHUB_WORKSPACE/tools/motor/docs-lua/*.tex $V/
-          cat > $V/t.lua <<'L'
-          kpse.set_program_name("luatex", "lualatex")
-          local c = kpse.expand_var("$TEXMFCACHE"); print("TEXMFCACHE=", c, "isdir", lfs.isdir(c))
-          local f, e = io.open(c .. "/m_t_x_t_e_s_t.tmp", "wb"); print("io.open:", f, e)
-          print("openout_any=", kpse.var_value("openout_any"), "TEXMFOUTPUT=", kpse.var_value("TEXMFOUTPUT"))
-          L
-          cd $V && $E $B/luahbtex --luaonly t.lua
-          for d in fontspec sencillo; do for i in 1 2; do $E TEXFORMATS=$V/fmt: $B/luahbtex -progname=lualatex -fmt=lualatex -interaction=nonstopmode -file-line-error $d.tex > /dev/null 2>&1; echo "$d $i: writeable=$(grep -c writeable $d.log) $(grep -o 'Output written.*' $d.log) errores=$(grep -c '^!\|:[0-9]*: ' $d.log)"; done; done
+          for C in "$V/cache" "$V/texmf-var" "SIN"; do
+            if [ "$C" = SIN ]; then E2="${E/TEXMFCACHE=$V\/cache/}"; else E2="${E/TEXMFCACHE=$V\/cache/TEXMFCACHE=$C}"; fi
+            rm -rf $V/cache/* $V/texmf-var/*; cd $V
+            $E2 TEXFORMATS=$V/fmt: $B/luahbtex -progname=lualatex -fmt=lualatex -interaction=nonstopmode -file-line-error fontspec.tex > /dev/null 2>&1
+            echo "TEXMFCACHE=$C: writeable=$(grep -c writeable fontspec.log) errores=$(grep -c '^!\|:[0-9]*: ' fontspec.log) $(grep -o 'Output written.*' fontspec.log)"; grep -m3 '^!\|:[0-9]*: ' fontspec.log
+            find $V/cache $V/texmf-var -maxdepth 3 | head -5
+          done
           grep -m5 -B3 -A3 "writeable" fontspec.log
           find $V/cache -maxdepth 3 | head
