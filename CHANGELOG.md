@@ -22,7 +22,7 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 ### Más rápido
 - **El motor se prepara al abrir la app, no al compilar.** Después de instalar o actualizar, TeXsting tiene que descomprimir TeX y armar su formato. Antes eso pasaba en la primera compilación, y era gran parte de los ~40 s del informe IEEE. Ahora empieza solo apenas abres la app, y la pantalla de inicio dice «Preparando el motor integrado…» hasta que termina.
 - **Las figuras guardadas sobreviven a las actualizaciones.** Antes, cada versión nueva de la app obligaba a redibujar todas las figuras (TikZ, pgfplots, circuitikz) de cada proyecto. Ahora se conservan y solo se redibujan las que cambiaste.
-- **Si una compilación tuvo que preparar el motor, el aviso lo dice:** «Listo en 40 s, de ellos 25 s preparando el motor (solo tras actualizar)». Así se distingue del tiempo real del documento.
+- **Si una compilación tuvo que preparar el motor, el aviso lo dice:** «Listo en N s, de ellos M s preparando el motor (solo tras actualizar)». Así se distingue del tiempo real del documento.
 
 ## [0.4.0] — 16 nov. 2026 · Fase 2: Beta con motor integrado · compilación 64
 
