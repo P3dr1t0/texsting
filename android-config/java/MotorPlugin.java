@@ -59,6 +59,15 @@ public class MotorPlugin extends Plugin {
         c.addAll(Arrays.asList(rest));
         return c;
     }
+    /** Lo que se antepone al documento por la línea de comandos (p. ej. biblatex con BibTeX); vacío si nada. */
+    private static String extraInject(File mainDir) {
+        String t = readText(new File(mainDir, "texsting-inyectar.txt"));
+        return t == null ? "" : t.trim();
+    }
+    private static String mainArg(File mainDir, String mainName) {
+        String x = extraInject(mainDir);
+        return x.isEmpty() ? mainName : x + "\\input{" + mainName + "}";
+    }
     /** El motor con que se compiló por última vez este proyecto (lo usan también las figuras en segundo plano). */
     private static String engineOf(File mainDir) {
         return "lualatex".equals(String.valueOf(readText(new File(mainDir, "texsting-motor.txt"))).trim()) ? "lualatex" : "pdflatex";
@@ -747,7 +756,7 @@ public class MotorPlugin extends Plugin {
         new File(mainDir, FIG).mkdirs();
         new File(mainDir, fig + ".pdf").delete();
         Run r = run(tex(engineOf(mainDir), null, "-interaction=batchmode",
-                "-halt-on-error", "-jobname=" + fig, figInject() + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"),
+                "-halt-on-error", "-jobname=" + fig, figInject() + extraInject(mainDir) + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"),
                 mainDir, 3 * 60 * 1000);
         // Si se cortó (llegó una compilación) o falló, el PDF puede quedar a medias: se borra.
         String lg = readText(new File(mainDir, fig + ".log"));
@@ -777,7 +786,7 @@ public class MotorPlugin extends Plugin {
     private Run mainWithFigs(File mainDir, String job, String mainName) throws Exception {
         new File(mainDir, FIG).mkdirs();
         return run(tex(engineOf(mainDir), null, "-interaction=nonstopmode",
-                "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, figInject() + "\\input{" + mainName + "}"),
+                "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, figInject() + extraInject(mainDir) + "\\input{" + mainName + "}"),
                 mainDir, 10 * 60 * 1000);
     }
 
@@ -912,6 +921,16 @@ public class MotorPlugin extends Plugin {
                 String eng = "lualatex".equals(call.getString("engine", "pdflatex")) && luatex().exists() ? "lualatex" : "pdflatex";
                 if (eng.equals("lualatex")) prepareLua();
                 try (OutputStream o = new FileOutputStream(new File(mainDir, "texsting-motor.txt"))) { o.write(eng.getBytes(StandardCharsets.UTF_8)); }
+                // biblatex usa biber por defecto, y biber no viene en el motor: se le pide BibTeX, que sí viene.
+                boolean biblatex = false;
+                Pattern bl = Pattern.compile("(?m)^[^%\\n]*\\\\(?:usepackage|RequirePackage)\\s*(?:\\[[^\\]]*\\])?\\s*\\{[^}]*\\bbiblatex\\b");
+                for (int i = 0; files != null && i < files.length() && !biblatex; i++) {
+                    JSONObject f = files.getJSONObject(i);
+                    if (f.getString("path").endsWith(".tex") && f.has("text") && bl.matcher(f.optString("text", "")).find()) biblatex = true;
+                }
+                try (OutputStream o = new FileOutputStream(new File(mainDir, "texsting-inyectar.txt"))) {
+                    o.write((biblatex ? "\\PassOptionsToPackage{backend=bibtex}{biblatex}" : "").getBytes(StandardCharsets.UTF_8));
+                }
                 StringBuilder output = new StringBuilder();
                 Run r = null;
                 int passes = 0, rounds = 0;
@@ -921,7 +940,7 @@ public class MotorPlugin extends Plugin {
                 if (autoinstall) prefetch(dir, files, installedNow);
                 // Preámbulo ya armado para este proyecto: se salta la carga de los paquetes.
                 // El preámbulo guardado (mylatexformat) es solo para pdfLaTeX.
-                boolean usePreSetting = call.getBoolean("preambulo", true) && eng.equals("pdflatex");
+                boolean usePreSetting = call.getBoolean("preambulo", true) && eng.equals("pdflatex") && !biblatex;
                 String docKey = preambleKey(files, main);
                 // Las figuras dependen también de los datos que leen (tablas .csv, imágenes…): si cambia
                 // cualquier archivo que no sea .tex, se vuelven a dibujar todas.
@@ -955,7 +974,7 @@ public class MotorPlugin extends Plugin {
                         long tRun = System.currentTimeMillis();
                         r = useFigs ? mainWithFigs(mainDir, job, mainName)
                                 : run(tex(eng, usePre ? PRE : null,
-                                "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainName),
+                                "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainArg(mainDir, mainName)),
                                 mainDir, 10 * 60 * 1000);
                         if (firstRunMs < 0) firstRunMs = System.currentTimeMillis() - tRun;
                         p++; passes++;
@@ -1023,7 +1042,7 @@ public class MotorPlugin extends Plugin {
                             try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + figKey).getBytes(StandardCharsets.UTF_8)); }
                             usedFigs = false;
                             r = run(tex(eng, null,
-                                    "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainName), mainDir, 10 * 60 * 1000);
+                                    "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainArg(mainDir, mainName)), mainDir, 10 * 60 * 1000);
                             passes++;
                         }
                         output.append(r.out);
@@ -1037,7 +1056,7 @@ public class MotorPlugin extends Plugin {
                 if (usePre && preInfo.startsWith("ok ") && !timedOut && errPat.matcher(log).find()) {
                     int withPre = countMatches(errPat, log);
                     r = run(tex(eng, null,
-                            "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainName), mainDir, 10 * 60 * 1000);
+                            "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainArg(mainDir, mainName)), mainDir, 10 * 60 * 1000);
                     passes++;
                     String normal = readText(new File(dir, stem + ".log"));
                     int without = normal == null ? Integer.MAX_VALUE : countMatches(errPat, normal);
