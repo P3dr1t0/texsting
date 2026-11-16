@@ -11,18 +11,22 @@ jobs:
           cd /tmp && curl -sL https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz | tar xz && cd install-tl-2*
           printf 'selected_scheme scheme-minimal\nTEXDIR /tmp/tl\nTEXMFSYSVAR /tmp/tl/texmf-var\nTEXMFSYSCONFIG /tmp/tl/texmf-config\nTEXMFLOCAL /tmp/tl/texmf-local\nTEXMFHOME /tmp/tl/home\nTEXMFVAR /tmp/tl/texmf-var\nbinary_x86_64-linux 1\ntlpdbopt_install_docfiles 0\ntlpdbopt_install_srcfiles 0\n' > p.txt
           ./install-tl -profile p.txt -no-interaction > /dev/null
-          /tmp/tl/bin/x86_64-linux/tlmgr install collection-latex collection-luatex fontspec unicode-math lm lm-math lualatex-math babel-spanish hyphen-spanish > /dev/null
+          /tmp/tl/bin/x86_64-linux/tlmgr install collection-latex collection-luatex fontspec unicode-math lm lm-math lualatex-math babel-spanish hyphen-spanish xcolor graphics hyperref booktabs amsmath tools > /dev/null
       - name: Probar
         shell: bash {0}
         run: |
-          B=/tmp/tl/bin/x86_64-linux
-          f=$(PATH=$B:$PATH kpsewhich luaotfload-init.lua); grep -n "writeable cache" -B40 $f | head -60
-          g=$(PATH=$B:$PATH kpsewhich fontloader-basics-gen.lua); grep -n "TEXMFCACHE" -A25 $g | head -45
+          B=/tmp/tl/bin/x86_64-linux; T=/tmp/tl
           V=$(mktemp -d); mkdir -p $V/cache $V/texmf-var $V/fmt
-          T=/tmp/tl
-          E="env -i PATH=/usr/bin:/bin HOME=$V TMPDIR=$V TEXMFCNF=$T/texmf-dist/web2c TEXMFROOT=$T TEXMFDIST=$T/texmf-dist TEXMFSYSVAR=$T/texmf-var TEXMFSYSCONFIG=$T/texmf-config TEXMFLOCAL=$T/texmf-local TEXMFVAR=$V/texmf-var TEXMFCONFIG=$V/texmf-config TEXMFHOME=$V/texmf TEXMFCACHE=$V/cache"
+          E="env -i PATH=/usr/bin:/bin HOME=$V TMPDIR=$V TEXMFCNF=$T/texmf-dist/web2c TEXMFROOT=$T TEXMFDIST=$T/texmf-dist TEXMFSYSVAR=$T/texmf-var TEXMFSYSCONFIG=$T/texmf-config TEXMFLOCAL=$T/texmf-local TEXMFVAR=$V/texmf-var TEXMFCONFIG=$V/texmf-config TEXMFHOME=$V/texmf TEXMFCACHE=$V/cache MKTEXTFM=0 MKTEXPK=0 MKTEXMF=0 MKTEXFMT=0"
           cd $V/fmt && $E $B/luahbtex -ini -jobname=lualatex -progname=lualatex lualatex.ini > /dev/null; ls -la lualatex.fmt
-          cp $GITHUB_WORKSPACE/tools/motor/docs-lua/fontspec.tex $V/
-          cd $V && $E TEXFORMATS=$V/fmt: $B/luahbtex -progname=lualatex -fmt=lualatex -interaction=nonstopmode fontspec.tex | tail -20
-          $E $B/kpsewhich -var-value=TEXMFCACHE; $E $B/kpsewhich --progname=lualatex -var-value=TEXMFCACHE
-          ls -la $V/cache $V/texmf-var
+          cp $GITHUB_WORKSPACE/tools/motor/docs-lua/*.tex $V/
+          cat > $V/t.lua <<'L'
+          kpse.set_program_name("luatex", "lualatex")
+          local c = kpse.expand_var("$TEXMFCACHE"); print("TEXMFCACHE=", c, "isdir", lfs.isdir(c))
+          local f, e = io.open(c .. "/m_t_x_t_e_s_t.tmp", "wb"); print("io.open:", f, e)
+          print("openout_any=", kpse.var_value("openout_any"), "TEXMFOUTPUT=", kpse.var_value("TEXMFOUTPUT"))
+          L
+          cd $V && $E $B/luahbtex --luaonly t.lua
+          for d in fontspec sencillo; do for i in 1 2; do $E TEXFORMATS=$V/fmt: $B/luahbtex -progname=lualatex -fmt=lualatex -interaction=nonstopmode -file-line-error $d.tex > /dev/null 2>&1; echo "$d $i: writeable=$(grep -c writeable $d.log) $(grep -o 'Output written.*' $d.log) errores=$(grep -c '^!\|:[0-9]*: ' $d.log)"; done; done
+          grep -m5 -B3 -A3 "writeable" fontspec.log
+          find $V/cache -maxdepth 3 | head
