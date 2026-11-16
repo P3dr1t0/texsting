@@ -663,6 +663,9 @@ export async function renderEditor(root, { id }, navigate) {
       if (r.installed && r.installed.length) toast('Paquetes instalados: ' + r.installed.join(', '), { ms: 5000 });
       // ⚡: se usó el preámbulo guardado (los \usepackage ya estaban cargados).
       const via = r.integrado ? ` (motor integrado${r.engine === 'lualatex' ? ', LuaLaTeX' : ''}${r.preambuloGuardado ? ' ⚡' : ''})` : '';
+      // Si esta compilación tuvo que preparar el motor (tras instalar/actualizar), se dice cuánto fue eso.
+      const prepS = r.integrado && r.preparacion && r.preparacion.primeraVez ? Math.round((r.prepararMs || 0) / 1000) : 0;
+      const viaP = prepS >= 2 ? `${via}, de ellos ${prepS} s preparando el motor (solo tras actualizar)` : via;
       if (r.sustituto && !project.avisoLua) {
         // Una sola vez por proyecto: explica por qué no se usó XeLaTeX.
         project.avisoLua = true;
@@ -673,9 +676,9 @@ export async function renderEditor(root, { id }, navigate) {
         toast('No se pudo descargar: ' + r.missing.join(', ') + '. Revisa tu conexión a internet y vuelve a compilar.', { kind: 'error', ms: 9000 });
       }
       if (r.status === 'success') {
-        if (engineNote) toast(`Listo en ${r.elapsed} s${via}. ${engineNote.text}`, { kind: 'ok', ms: 9000, action: engineNote.action, onAction: engineNote.onAction });
-        else if (sm.warnings) toast(`Listo en ${r.elapsed} s${via} · ${sm.warnings} advertencia(s)`, { kind: 'ok', ms: 6000, action: 'Ver', onAction: () => openMessages() });
-        else toast(`Listo en ${r.elapsed} s${via}`, { kind: 'ok' });
+        if (engineNote) toast(`Listo en ${r.elapsed} s${viaP}. ${engineNote.text}`, { kind: 'ok', ms: 9000, action: engineNote.action, onAction: engineNote.onAction });
+        else if (sm.warnings) toast(`Listo en ${r.elapsed} s${viaP} · ${sm.warnings} advertencia(s)`, { kind: 'ok', ms: 6000, action: 'Ver', onAction: () => openMessages() });
+        else toast(`Listo en ${r.elapsed} s${viaP}`, { kind: 'ok' });
         if (!WIDE.matches) showPanel('pdf');
       } else if (r.status === 'timeout') {
         toast('La compilación tardó demasiado y se detuvo', { kind: 'error' });

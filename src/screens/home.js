@@ -3,7 +3,7 @@ import { listProjects, createProject, deleteProject, duplicateProject, saveProje
 import { el, icon, logoSvg, brandName, toast, sheet, promptText, confirmDialog, pickFiles, esc, pushBack } from '../ui.js';
 import { saveAsTemplate } from './newproject.js';
 import { ping, serverOutdated, ENGINE_LABEL } from '../compiler.js';
-import { motorEstado } from '../motor.js';
+import { motorEstado, motorCalentar } from '../motor.js';
 import { createZip, readZip } from '../zip.js';
 import { shareBytes } from '../share.js';
 import { timeAgo, sanitizeName, slug, readFileAsBytes } from '../util.js';
@@ -316,6 +316,17 @@ export async function renderHome(root, _params, navigate) {
   async function checkServer() {
     // Con el motor integrado no hace falta Termux: el aviso dice que está listo y lleva a Ajustes.
     const mst = (getSettings().compilador || 'auto') !== 'termux' ? await motorEstado() : null;
+    if (mst && !mst.listo) {
+      status.className = 'server-chip';
+      status.onclick = () => navigate('settings');
+      status.innerHTML = `${icon('chip')}<span>Preparando el motor integrado (solo tras instalar o actualizar)…</span>`;
+      try { await motorCalentar(); } catch (e) {
+        status.className = 'server-chip warn';
+        status.innerHTML = `${icon('chip')}<span>No se pudo preparar el motor: ${esc(String(e.message || e)).slice(0, 120)}</span>`;
+        return;
+      }
+      return checkServer();
+    }
     if (mst) {
       status.className = 'server-chip ok';
       status.onclick = () => navigate('settings');

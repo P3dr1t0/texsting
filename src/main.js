@@ -7,6 +7,8 @@ import { renderEditor } from './screens/editor.js';
 import { renderSettings, renderTermuxSetup } from './screens/settings.js';
 import { renderNewProject } from './screens/newproject.js';
 import { initOpenWith } from './openwith.js';
+import { motorCalentar } from './motor.js';
+import { getSettings } from './store.js';
 
 const root = document.getElementById('app');
 let current = null; // { name, cleanup, onBack }
@@ -36,3 +38,5 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', app
 
 applyTheme();
 navigate('home').then(() => initOpenWith(navigate));
+// El motor integrado se prepara solo al abrir la app (solo trabaja la primera vez tras instalar o actualizar).
+if ((getSettings().compilador || 'auto') !== 'termux') motorCalentar().catch(() => {});

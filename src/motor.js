@@ -20,6 +20,24 @@ export function motorPreparar() {
   return Motor.preparar();
 }
 
+let calentando = null;
+/**
+ * Prepara el motor en segundo plano apenas abre la app (tras instalar o actualizar: descomprimir TeX y
+ * armar el formato). Así la primera compilación no carga con esos segundos. Devuelve siempre la misma promesa.
+ */
+export function motorCalentar() {
+  if (!calentando) {
+    calentando = (async () => {
+      const st = await motorEstado();
+      if (!st) return null;
+      if (st.listo) return st;
+      await Motor.preparar();
+      return { ...st, listo: true };
+    })().catch((e) => { calentando = null; throw e; });
+  }
+  return calentando;
+}
+
 /** Avisos mientras compila (p. ej. «Descargando el paquete…»). Devuelve una función para dejar de escuchar. */
 export async function motorAlProgresar(cb) {
   try {

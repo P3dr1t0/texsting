@@ -671,7 +671,10 @@ public class MotorPlugin extends Plugin {
     }
 
     /** Clave del preámbulo: si cambia (o cambian los paquetes instalados), hay que volver a armarlo. */
-    private String preambleKey(JSArray files, String main) throws Exception {
+    private String preambleKey(JSArray files, String main) throws Exception { return preambleKey(files, main, true); }
+
+    /** withVersion = false: para las figuras, que son PDF y siguen sirviendo tras actualizar la app. */
+    private String preambleKey(JSArray files, String main, boolean withVersion) throws Exception {
         String mainText = null;
         for (int i = 0; files != null && i < files.length(); i++) {
             JSONObject f = files.getJSONObject(i);
@@ -691,7 +694,7 @@ public class MotorPlugin extends Plugin {
             String name = new File(path).getName(), stem = name.replaceAll("\\.[^.]+$", "");
             if (stem.length() > 1 && pre.contains(stem)) k.append("\u0000").append(path).append('\u0000').append(f.optString("text", ""));
         }
-        k.append('\u0000').append(assetVersion());
+        if (withVersion) k.append('\u0000').append(assetVersion());
         return sha1(k.toString());
     }
 
@@ -969,8 +972,9 @@ public class MotorPlugin extends Plugin {
                 // Las figuras dependen también de los datos que leen (tablas .csv, imágenes…): si cambia
                 // cualquier archivo que no sea .tex, se vuelven a dibujar todas.
                 String figKey = null;
-                if (docKey != null) {
-                    StringBuilder fk = new StringBuilder(docKey).append('\u0000').append(eng);
+                String figBase = preambleKey(files, main, false);
+                if (figBase != null) {
+                    StringBuilder fk = new StringBuilder(figBase).append('\u0000').append(eng);
                     for (int i = 0; files != null && i < files.length(); i++) {
                         JSONObject f = files.getJSONObject(i);
                         String pth = f.getString("path");
