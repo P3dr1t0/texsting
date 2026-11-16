@@ -1121,7 +1121,12 @@ export function parseBibOutput(output, sources = null, main = 'main.tex', existi
       push({ type: 'error', ...loc, message: 'biber: ' + m[1].slice(0, 160), hint: 'Error en la bibliografía (biber): revisa la entrada indicada del .bib (comas, llaves y comillas)' });
     } else if (/biber: (command )?not found|Could not find biber|'biber' not found/i.test(l)) {
       const ln = findInSources(/\\usepackage(\[[^\]]*\])?\{biblatex\}/, sources, main);
-      push({ type: 'error', file: ln ? main : null, line: ln, message: 'No está instalado el programa biber', hint: 'biblatex usa el programa biber, que no está instalado. Alternativa: \\usepackage[backend=bibtex]{biblatex}' });
+      const src = ln && sources ? (sources[main] || '').split('\n')[ln - 1] || '' : '';
+      const bb = src.match(/backend\s*=\s*biber/);
+      push({ type: 'error', file: ln ? main : null, line: ln, message: 'No está instalado el programa biber',
+        hint: bb ? 'El motor integrado no trae biber (el programa que pide backend=biber), pero sí BibTeX: con backend=bibtex la bibliografía sale igual'
+          : 'biblatex usa el programa biber, que no está instalado. Alternativa: \\usepackage[backend=bibtex]{biblatex}',
+        ...(bb ? { fix: { file: main, line: ln, find: bb[0], replace: 'backend=bibtex', label: 'Usar backend=bibtex' } } : {}) });
     }
   }
   return out;
