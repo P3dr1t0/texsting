@@ -662,7 +662,13 @@ export async function renderEditor(root, { id }, navigate) {
       }
       if (r.installed && r.installed.length) toast('Paquetes instalados: ' + r.installed.join(', '), { ms: 5000 });
       // ⚡: se usó el preámbulo guardado (los \usepackage ya estaban cargados).
-      const via = r.integrado ? ` (motor integrado${r.preambuloGuardado ? ' ⚡' : ''})` : '';
+      const via = r.integrado ? ` (motor integrado${r.engine === 'lualatex' ? ', LuaLaTeX' : ''}${r.preambuloGuardado ? ' ⚡' : ''})` : '';
+      if (r.sustituto && !project.avisoLua) {
+        // Una sola vez por proyecto: explica por qué no se usó XeLaTeX.
+        project.avisoLua = true;
+        touchProject(project.id, { avisoLua: true }).catch(() => {});
+        if (!engineNote) engineNote = { text: 'Se compiló con LuaLaTeX: XeLaTeX todavía no viene en el motor integrado, pero fontspec, unicode-math y polyglossia funcionan igual.' };
+      }
       if (r.integrado && r.missing && r.missing.length && /File `[^']+\.(sty|cls)' not found/.test(r.log || '')) {
         toast('No se pudo descargar: ' + r.missing.join(', ') + '. Revisa tu conexión a internet y vuelve a compilar.', { kind: 'error', ms: 9000 });
       }

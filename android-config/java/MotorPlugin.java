@@ -46,6 +46,40 @@ public class MotorPlugin extends Plugin {
 
     private File libDir() { return new File(getContext().getApplicationInfo().nativeLibraryDir); }
     private File pdftex() { return new File(libDir(), "libtx_pdftex.so"); }
+    private File luatex() { return new File(libDir(), "libtx_luahbtex.so"); }
+    private File luaFmtDir() { return new File(var(), "texmf-var/web2c/luahbtex"); }
+
+    /** Orden para el motor elegido: pdfTeX (pdflatex) o LuaHBTeX (lualatex). fmt = null: el formato normal. */
+    private List<String> tex(String eng, String fmt, String... rest) {
+        List<String> c = new ArrayList<>();
+        boolean lua = "lualatex".equals(eng);
+        c.add((lua ? luatex() : pdftex()).getAbsolutePath());
+        c.add(lua ? "-progname=lualatex" : "-progname=pdflatex");
+        c.add("-fmt=" + (fmt != null ? fmt : lua ? "lualatex" : "pdflatex"));
+        c.addAll(Arrays.asList(rest));
+        return c;
+    }
+    /** El motor con que se compiló por última vez este proyecto (lo usan también las figuras en segundo plano). */
+    private static String engineOf(File mainDir) {
+        return "lualatex".equals(String.valueOf(readText(new File(mainDir, "texsting-motor.txt"))).trim()) ? "lualatex" : "pdflatex";
+    }
+
+    /** LuaLaTeX: su formato se arma la primera vez que se usa (unos segundos), no al instalar. */
+    private void prepareLua() throws Exception {
+        String v = assetVersion();
+        File f = new File(luaFmtDir(), "lualatex.fmt"), mk = new File(luaFmtDir(), "version.txt");
+        if (f.exists() && v != null && v.equals(String.valueOf(readText(mk)).trim())) return;
+        progress("Preparando LuaLaTeX por primera vez…");
+        luaFmtDir().mkdirs();
+        f.delete();
+        Run fr = run(Arrays.asList(luatex().getAbsolutePath(), "-ini", "-jobname=lualatex", "-progname=lualatex", "lualatex.ini"),
+                luaFmtDir(), 5 * 60 * 1000);
+        if (!f.exists()) {
+            String o = fr.out;
+            throw new Exception("No se pudo preparar LuaLaTeX (código " + fr.code + "): " + (o.length() > 1500 ? o.substring(o.length() - 1500) : o));
+        }
+        try (OutputStream o = new FileOutputStream(mk)) { o.write(String.valueOf(v).getBytes(StandardCharsets.UTF_8)); }
+    }
     private File base() { return new File(getContext().getFilesDir(), "motor"); }
     private File tl() { return new File(base(), "tl"); }
     private File var() { return new File(base(), "var"); }
@@ -92,6 +126,8 @@ public class MotorPlugin extends Plugin {
         e.put("TEXMFSYSCONFIG", t + "/texmf-config"); e.put("TEXMFLOCAL", t + "/texmf-local");
         e.put("TEXMFVAR", v + "/texmf-var"); e.put("TEXMFCONFIG", v + "/texmf-config");
         e.put("TEXMFHOME", v + "/texmf"); e.put("TEXMFCACHE", v + "/cache");
+        // luaotfload (LuaLaTeX) guarda ahí la lista de fuentes: la carpeta tiene que existir.
+        new File(v, "cache").mkdirs(); new File(v, "texmf-var").mkdirs();
         e.put("MKTEXTFM", "0"); e.put("MKTEXPK", "0"); e.put("MKTEXMF", "0"); e.put("MKTEXFMT", "0");
         return e;
     }
@@ -213,6 +249,10 @@ public class MotorPlugin extends Plugin {
     public void estado(PluginCall call) {
         JSObject r = new JSObject();
         r.put("binario", pdftex().exists());
+        JSArray mot = new JSArray();
+        mot.put("pdflatex");
+        if (luatex().exists()) mot.put("lualatex");
+        r.put("motores", mot);
         r.put("datos", assetVersion() != null);
         r.put("listo", ready());
         r.put("version", assetVersion());
@@ -706,7 +746,7 @@ public class MotorPlugin extends Plugin {
     private boolean makeFig(File mainDir, String job, String mainName, String fig) throws Exception {
         new File(mainDir, FIG).mkdirs();
         new File(mainDir, fig + ".pdf").delete();
-        Run r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=batchmode",
+        Run r = run(tex(engineOf(mainDir), null, "-interaction=batchmode",
                 "-halt-on-error", "-jobname=" + fig, figInject() + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"),
                 mainDir, 3 * 60 * 1000);
         // Si se cortó (llegó una compilación) o falló, el PDF puede quedar a medias: se borra.
@@ -736,7 +776,7 @@ public class MotorPlugin extends Plugin {
 
     private Run mainWithFigs(File mainDir, String job, String mainName) throws Exception {
         new File(mainDir, FIG).mkdirs();
-        return run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex", "-interaction=nonstopmode",
+        return run(tex(engineOf(mainDir), null, "-interaction=nonstopmode",
                 "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, figInject() + "\\input{" + mainName + "}"),
                 mainDir, 10 * 60 * 1000);
     }
@@ -868,6 +908,10 @@ public class MotorPlugin extends Plugin {
                 pdf.delete();
                 File mainDir = new File(dir, main).getParentFile();
                 String mainName = new File(main).getName();
+                // Motor: pdfLaTeX (normal) o LuaLaTeX (fontspec, fuentes OpenType…), si este APK lo trae.
+                String eng = "lualatex".equals(call.getString("engine", "pdflatex")) && luatex().exists() ? "lualatex" : "pdflatex";
+                if (eng.equals("lualatex")) prepareLua();
+                try (OutputStream o = new FileOutputStream(new File(mainDir, "texsting-motor.txt"))) { o.write(eng.getBytes(StandardCharsets.UTF_8)); }
                 StringBuilder output = new StringBuilder();
                 Run r = null;
                 int passes = 0, rounds = 0;
@@ -876,13 +920,14 @@ public class MotorPlugin extends Plugin {
                 List<String> installedNow = new ArrayList<>(), failed = new ArrayList<>(), skipped = new ArrayList<>();
                 if (autoinstall) prefetch(dir, files, installedNow);
                 // Preámbulo ya armado para este proyecto: se salta la carga de los paquetes.
-                boolean usePreSetting = call.getBoolean("preambulo", true);
+                // El preámbulo guardado (mylatexformat) es solo para pdfLaTeX.
+                boolean usePreSetting = call.getBoolean("preambulo", true) && eng.equals("pdflatex");
                 String docKey = preambleKey(files, main);
                 // Las figuras dependen también de los datos que leen (tablas .csv, imágenes…): si cambia
                 // cualquier archivo que no sea .tex, se vuelven a dibujar todas.
                 String figKey = null;
                 if (docKey != null) {
-                    StringBuilder fk = new StringBuilder(docKey);
+                    StringBuilder fk = new StringBuilder(docKey).append('\u0000').append(eng);
                     for (int i = 0; files != null && i < files.length(); i++) {
                         JSONObject f = files.getJSONObject(i);
                         String pth = f.getString("path");
@@ -909,7 +954,7 @@ public class MotorPlugin extends Plugin {
                         String before = digest(dir, stem);
                         long tRun = System.currentTimeMillis();
                         r = useFigs ? mainWithFigs(mainDir, job, mainName)
-                                : run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=" + (usePre ? PRE : "pdflatex"),
+                                : run(tex(eng, usePre ? PRE : null,
                                 "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainName),
                                 mainDir, 10 * 60 * 1000);
                         if (firstRunMs < 0) firstRunMs = System.currentTimeMillis() - tRun;
@@ -977,7 +1022,7 @@ public class MotorPlugin extends Plugin {
                             // Esta figura no se puede guardar aparte: el proyecto vuelve a compilar como siempre.
                             try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + figKey).getBytes(StandardCharsets.UTF_8)); }
                             usedFigs = false;
-                            r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex",
+                            r = run(tex(eng, null,
                                     "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainName), mainDir, 10 * 60 * 1000);
                             passes++;
                         }
@@ -991,7 +1036,7 @@ public class MotorPlugin extends Plugin {
                 // si así hay menos errores, el preámbulo de este proyecto no se puede guardar.
                 if (usePre && preInfo.startsWith("ok ") && !timedOut && errPat.matcher(log).find()) {
                     int withPre = countMatches(errPat, log);
-                    r = run(Arrays.asList(pdftex().getAbsolutePath(), "-progname=pdflatex", "-fmt=pdflatex",
+                    r = run(tex(eng, null,
                             "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainName), mainDir, 10 * 60 * 1000);
                     passes++;
                     String normal = readText(new File(dir, stem + ".log"));
@@ -1020,7 +1065,7 @@ public class MotorPlugin extends Plugin {
                 res.put("missing", mis);
                 long t2 = System.currentTimeMillis();
                 res.put("elapsed", (t2 - t0) / 1000.0);
-                res.put("engine", "pdflatex");
+                res.put("engine", eng);
                 res.put("integrado", true);
                 res.put("pasadas", passes);
                 res.put("prepararMs", t1 - t0);

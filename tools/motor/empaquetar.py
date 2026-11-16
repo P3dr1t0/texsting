@@ -173,11 +173,15 @@ tests_lua = os.path.join(WORK, "docs-lua"); shutil.rmtree(tests_lua, ignore_erro
 shutil.copytree(os.path.join(HERE, "docs-lua"), tests_lua)
 docs_lua = sorted(f for f in os.listdir(tests_lua) if f.endswith(".tex"))
 lfmt = os.path.join(WORK, "fmt-lua"); shutil.rmtree(lfmt, ignore_errors=True); os.makedirs(lfmt)
-used |= traced([os.path.join(BIN, "luahbtex"), "-ini", "-jobname=lualatex", "-progname=lualatex", "lualatex.ini"], lfmt, envtl)
+# Al buscar fuentes por nombre, luaotfload abre TODAS las del árbol (cm-super, .afm de lm…): de lo que lee
+# LuaLaTeX solo se guarda lo que no es una fuente Type 1 (esas son para pdfLaTeX y ya están si hacen falta).
+used_lua = set()
+used_lua |= traced([os.path.join(BIN, "luahbtex"), "-ini", "-jobname=lualatex", "-progname=lualatex", "lualatex.ini"], lfmt, envtl)
 envlua = dict(envtl, TEXFORMATS=lfmt + ":")
 for d in docs_lua:
     for _ in range(2):
-        used |= traced([os.path.join(BIN, "luahbtex"), "-progname=lualatex", "-fmt=lualatex", "-interaction=nonstopmode", d], tests_lua, envlua)
+        used_lua |= traced([os.path.join(BIN, "luahbtex"), "-progname=lualatex", "-fmt=lualatex", "-interaction=nonstopmode", d], tests_lua, envlua)
+used |= {f for f in used_lua if not re.search(r"/fonts/(afm|type1|pfm|tfm|vf|enc|map)/", f)}
 keep = set()
 for f in used:
     rel = os.path.relpath(f, TL)
@@ -271,6 +275,7 @@ r = subprocess.run([os.path.join(fake, "libtx_luahbtex.so"), "-ini", "-jobname=l
 print(f"Formato de LuaLaTeX: {'OK' if os.path.exists(os.path.join(lfd, 'lualatex.fmt')) else 'FALLÓ'} en {time.time()-t0:.1f} s")
 if not os.path.exists(os.path.join(lfd, "lualatex.fmt")): print(r.stdout[-3000:]); raise SystemExit("No se pudo crear el formato de LuaLaTeX")
 pl = os.path.join(check, "docs-lua"); shutil.copytree(tests_lua, pl)
+os.makedirs(env["TEXMFCACHE"], exist_ok=True); os.makedirs(env["TEXMFVAR"], exist_ok=True)
 for d in docs_lua:
     for i in range(2):
         t0 = time.time()

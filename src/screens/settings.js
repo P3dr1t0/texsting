@@ -3,7 +3,7 @@ import { Clipboard } from '@capacitor/clipboard';
 import { getSettings, setSettings, ensureToken } from '../store.js';
 import { el, icon, toast, esc } from '../ui.js';
 import { ping, serverOutdated } from '../compiler.js';
-import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA } from '../motor.js';
+import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA, MOTOR_PRUEBA_LUA } from '../motor.js';
 import { bootstrapCommand, openTermux, TERMUX_FDROID, TERMUX_GITHUB } from '../termux.js';
 import { ENGINES } from '../latex-data.js';
 import { applyTheme, THEMES, ACCENTS, resolvedTheme } from '../theme.js';
@@ -82,14 +82,21 @@ export async function renderSettings(root, _p, navigate) {
     motorResult.textContent = est.listo ? 'Compilando el documento de prueba…' : 'Preparando el motor (solo la primera vez, unos segundos)…';
     try {
       const prep = await motorPreparar();
-      motorResult.textContent = 'Compilando el documento de prueba…';
-      const r = await motorCompilar({ id: 'prueba-motor', main: 'prueba.tex' }, [{ path: 'prueba.tex', kind: 'text', text: MOTOR_PRUEBA }]);
       const first = prep.primeraVez ? `<br>Preparación inicial: descomprimir ${seg(prep.unzipMs)} · crear el formato ${seg(prep.fmtMs)}` : '';
-      if (r.pdf) {
-        motorResult.innerHTML = `✔ PDF de ${Math.max(1, Math.round(r.pdf.length / 1024))} KB en ${seg(r.texMs)} (${r.pasadas} pasada${r.pasadas === 1 ? '' : 's'} de pdfLaTeX)${first}${r.status !== 'success' ? `<br>⚠ El registro tiene errores:<pre class="motor-log">${esc((String(r.log || '').match(/^(?:! .*|.*:\d+: .*)$/gm) || []).slice(0, 4).join('\n'))}</pre>` : ''}`;
-      } else {
-        motorResult.innerHTML = `✘ No salió el PDF.${first}<pre class="motor-log">${esc(String(r.log || r.output || '').slice(-2000))}</pre>`;
+      const lineas = [];
+      const pruebas = [['pdflatex', MOTOR_PRUEBA]];
+      if ((est.motores || []).includes('lualatex')) pruebas.push(['lualatex', MOTOR_PRUEBA_LUA]);
+      for (const [eng, doc] of pruebas) {
+        const L = eng === 'lualatex' ? 'LuaLaTeX' : 'pdfLaTeX';
+        motorResult.innerHTML = lineas.join('<br>') + (lineas.length ? '<br>' : '') + `Compilando con ${L}…` + (eng === 'lualatex' ? ' (la primera vez prepara LuaLaTeX: puede tardar un poco)' : '');
+        const r = await motorCompilar({ id: 'prueba-motor-' + eng, main: 'prueba.tex' }, [{ path: 'prueba.tex', kind: 'text', text: doc }], { engine: eng });
+        if (r.pdf) {
+          lineas.push(`✔ ${L}: PDF de ${Math.max(1, Math.round(r.pdf.length / 1024))} KB en ${seg(r.texMs)} (${r.pasadas} pasada${r.pasadas === 1 ? '' : 's'})${r.status !== 'success' ? `<br>⚠ El registro tiene errores:<pre class="motor-log">${esc((String(r.log || '').match(/^(?:! .*|.*:\d+: .*)$/gm) || []).slice(0, 4).join('\n'))}</pre>` : ''}`);
+        } else {
+          lineas.push(`✘ ${L}: no salió el PDF.<pre class="motor-log">${esc(String(r.log || r.output || '').slice(-2000))}</pre>`);
+        }
       }
+      motorResult.innerHTML = lineas.join('<br>') + first;
     } catch (e) {
       motorResult.innerHTML = `✘ ${esc(e.message || String(e))}`;
     }
@@ -99,15 +106,15 @@ export async function renderSettings(root, _p, navigate) {
     header('Ajustes', navigate),
     el('div', { class: 'settings-body' },
       el('h3', { class: 'section-title' }, 'Compilación'),
-      row('Compilar con', compilador, 'Automático: el motor integrado de TeXsting; Termux solo si un documento necesita XeLaTeX o LuaLaTeX'),
+      row('Compilar con', compilador, 'Automático: el motor integrado de TeXsting (pdfLaTeX y LuaLaTeX); Termux solo si un documento usa algo exclusivo de XeLaTeX'),
       row('Motor para proyectos nuevos', engine, 'Cada proyecto puede cambiarlo en ⋮ → Motor'),
       row('Instalar paquetes faltantes', toggle('autoinstall'), 'Si falta un paquete, se descarga solo al compilar (necesita internet esa vez)'),
       row('Compilar al guardar (Ctrl+S)', toggle('compileOnSave')),
-      el('p', { class: 'muted' }, 'El motor integrado compila dentro de TeXsting, sin instalar nada más: pdfLaTeX con los paquetes más comunes, y los que falten (TikZ, pgfplots, circuitikz…) se descargan solos de CTAN la primera vez que los uses.'),
+      el('p', { class: 'muted' }, 'El motor integrado compila dentro de TeXsting, sin instalar nada más: pdfLaTeX y LuaLaTeX (fuentes OpenType con fontspec), BibTeX y makeindex. Los paquetes que falten (TikZ, pgfplots, circuitikz…) se descargan solos de CTAN la primera vez que los uses.'),
       el('button', { class: 'btn', onclick: probarMotor }, 'Probar motor integrado'),
       motorResult,
       el('h3', { class: 'section-title' }, 'Termux (opcional)'),
-      el('p', { class: 'muted' }, 'Solo hace falta para XeLaTeX y LuaLaTeX, mientras llegan al motor integrado.'),
+      el('p', { class: 'muted' }, 'Solo hace falta para documentos con algo exclusivo de XeLaTeX (xeCJK, mathspec, \\XeTeX…). Los demás documentos «de XeLaTeX» (fontspec, unicode-math, polyglossia) se compilan con LuaLaTeX en el motor integrado.'),
       el('button', { class: 'btn', html: icon('terminal') + '<span>Instalar o reparar TeX en Termux</span>', onclick: () => navigate('termux') }),
       row('Dirección del servidor', url),
       row('Token', token, 'Debe coincidir con el de Termux'),

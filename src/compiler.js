@@ -155,21 +155,32 @@ export function engineExplanation(ch, main) {
 export async function compileProject(project, files) {
   const mode = getSettings().compilador || 'auto';
   const chosen = chooseEngine(project, files);
-  if (mode !== 'termux' && (await motorEstado())) {
-    if (chosen.engine === 'pdflatex') {
+  const st = mode !== 'termux' ? await motorEstado() : null;
+  if (st) {
+    const motores = st.motores || ['pdflatex'];
+    let eng = chosen.engine;
+    let sustituto = null;
+    // XeLaTeX no viene en el motor integrado, pero fontspec, unicode-math y polyglossia funcionan igual con
+    // LuaLaTeX: se usa ese, salvo que el documento tenga algo que solo existe en XeLaTeX (xeCJK, \XeTeX…).
+    if (eng === 'xelatex' && motores.includes('lualatex') && !(chosen.need && chosen.need.engine === 'xelatex')) {
+      eng = 'lualatex';
+      sustituto = 'xelatex';
+    }
+    if (motores.includes(eng)) {
       try {
-        const data = await motorCompilar(project, files, { autoinstall: getSettings().autoinstall });
-        return { ...data, engineReason: chosen.reason, engineChoice: chosen };
+        const data = await motorCompilar(project, files, { autoinstall: getSettings().autoinstall, engine: eng });
+        return { ...data, engineReason: chosen.reason, engineChoice: chosen, sustituto };
       } catch (e) {
         throw new CompileError('Motor integrado: ' + (e.message || e), 'server');
       }
     }
+    const tiene = motores.map((m) => ENGINE_LABEL[m]).join(' y ');
+    const porque = chosen.need ? ` (usa ${chosen.need.what})` : '';
     if (mode === 'motor') {
-      throw new CompileError(`Este documento necesita ${ENGINE_LABEL[chosen.engine]} y el motor integrado por ahora solo tiene pdfLaTeX. En Ajustes → Compilar con, elige «Automático» para usar Termux en estos casos.`, 'server');
+      throw new CompileError(`Este documento necesita ${ENGINE_LABEL[chosen.engine]}${porque} y el motor integrado trae ${tiene}. En Ajustes → Compilar con, elige «Automático» para usar Termux en estos casos.`, 'server');
     }
-    // Automático: XeLaTeX/LuaLaTeX siguen en Termux por ahora.
     if (!(await quickCheck())) {
-      throw new CompileError(`Este documento necesita ${ENGINE_LABEL[chosen.engine]}, que por ahora solo está en Termux: ábrelo un momento y vuelve a compilar (o cambia el motor del proyecto a pdfLaTeX en ⋮ → Motor).`, 'offline');
+      throw new CompileError(`Este documento necesita ${ENGINE_LABEL[chosen.engine]}${porque}, que por ahora solo está en Termux: ábrelo un momento y vuelve a compilar.`, 'offline');
     }
   }
   if (!(await quickCheck())) {

@@ -1,11 +1,11 @@
-// Motor integrado (experimental, #1): pdfLaTeX dentro del APK, sin Termux.
+// Motor integrado (#1): pdfLaTeX y LuaLaTeX dentro del APK, sin Termux.
 // Lo hace el complemento nativo «Motor» (scripts/patch-android.mjs → MotorPlugin.java).
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { bytesToBase64, base64ToBytes } from './util.js';
 
 const Motor = registerPlugin('Motor');
 
-/** { binario, datos, listo, version } o null si este APK/navegador no lo trae. */
+/** { binario, datos, listo, version, motores: ['pdflatex', 'lualatex'] } o null si este APK/navegador no lo trae. */
 export async function motorEstado() {
   if (!Capacitor.isNativePlatform()) return null;
   try {
@@ -30,11 +30,12 @@ export async function motorAlProgresar(cb) {
   }
 }
 
-export async function motorCompilar(project, files, { autoinstall = true } = {}) {
+export async function motorCompilar(project, files, { autoinstall = true, engine = 'pdflatex' } = {}) {
   const data = await Motor.compilar({
     project: project.id,
     main: project.main,
     autoinstall,
+    engine,
     files: files.map((f) => (f.kind === 'binary' ? { path: f.path, base64: bytesToBase64(f.data) } : { path: f.path, text: f.text })),
   });
   return {
@@ -57,5 +58,19 @@ export const MOTOR_PRUEBA = String.raw`\documentclass{article}
 \begin{equation}\label{e} \tau = RC = \SI{1}{\milli\second}, \qquad \int_0^\infty e^{-x^2}\,dx = \frac{\sqrt\pi}{2} \end{equation}
 Ver la ecuación~\eqref{e} de la sección~\ref{s}. {\color{blue}Color} y una tabla:
 \begin{center}\begin{tabular}{lr}\toprule Medida & Valor\\\midrule $V$ & \SI{5.0}{\volt}\\\bottomrule\end{tabular}\end{center}
+\end{document}
+`;
+
+/** Documento para probar LuaLaTeX (fuentes OpenType con fontspec y matemática Unicode). */
+export const MOTOR_PRUEBA_LUA = String.raw`\documentclass{article}
+\usepackage{fontspec}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{unicode-math}
+\begin{document}
+\section{Prueba de LuaLaTeX}
+¡Hola desde TeXsting! Canción, pingüino, ñandú — «comillas» € ½ ≤ ≥ → ∞.
+\[ \int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{π}}{2}, \qquad α + β = γ \]
+\textbf{Negrita}, \textit{cursiva} y \texttt{monoespaciada}.
 \end{document}
 `;

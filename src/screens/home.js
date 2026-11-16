@@ -315,10 +315,11 @@ export async function renderHome(root, _params, navigate) {
 
   async function checkServer() {
     // Con el motor integrado no hace falta Termux: el aviso dice que está listo y lleva a Ajustes.
-    if ((getSettings().compilador || 'auto') !== 'termux' && (await motorEstado())) {
+    const mst = (getSettings().compilador || 'auto') !== 'termux' ? await motorEstado() : null;
+    if (mst) {
       status.className = 'server-chip ok';
       status.onclick = () => navigate('settings');
-      status.innerHTML = `${icon('check')}<span>Motor integrado listo · pdfLaTeX${getSettings().autoinstall ? ' · paquetes al vuelo' : ''}</span>`;
+      status.innerHTML = `${icon('check')}<span>Motor integrado listo · ${(mst.motores || ['pdflatex']).map((m) => ({ pdflatex: 'pdfLaTeX', lualatex: 'LuaLaTeX' })[m] || m).join(', ')}${getSettings().autoinstall ? ' · paquetes al vuelo' : ''}</span>`;
       return;
     }
     status.onclick = () => navigate('termux');
