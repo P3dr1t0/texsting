@@ -5,9 +5,9 @@
 [![Compilar APK](https://github.com/P3dr1t0/texsting/actions/workflows/apk.yml/badge.svg)](https://github.com/P3dr1t0/texsting/actions/workflows/apk.yml) · [Descargar el último APK](https://github.com/P3dr1t0/texsting/releases)
 
 Editor LaTeX libre para Android, inspirado en la forma de trabajar de TeXstudio.
-Compila **en tu propio teléfono** con TeX Live (dentro de Termux): gratis, sin internet tras la instalación y sin límite de tiempo.
+Compila **en tu propio teléfono** con TeX Live, **sin instalar nada más**: el motor viene dentro de la app (pdfLaTeX, LuaLaTeX, BibTeX y makeindex). Gratis, sin internet tras la primera descarga de paquetes y sin límite de tiempo.
 
-> **Estado:** Fase 1 — Beta con Termux. Novedades de cada versión en [CHANGELOG.md](CHANGELOG.md); pendientes en [Issues](https://github.com/P3dr1t0/texsting/issues).
+> **Estado:** Fase 2 — Beta con motor integrado (Termux ya es opcional). Novedades de cada versión en [CHANGELOG.md](CHANGELOG.md); pendientes en [Issues](https://github.com/P3dr1t0/texsting/issues).
 
 > TeXsting no usa código, nombre ni logo de TeXstudio; solo toma ideas de su flujo de trabajo.
 > Licencia: GPL-3.0-or-later.
@@ -19,7 +19,8 @@ Compila **en tu propio teléfono** con TeX Live (dentro de Termux): gratis, sin 
 - **Barra de teclas LaTeX** sobre el teclado del teléfono (`\ { } $ ^ _ & \\`…) y panel de **símbolos** (griego, operadores, relaciones, flechas…).
 - **Estructura** del documento (secciones, figuras, tablas, `\input`, comentarios `% TODO`), tocando un elemento vas a esa línea.
 - **Asistentes**: tabla, matriz, lista, figura, circuito (circuitikz), gráfica (pgfplots), código (listings), ecuaciones. Si falta el `\usepackage`, te ofrece agregarlo.
-- **Compilación** con pdfLaTeX, XeLaTeX o LuaLaTeX (latexmk: recompila referencias y bibliografía solo).
+- **Compilación** dentro de la app con pdfLaTeX o LuaLaTeX; recompila referencias, bibliografía (BibTeX, también biblatex) e índice solo, como latexmk. Los documentos «de XeLaTeX» (fontspec, unicode-math, polyglossia) se compilan con LuaLaTeX; Termux solo hace falta para lo exclusivo de XeLaTeX (xeCJK, mathspec…).
+- **Rápido**: guarda el preámbulo ya cargado y las figuras (TikZ, pgfplots, circuitikz) ya dibujadas, y solo redibuja las que cambian.
 - **Paquetes al vuelo**, como MiKTeX: si un paquete falta, se descarga e instala automáticamente al compilar.
 - **Mensajes** de error en español con la línea exacta; tocando el error, vas al código. También el log completo.
 - **Visor PDF** con zoom (pellizco, doble toque, botones), conserva la posición al recompilar.
@@ -38,9 +39,9 @@ Compila **en tu propio teléfono** con TeX Live (dentro de Termux): gratis, sin 
 
 Cada vez que se cambie el código, se genera un APK nuevo que se instala encima del anterior sin perder tus proyectos.
 
-## Configurar la compilación (una sola vez)
+## Termux (opcional)
 
-En la app: **Ajustes → Instalar o reparar TeX en Termux** y sigue los 4 pasos:
+No hace falta para compilar: el motor integrado viene en la app. Solo si un documento usa algo exclusivo de XeLaTeX, en la app: **Ajustes → Instalar o reparar TeX en Termux** y sigue los 4 pasos:
 
 1. Instala **Termux** desde F-Droid o GitHub.
 2. Toca **Copiar comando**.
@@ -64,7 +65,7 @@ src/               app (JavaScript sin framework)
   editor/cm.js     editor CodeMirror 6 (app real)
   editor/basic.js  editor simple (solo para pruebas en navegador)
   pdfview.js       visor pdf.js
-  compiler.js      cliente del servidor de Termux
+  compiler.js      elige motor: integrado (motor.js) o el servidor de Termux
   logparser.js     lectura del log y traducción de errores
   structure.js     estructura, etiquetas y claves bib
 termux/server.py   servidor de compilación (Python, sin dependencias)
@@ -85,7 +86,7 @@ Compilar en una computadora (opcional): `npm install && npm run build && npm run
 ## Próximos pasos previstos
 
 - SyncTeX: tocar el PDF y saltar a la línea del código (y al revés).
-- Motor integrado (sin Termux) para documentos simples.
+- XeLaTeX dentro del motor integrado y biber.
 - Revisión ortográfica en español.
 - Marcar en el editor las líneas con error.
 
@@ -94,7 +95,8 @@ Compilar en una computadora (opcional): `npm install && npm run build && npm run
 - **Código de TeXsting:** GPL-3.0-or-later (ver `LICENSE`). Puedes estudiarlo, modificarlo y compartirlo; si publicas una versión modificada, debe seguir siendo GPL, con su código abierto y los créditos originales.
 - **Nombre y logo:** «TeXsting» y su ícono identifican la app oficial de Pedro de la Cruz Castillo. Las versiones modificadas deben usar otro nombre y otro ícono para no confundirse con la oficial.
 - **Componentes de terceros** (cada uno con su propia licencia):
-  - Motor integrado: pdfTeX y paquetes de [TeX Live](https://tug.org/texlive/) (GPL, LPPL y otras licencias libres), compilados por [Termux](https://github.com/termux/termux-packages); los paquetes extra se descargan de [CTAN](https://ctan.org/).
+  - Motor integrado: pdfTeX, LuaHBTeX, BibTeX, makeindex y paquetes de [TeX Live](https://tug.org/texlive/) (GPL, LPPL y otras licencias libres), compilados por [Termux](https://github.com/termux/termux-packages); los paquetes extra se descargan de [CTAN](https://ctan.org/).
+  - Bibliotecas de LuaHBTeX: HarfBuzz (MIT), FreeType (FTL), GLib (LGPL-2.1), Graphite2, libiconv, PCRE2, Brotli, bzip2, zlib y libpng (licencias libres), compiladas por Termux.
   - Editor: [CodeMirror 6](https://codemirror.net/) y Lezer (MIT).
   - Visor de PDF: [PDF.js](https://mozilla.github.io/pdf.js/) (Apache-2.0).
   - App Android: [Capacitor](https://capacitorjs.com/) (MIT) y [XZ for Java](https://tukaani.org/xz/java.html) (dominio público).

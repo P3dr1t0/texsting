@@ -169,7 +169,8 @@ export async function compileProject(project, files) {
     if (motores.includes(eng)) {
       try {
         const data = await motorCompilar(project, files, { autoinstall: getSettings().autoinstall, engine: eng });
-        return { ...data, engineReason: chosen.reason, engineChoice: chosen, sustituto };
+        // Lo que se muestra (y se guarda como motor del proyecto) es el que de verdad se usó.
+        return { ...data, engineReason: chosen.reason, engineChoice: sustituto ? { ...chosen, engine: eng } : chosen, sustituto };
       } catch (e) {
         throw new CompileError('Motor integrado: ' + (e.message || e), 'server');
       }

@@ -17,6 +17,25 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.4.0] — 16 nov. 2026 · Fase 2: Beta con motor integrado · compilación 64
+
+### Nuevo: LuaLaTeX dentro de la app
+- **LuaLaTeX en el motor integrado**, sin Termux: fuentes OpenType con `fontspec`, matemática Unicode con `unicode-math`, `polyglossia`, `luacode`… La primera vez que se usa, se prepara unos segundos.
+- **Los documentos «de XeLaTeX» se compilan con LuaLaTeX.** fontspec, unicode-math y polyglossia funcionan igual en los dos, así que esos documentos ya no necesitan Termux. Solo lo exclusivo de XeLaTeX (xeCJK, mathspec, `\XeTeX…`) sigue yendo a Termux.
+- **Fuentes que faltan, al vuelo.** Con `\setmainfont{TeX Gyre Termes}`, `{Libertinus Serif}`, `{Fira Sans}`, etc., si la fuente no está se busca su paquete en CTAN, se descarga y se vuelve a compilar.
+- **biblatex sin biber.** El motor le pide a biblatex que use BibTeX, que sí viene en la app, así que la bibliografía sale sin hacer nada. Si el documento dice `backend=biber` y aun así falla, el aviso ofrece **«Usar backend=bibtex»**.
+
+### Cambios
+- **Ajustes:**
+  - «Probar motor integrado» prueba pdfLaTeX y LuaLaTeX.
+  - La sección Termux explica que solo hace falta para lo exclusivo de XeLaTeX.
+- **Pantalla de inicio:** el aviso dice «Motor integrado listo · pdfLaTeX, LuaLaTeX».
+- **README:** Termux pasa a ser opcional.
+
+### Nota
+- **APK más grande:** unos 44 MB, por las bibliotecas de LuaLaTeX (HarfBuzz, FreeType…) y las fuentes OpenType Latin Modern.
+- **Primera vez tras actualizar:** el motor se prepara de nuevo. Los paquetes que ya habías descargado se conservan.
+
 ## [0.3.1] — 15 nov. 2026 · Fase 2: Beta con motor integrado · compilación 63
 
 ### Más rápido
