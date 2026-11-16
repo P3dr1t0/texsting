@@ -1,5 +1,5 @@
-"""Motor integrado (#1), prueba de concepto: arma lo que va dentro del APK para compilar
-con pdfLaTeX SIN Termux.
+"""Motor integrado (#1): arma lo que va dentro del APK para compilar con pdfLaTeX y LuaLaTeX
+SIN Termux.
 
   1. Binario: pdftex de Termux (aarch64, TeX Live 2026) y sus bibliotecas, renombrados
      como lib*.so para que Android los instale en nativeLibraryDir (el único lugar desde
@@ -25,7 +25,9 @@ TL = os.path.join(WORK, "tl")  # TeX Live del runner (x86_64)
 # Paquetes de LaTeX incluidos en esta prueba (además de la base).
 EXTRA = ["collection-latex", "babel-spanish", "hyphen-spanish", "geometry", "booktabs", "xcolor",
          "amsmath", "tools", "graphics", "hyperref", "fancyhdr", "enumitem", "caption", "float",
-         "multirow", "siunitx", "lm", "cm-super", "titlesec", "parskip", "csquotes", "mylatexformat"]
+         "multirow", "siunitx", "lm", "cm-super", "titlesec", "parskip", "csquotes", "mylatexformat",
+         # LuaLaTeX: motor, carga de fuentes OpenType y los paquetes de documentos «XeLaTeX» típicos.
+         "collection-luatex", "fontspec", "unicode-math", "lm-math", "lualatex-math"]
 
 def sh(cmd, **kw):
     print("+", cmd if isinstance(cmd, str) else " ".join(cmd), flush=True)
@@ -59,7 +61,14 @@ for line in open(idx_path, encoding="utf-8").read().splitlines() + [""]:
 
 root = os.path.join(WORK, "termux")
 shutil.rmtree(root, ignore_errors=True); os.makedirs(root)
-for name in ["texlive-bin", "libandroid-complex-math", "libc++", "libpng", "zlib", "libandroid-support"]:
+# texlive-bin y todas sus dependencias (LuaHBTeX usa harfbuzz, freetype, glib…).
+need, todo_p = set(), ["texlive-bin", "libandroid-complex-math", "libc++", "libpng", "zlib", "libandroid-support"]
+while todo_p:
+    q = todo_p.pop()
+    if q in need or q not in pkgs: continue
+    need.add(q)
+    todo_p += [d.strip().split(" ")[0] for d in pkgs[q].get("Depends", "").split(",") if d.strip()]
+for name in sorted(need):
     deb = get(f"{TERMUX}/{pkgs[name]['Filename']}", os.path.join(WORK, name + ".deb"))
     sh(["dpkg-deb", "-x", deb, root])
 usr = os.path.join(root, "data/data/com.termux/files/usr")
@@ -67,7 +76,7 @@ libdir = os.path.join(usr, "lib")
 pdftex = os.path.realpath(os.path.join(usr, "bin", "texlive", "pdftex"))
 # BibTeX y makeindex: pequeños, usan las mismas bibliotecas que pdfTeX.
 extras = {}
-for b in ["bibtex", "makeindex"]:
+for b in ["bibtex", "makeindex", "luahbtex"]:
     pb = os.path.join(usr, "bin", "texlive", b)
     if os.path.exists(pb): extras[b] = os.path.realpath(pb)
     else: print("Aviso: Termux no trae", b)
@@ -159,12 +168,23 @@ used |= traced([os.path.join(BIN, "pdftex"), "-ini", "-jobname=pdflatex", "-prog
 for d in docs:
     for _ in range(2):
         used |= traced([os.path.join(BIN, "pdflatex"), "-interaction=nonstopmode", "-synctex=1", d], tests, envtl)
+# LuaLaTeX: formato y documentos de prueba propios (fontspec, unicode-math…).
+tests_lua = os.path.join(WORK, "docs-lua"); shutil.rmtree(tests_lua, ignore_errors=True)
+shutil.copytree(os.path.join(HERE, "docs-lua"), tests_lua)
+docs_lua = sorted(f for f in os.listdir(tests_lua) if f.endswith(".tex"))
+lfmt = os.path.join(WORK, "fmt-lua"); shutil.rmtree(lfmt, ignore_errors=True); os.makedirs(lfmt)
+used |= traced([os.path.join(BIN, "luahbtex"), "-ini", "-jobname=lualatex", "-progname=lualatex", "lualatex.ini"], lfmt, envtl)
+envlua = dict(envtl, TEXFORMATS=lfmt + ":")
+for d in docs_lua:
+    for _ in range(2):
+        used |= traced([os.path.join(BIN, "luahbtex"), "-progname=lualatex", "-fmt=lualatex", "-interaction=nonstopmode", d], tests_lua, envlua)
 keep = set()
 for f in used:
     rel = os.path.relpath(f, TL)
     if not os.path.isfile(f) or rel.startswith(("bin/", "tlpkg/", "texmf-var/web2c/")) or rel.endswith((".fmt", ".log")):
         continue
     if rel.startswith("texmf-var/fonts/map/dvips/"): continue  # solo para dvips
+    if rel.startswith("texmf-var/luatex-cache/"): continue  # caché de fuentes de LuaLaTeX: se arma en el equipo
     if rel.split("/")[0] in ("texmf-dist", "texmf-var"): keep.add(rel)
 # strace solo ve lo que usaron estos documentos (p. ej. solo los tamaños de letra de 11 pt).
 # Para no quedarse corto, cada carpeta usada entra completa: todas las fuentes de una familia
@@ -195,7 +215,7 @@ for d in ["texmf-dist/bibtex/bst/base"]:
 # mylatexformat: para guardar el preámbulo de cada proyecto ya cargado (compilar más rápido)
 for f in os.listdir(os.path.join(TL, "texmf-dist/tex/latex/mylatexformat")):
     keep.add("texmf-dist/tex/latex/mylatexformat/" + f)
-for name in ["cp227.tcx", "pdftexconfig.tex", "language.dat", "language.def", "pdftex.map"]:
+for name in ["cp227.tcx", "pdftexconfig.tex", "language.dat", "language.def", "pdftex.map", "language.dat.lua", "lualatex.ini"]:
     p = subprocess.run([os.path.join(BIN, "kpsewhich"), name], capture_output=True, text=True, env=envtl).stdout.strip()
     if p: keep.add(os.path.relpath(p, TL))
 
@@ -242,6 +262,31 @@ for d in docs:
     if not os.path.exists(pdf) or errs:
         print(r.stdout[-3000:]); raise SystemExit("La prueba con los datos reducidos falló: " + d)
 
+# LuaLaTeX con los datos reducidos: formato en web2c/luahbtex (como la app) y el binario con otro nombre.
+shutil.copy(os.path.join(BIN, "luahbtex"), os.path.join(fake, "libtx_luahbtex.so"))
+lfd = os.path.join(var, "texmf-var", "web2c", "luahbtex"); os.makedirs(lfd)
+t0 = time.time()
+r = subprocess.run([os.path.join(fake, "libtx_luahbtex.so"), "-ini", "-jobname=lualatex", "-progname=lualatex", "lualatex.ini"],
+                   cwd=lfd, env=env, capture_output=True, text=True, errors="replace")
+print(f"Formato de LuaLaTeX: {'OK' if os.path.exists(os.path.join(lfd, 'lualatex.fmt')) else 'FALLÓ'} en {time.time()-t0:.1f} s")
+if not os.path.exists(os.path.join(lfd, "lualatex.fmt")): print(r.stdout[-3000:]); raise SystemExit("No se pudo crear el formato de LuaLaTeX")
+pl = os.path.join(check, "docs-lua"); shutil.copytree(tests_lua, pl)
+for d in docs_lua:
+    for i in range(2):
+        t0 = time.time()
+        r = subprocess.run([os.path.join(fake, "libtx_luahbtex.so"), "-progname=lualatex", "-fmt=lualatex",
+                            "-interaction=nonstopmode", "-file-line-error", "-synctex=1", d],
+                           cwd=pl, env=env, capture_output=True, text=True, errors="replace")
+        dt = time.time() - t0
+    pdf = os.path.join(pl, d[:-4] + ".pdf")
+    logtxt = open(os.path.join(pl, d[:-4] + ".log"), errors="replace").read()
+    errs = re.findall(r"^(?:! .*|.*:\d+: .*)$", logtxt, re.M)
+    fonts = subprocess.run(["pdffonts", pdf], capture_output=True, text=True).stdout if shutil.which("pdffonts") and os.path.exists(pdf) else ""
+    print(f"Prueba LuaLaTeX {d}: {'PDF OK' if os.path.exists(pdf) else 'SIN PDF'} ({dt:.1f} s la 2.ª vez) errores={errs[:5]}")
+    print(fonts[:800])
+    if not os.path.exists(pdf) or errs:
+        print(r.stdout[-3000:]); raise SystemExit("La prueba de LuaLaTeX con los datos reducidos falló: " + d)
+
 # BibTeX y makeindex con los datos reducidos (con los binarios del runner; en el APK van los de Termux).
 bt = os.path.join(check, "bib"); os.makedirs(bt)
 open(os.path.join(bt, "b.bib"), "w").write("@book{knuth,author={Donald Knuth},title={The {\\TeX}book},year={1984},publisher={Addison-Wesley}}\n")
@@ -260,7 +305,7 @@ if not ok: print(rb.stdout[-1500:], rm.stdout[-800:], lg[-1500:]); raise SystemE
 
 # ───────────────────────── 3b. Índice archivo → paquete (para bajar paquetes al vuelo) ─────────────────────────
 INDEX_EXT = (".sty", ".cls", ".def", ".fd", ".cfg", ".clo", ".ldf", ".tfm", ".bbx", ".cbx", ".lbx", ".dbx",
-             ".tex", ".pfb", ".map", ".enc", ".vf", ".bst", ".ist")
+             ".tex", ".pfb", ".map", ".enc", ".vf", ".bst", ".ist", ".otf", ".ttf", ".lua")
 tlpdb = lzma.decompress(open(get(f"{CTAN}/tlpkg/texlive.tlpdb.xz", os.path.join(WORK, "tlpdb.xz")), "rb").read()).decode("utf-8", "replace")
 index, sizes = {}, {}
 for block in tlpdb.split("\n\n"):
