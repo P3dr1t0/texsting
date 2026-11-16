@@ -134,9 +134,10 @@ public class MotorPlugin extends Plugin {
         e.put("TEXMFDIST", t + "/texmf-dist"); e.put("TEXMFSYSVAR", t + "/texmf-var");
         e.put("TEXMFSYSCONFIG", t + "/texmf-config"); e.put("TEXMFLOCAL", t + "/texmf-local");
         e.put("TEXMFVAR", v + "/texmf-var"); e.put("TEXMFCONFIG", v + "/texmf-config");
-        e.put("TEXMFHOME", v + "/texmf"); e.put("TEXMFCACHE", v + "/cache");
-        // luaotfload (LuaLaTeX) guarda ahí la lista de fuentes: la carpeta tiene que existir.
-        new File(v, "cache").mkdirs(); new File(v, "texmf-var").mkdirs();
+        // La caché de LuaLaTeX (lista de fuentes de luaotfload) va dentro de TEXMFVAR, como en TeX Live:
+        // LuaTeX solo deja escribir ahí (en otra carpeta responde «no writeable cache path»).
+        e.put("TEXMFHOME", v + "/texmf"); e.put("TEXMFCACHE", v + "/texmf-var");
+        new File(v, "texmf-var").mkdirs();
         e.put("MKTEXTFM", "0"); e.put("MKTEXPK", "0"); e.put("MKTEXMF", "0"); e.put("MKTEXFMT", "0");
         return e;
     }
@@ -310,7 +311,7 @@ public class MotorPlugin extends Plugin {
     // y usó otra sin error. Pasa con IEEEtran (Times): hay que bajar el .fd y sus fuentes.
     private static final Pattern SHAPE = Pattern.compile("Font shape `([A-Za-z0-9]+)/([^/']+)/[^']*' undefined");
     private static final String[] INSTALLABLE = { ".sty", ".cls", ".def", ".fd", ".cfg", ".clo", ".ldf", ".tfm", ".bbx", ".cbx",
-        ".lbx", ".dbx", ".code.tex", ".tex", ".pfb", ".map", ".enc", ".vf" };
+        ".lbx", ".dbx", ".code.tex", ".tex", ".pfb", ".map", ".enc", ".vf", ".otf", ".ttf", ".lua", ".bst" };
     private Map<String, String> index;
     private Set<String> bundled;
 
@@ -393,6 +394,29 @@ public class MotorPlugin extends Plugin {
             }
         }
         return found;
+    }
+
+    /** LuaLaTeX/fontspec: «The font "TeX Gyre Termes" cannot be found». */
+    static List<String> fontRequests(String log) {
+        List<String> out = new ArrayList<>();
+        Matcher m = Pattern.compile("The font \"([^\"]+)\" cannot be found").matcher(unwrap(log));
+        while (m.find()) if (!out.contains(m.group(1))) out.add(m.group(1));
+        return out;
+    }
+
+    /** El archivo de una fuente pedida por nombre: «TeX Gyre Termes» → texgyretermes-regular.otf (del índice). */
+    private String fontFile(String name) {
+        String key = name.toLowerCase(Locale.ROOT).replaceAll("\\.(otf|ttf)$", "").replaceAll("[^a-z0-9]", "");
+        if (key.length() < 3 || index == null) return null;
+        String best = null;
+        for (String f : index.keySet()) {
+            String lf = f.toLowerCase(Locale.ROOT);
+            if (!lf.endsWith(".otf") && !lf.endsWith(".ttf")) continue;
+            String k = lf.substring(0, lf.length() - 4).replaceAll("[^a-z0-9]", "");
+            if (k.equals(key) || k.equals(key + "regular")) return f;
+            if (k.startsWith(key) && (best == null || f.length() < best.length())) best = f;
+        }
+        return best;
     }
 
     private volatile boolean quiet;
@@ -996,8 +1020,13 @@ public class MotorPlugin extends Plugin {
                     // Las .fd solo si no vienen en el APK (si vienen, es una variante que de verdad no existe).
                     List<String> soft = new ArrayList<>();
                     for (String fd : findShapes(all)) if (!bundledNames().contains(fd) && !failed.contains(fd) && !skipped.contains(fd)) soft.add(fd);
-                    if (miss.isEmpty() && soft.isEmpty()) break;
+                    List<String> fontReq = fontRequests(all);
+                    if (miss.isEmpty() && soft.isEmpty() && fontReq.isEmpty()) break;
                     loadIndex();
+                    for (String fr : fontReq) {
+                        String ff = fontFile(fr);
+                        if (ff != null && !failed.contains(ff) && !miss.contains(ff)) miss.add(ff); else if (ff == null) failed.add(fr);
+                    }
                     Set<String> have = installedPkgs();
                     boolean progressed = false;
                     for (String m : soft) {

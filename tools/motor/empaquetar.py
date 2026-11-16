@@ -238,7 +238,7 @@ def app_env(tlroot, var):
             "TEXMFROOT": tlroot, "TEXMFDIST": tlroot + "/texmf-dist", "TEXMFSYSVAR": tlroot + "/texmf-var",
             "TEXMFSYSCONFIG": tlroot + "/texmf-config", "TEXMFLOCAL": tlroot + "/texmf-local",
             "TEXMFVAR": var + "/texmf-var", "TEXMFCONFIG": var + "/texmf-config", "TEXMFHOME": var + "/texmf",
-            "TEXMFCACHE": var + "/cache", "MKTEXTFM": "0", "MKTEXPK": "0", "MKTEXMF": "0", "MKTEXFMT": "0"}
+            "TEXMFCACHE": var + "/texmf-var", "MKTEXTFM": "0", "MKTEXPK": "0", "MKTEXMF": "0", "MKTEXFMT": "0"}
 
 check = os.path.join(WORK, "check"); shutil.rmtree(check, ignore_errors=True)
 shutil.copytree(sub, os.path.join(check, "tl"))
