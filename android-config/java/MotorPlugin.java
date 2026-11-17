@@ -77,7 +77,8 @@ public class MotorPlugin extends Plugin {
         if (p.exists() && p.lastModified() >= x.lastModified()) return true;
         p.delete();
         try {
-            Run r = run(Arrays.asList(xdvipdfmx().getAbsolutePath(), "-q", "-E", "-o", rel + ".pdf", rel + ".xdv"), dir, 5 * 60 * 1000);
+            // Sin -q: si falla, sus avisos dicen qué letra falta («Could not locate … for TFM "esint10"»).
+            Run r = run(Arrays.asList(xdvipdfmx().getAbsolutePath(), "-E", "-o", rel + ".pdf", rel + ".xdv"), dir, 5 * 60 * 1000);
             if (!p.exists() || r.code != 0) {
                 if (output != null) output.append("\n[xdvipdfmx] No se pudo armar el PDF (código ").append(r.code).append("):\n")
                         .append(r.out.length() > 3000 ? r.out.substring(r.out.length() - 3000) : r.out).append('\n');
@@ -1038,8 +1039,10 @@ public class MotorPlugin extends Plugin {
                 String want = call.getString("engine", "pdflatex");
                 String eng = "lualatex".equals(want) && luatex().exists() ? "lualatex"
                         : "xelatex".equals(want) && xetex().exists() && xdvipdfmx().exists() ? "xelatex" : "pdflatex";
+                long tf = System.currentTimeMillis();
                 if (eng.equals("lualatex")) prepareLua();
                 if (eng.equals("xelatex")) prepareXe();
+                long formatoMs = System.currentTimeMillis() - tf;
                 try (OutputStream o = new FileOutputStream(new File(mainDir, "texsting-motor.txt"))) { o.write(eng.getBytes(StandardCharsets.UTF_8)); }
                 // biblatex usa biber por defecto, y biber no viene en el motor: se le pide BibTeX, que sí viene.
                 boolean biblatex = false;
@@ -1102,7 +1105,10 @@ public class MotorPlugin extends Plugin {
                         output.append(r.out);
                         if (r.timedOut) { timedOut = true; break; }
                         String lg = readText(new File(dir, stem + ".log"));
-                        if (lg != null && (lg.contains("Emergency stop") || lg.contains("not found") || lg.contains("not loadable") || lg.contains("cannot open"))) break;
+                        // Se corta para buscar paquetes solo si de verdad falta algo: fontspec/polyglossia escriben
+                        // «not found» en mensajes informativos, y eso dejaba a XeLaTeX con una sola pasada.
+                        if (lg != null && (lg.contains("Emergency stop") || lg.contains("not loadable") || lg.contains("cannot open")
+                                || !findMissing(lg).isEmpty() || !fontRequests(lg).isEmpty())) break;
                         // Bibliografía (BibTeX) e índice alfabético (makeindex), como latexmk: si cambiaron, se arman y se repite.
                         if (p < 4 && auxTools(mainDir, job, output, autoinstall)) continue;
                         boolean rerunMsg = lg != null && (lg.contains("Rerun to get") || lg.contains("Label(s) may have changed"));
@@ -1193,7 +1199,29 @@ public class MotorPlugin extends Plugin {
                 }
                 if (eng.equals("xelatex") && !timedOut) {
                     progress("Armando el PDF…");
-                    xdvToPdf(dir, stem, output);
+                    StringBuilder xo = new StringBuilder();
+                    if (!xdvToPdf(dir, stem, xo) && autoinstall) {
+                        // «Could not locate a virtual/physical font for TFM "esint10"»: es una letra Type 1 que no
+                        // está en pdftex.map (como el «Font esint10 at 657 not found» de pdfLaTeX).
+                        Matcher fm = Pattern.compile("font for TFM \"([A-Za-z0-9_\\-]+)\"").matcher(xo);
+                        List<String> pfbs = new ArrayList<>();
+                        while (fm.find()) if (!pfbs.contains(fm.group(1) + ".pfb")) pfbs.add(fm.group(1) + ".pfb");
+                        boolean got = false;
+                        if (!pfbs.isEmpty()) {
+                            loadIndex();
+                            Set<String> have = installedPkgs();
+                            for (String w : pfbs) {
+                                String pkg = index.get(w);
+                                if (pkg == null || have.contains(pkg) || installedNow.contains(pkg)) continue;
+                                for (String q : withDeps(pkg, have, installedNow)) {
+                                    try { install(q); installedNow.add(q); got = true; }
+                                    catch (Exception e) { xo.append("\n[TeXsting] No se pudo descargar ").append(q).append(": ").append(e.getMessage()).append('\n'); }
+                                }
+                            }
+                        }
+                        if (got) { progress("Armando el PDF con las letras nuevas…"); xo.setLength(0); xdvToPdf(dir, stem, xo); }
+                    }
+                    output.append(xo);
                 }
                 byte[] pdfBytes = readBytes(pdf);
                 boolean hasErrors = errPat.matcher(log).find();
@@ -1218,6 +1246,7 @@ public class MotorPlugin extends Plugin {
                 res.put("integrado", true);
                 res.put("pasadas", passes);
                 res.put("prepararMs", t1 - t0);
+                res.put("formatoMs", formatoMs);
                 res.put("texMs", t2 - t1);
                 res.put("preparacion", prep);
                 if (firstRunMs > 0 && rounds == 0 && (usedPre || usedFigs)) writeMs(new File(mainDir, (usedFigs ? FIG : PRE) + "-ms.txt"), firstRunMs);

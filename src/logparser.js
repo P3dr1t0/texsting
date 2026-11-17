@@ -1084,9 +1084,11 @@ export function parseBibOutput(output, sources = null, main = 'main.tex', existi
   // XeLaTeX: xdvipdfmx (el que arma el PDF a partir del .xdv) falló; se muestran sus mensajes.
   const xd = output.match(/\[xdvipdfmx\] No se pudo armar el PDF[^\n]*\n([\s\S]{0,1500})/);
   if (xd) {
+    const tfm = xd[1].match(/font for TFM "([^"]+)"/);
     const fuente = xd[1].match(/(?:Could not locate|Cannot proceed without|not found)[^\n]*/i);
     push({ type: 'error', file: null, line: null, message: 'XeLaTeX compiló, pero no se pudo armar el PDF (xdvipdfmx)',
-      hint: (fuente ? fuente[0] + ' · ' : '') + xd[1].trim().split('\n').slice(-4).join(' · ').slice(0, 400) });
+      hint: tfm ? `Falta la letra «${tfm[1]}» (de un paquete de símbolos o de una fuente Type 1). Con «Instalar paquetes faltantes» activado, TeXsting la busca y la descarga sola; si sigue saliendo, cuéntame cuál es.`
+        : (fuente ? fuente[0] + ' · ' : '') + xd[1].trim().split('\n').slice(-4).join(' · ').slice(0, 400) });
   }
   const bibLine = (bib, n) => {
     if (sources && sources[bib]) return { file: bib, line: n };

@@ -664,8 +664,8 @@ export async function renderEditor(root, { id }, navigate) {
       // ⚡: se usó el preámbulo guardado (los \usepackage ya estaban cargados).
       const via = r.integrado ? ` (motor integrado${r.engine === 'lualatex' ? ', LuaLaTeX' : r.engine === 'xelatex' ? ', XeLaTeX' : ''}${r.preambuloGuardado ? ' ⚡' : ''})` : '';
       // Si esta compilación tuvo que preparar el motor (tras instalar/actualizar), se dice cuánto fue eso.
-      const prepS = r.integrado && r.preparacion && r.preparacion.primeraVez ? Math.round((r.prepararMs || 0) / 1000) : 0;
-      const viaP = prepS >= 2 ? `${via}, de ellos ${prepS} s preparando el motor (solo tras actualizar)` : via;
+      const prepS = r.integrado ? Math.round(((r.preparacion && r.preparacion.primeraVez ? r.prepararMs || 0 : 0) + (r.formatoMs || 0)) / 1000) : 0;
+      const viaP = prepS >= 2 ? `${via}, de ellos ${prepS} s preparando el motor (solo la primera vez)` : via;
       if (r.sustituto && !project.avisoLua) {
         // Una sola vez por proyecto: explica por qué no se usó XeLaTeX.
         project.avisoLua = true;

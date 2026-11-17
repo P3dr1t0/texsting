@@ -17,6 +17,15 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.5.3] — 17 nov. 2026 · Fase 2: Beta con motor integrado · compilación 69
+
+### Corregido
+- **XeLaTeX hacía una sola pasada.** fontspec y polyglossia escriben «not found» en mensajes que son solo informativos. El motor lo tomaba como un paquete faltante y cortaba las pasadas, así que el índice, las referencias y las portadas con TikZ (`remember picture`) quedaban a medias. Por eso salían «Las etiquetas cambiaron: vuelve a compilar» y la portada de Circuitos casi en blanco. Ahora solo corta si de verdad falta un archivo.
+- **XeLaTeX: «Cannot proceed without .vf or "physical" font»** (Física Moderna). El programa que arma el PDF no encontraba una letra Type 1 de un paquete de símbolos, como esint. Ahora la app la busca, la descarga y vuelve a armar el PDF. Si no la encuentra, el aviso dice qué letra falta.
+
+### Cambios
+- **El aviso de «Listo en…» también cuenta la preparación de XeLaTeX y LuaLaTeX** («de ellos X s preparando el motor») la primera vez que se usan.
+
 ## [0.5.2] — 17 nov. 2026 · Fase 2: Beta con motor integrado · compilación 68
 
 ### Corregido
