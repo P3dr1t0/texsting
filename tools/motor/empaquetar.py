@@ -237,7 +237,7 @@ for d in ["texmf-dist/bibtex/bst/base"]:
 for f in os.listdir(os.path.join(TL, "texmf-dist/tex/latex/mylatexformat")):
     keep.add("texmf-dist/tex/latex/mylatexformat/" + f)
 for name in ["cp227.tcx", "pdftexconfig.tex", "language.dat", "language.def", "pdftex.map", "language.dat.lua", "lualatex.ini",
-             "xelatex.ini", "dvipdfmx.cfg"]:
+             "xelatex.ini", "dvipdfmx.cfg", "errbabel.def"]:
     p = subprocess.run([os.path.join(BIN, "kpsewhich"), name], capture_output=True, text=True, env=envtl).stdout.strip()
     if p: keep.add(os.path.relpath(p, TL))
 

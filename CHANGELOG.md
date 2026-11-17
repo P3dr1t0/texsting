@@ -17,6 +17,14 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.5.1] — 16 nov. 2026 · Fase 2: Beta con motor integrado · compilación 67
+
+### Corregido
+- **XeLaTeX: «No se generó el PDF» sin ningún error** (p. ej. en el Cuaderno de Trigonometría). XeTeX escribe primero un archivo intermedio (.xdv) y otro programa, xdvipdfmx, lo convierte en PDF. Antes XeTeX lo llamaba por su cuenta, y si fallaba no quedaba rastro.
+  - Ahora la app corre xdvipdfmx aparte, una sola vez al final y no en cada pasada, así que también es más rápido.
+  - Si xdvipdfmx falla, sus mensajes aparecen en Mensajes como «XeLaTeX compiló, pero no se pudo armar el PDF».
+- **«Falta el archivo errbabel.def» con `\usepackage[provide=*]{babel}` y `\babelprovide[import,main]{spanish}`** (Física Moderna, Circuitos Eléctricos I). El motor no traía los archivos de idioma nuevos de babel (`babel-es.ini`). Ahora los trae, y esa forma de cargar babel funciona en XeLaTeX y LuaLaTeX.
+
 ## [0.5.0] — 16 nov. 2026 · Fase 2: Beta con motor integrado · compilación 66
 
 ### Nuevo: XeLaTeX dentro de la app
