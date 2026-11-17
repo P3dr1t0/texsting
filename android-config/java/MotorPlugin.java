@@ -59,14 +59,34 @@ public class MotorPlugin extends Plugin {
         if ("lualatex".equals(eng)) {
             c.add(luatex().getAbsolutePath()); c.add("-progname=lualatex"); c.add("-fmt=" + (fmt != null ? fmt : "lualatex"));
         } else if ("xelatex".equals(eng)) {
-            // XeTeX escribe un .xdv y llama a xdvipdfmx para el PDF: se le dice dónde está (no está en el PATH).
+            // XeTeX solo escribe el .xdv; el PDF lo arma xdvipdfmx después (ver xdvToPdf), una sola vez al final
+            // y no en cada pasada, y con sus mensajes a la vista si algo falla.
             c.add(xetex().getAbsolutePath()); c.add("-progname=xelatex"); c.add("-fmt=" + (fmt != null ? fmt : "xelatex"));
-            c.add("-output-driver=" + xdvipdfmx().getAbsolutePath() + " -q -E");
+            c.add("-no-pdf");
         } else {
             c.add(pdftex().getAbsolutePath()); c.add("-progname=pdflatex"); c.add("-fmt=" + (fmt != null ? fmt : "pdflatex"));
         }
         c.addAll(Arrays.asList(rest));
         return c;
+    }
+
+    /** XeLaTeX: arma rel.pdf a partir de rel.xdv con xdvipdfmx. Devuelve true si salió el PDF. */
+    private boolean xdvToPdf(File dir, String rel, StringBuilder output) {
+        File x = new File(dir, rel + ".xdv"), p = new File(dir, rel + ".pdf");
+        if (!x.exists()) return p.exists();
+        if (p.exists() && p.lastModified() >= x.lastModified()) return true;
+        p.delete();
+        try {
+            Run r = run(Arrays.asList(xdvipdfmx().getAbsolutePath(), "-q", "-E", "-o", rel + ".pdf", rel + ".xdv"), dir, 5 * 60 * 1000);
+            if (!p.exists() || r.code != 0) {
+                if (output != null) output.append("\n[xdvipdfmx] No se pudo armar el PDF (código ").append(r.code).append("):\n")
+                        .append(r.out.length() > 3000 ? r.out.substring(r.out.length() - 3000) : r.out).append('\n');
+                if (r.code != 0) p.delete();
+            }
+        } catch (Exception e) {
+            if (output != null) output.append("\n[xdvipdfmx] ").append(e.getMessage()).append('\n');
+        }
+        return p.exists();
     }
 
     /** XeLaTeX: fontconfig busca las fuentes por nombre en TeX, en las descargadas y en las del sistema (Roboto, Noto…). */
@@ -836,6 +856,7 @@ public class MotorPlugin extends Plugin {
         Run r = run(tex(engineOf(mainDir), null, "-interaction=batchmode",
                 "-halt-on-error", "-jobname=" + fig, figInject() + extraInject(mainDir) + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"),
                 mainDir, 3 * 60 * 1000);
+        if (engineOf(mainDir).equals("xelatex") && !r.timedOut && r.code == 0) xdvToPdf(mainDir, fig, null);
         // Si se cortó (llegó una compilación) o falló, el PDF puede quedar a medias: se borra.
         String lg = readText(new File(mainDir, fig + ".log"));
         boolean ok = !r.timedOut && r.code == 0 && new File(mainDir, fig + ".pdf").exists() && lg != null && lg.contains("Output written");
@@ -1151,6 +1172,10 @@ public class MotorPlugin extends Plugin {
                     try (OutputStream o = new FileOutputStream(new File(mainDir, PRE + ".txt"))) { o.write(((preOk ? "verificado " : "no ") + preKey).getBytes(StandardCharsets.UTF_8)); }
                     if (!preOk) { new File(mainDir, PRE + ".fmt").delete(); usedPre = false; }
                     log = normal == null ? "" : normal;
+                }
+                if (eng.equals("xelatex") && !timedOut) {
+                    progress("Armando el PDF…");
+                    xdvToPdf(dir, stem, output);
                 }
                 byte[] pdfBytes = readBytes(pdf);
                 boolean hasErrors = errPat.matcher(log).find();

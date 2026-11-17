@@ -1,0 +1,17 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+\else
+  \usepackage{fontspec}
+\fi
+\usepackage[provide=*]{babel}
+\babelprovide[import,main]{spanish}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{xcolor,tikz,hyperref}
+\begin{document}
+\tableofcontents
+\section{Prueba de babel con \texttt{provide}}
+Apuntes universitarios: \today. Índice, ñandú, «comillas».
+\begin{tikzpicture}\draw[->] (0,0) -- (2,1) node[right] {$v_C(t)$};\end{tikzpicture}
+\end{document}

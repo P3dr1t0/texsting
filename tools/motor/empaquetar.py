@@ -328,10 +328,13 @@ px = os.path.join(check, "docs-xe"); shutil.copytree(tests_xe, px)
 for d in docs_xe:
     for i in range(2):
         t0 = time.time()
-        r = subprocess.run([os.path.join(fake, "libtx_xetex.so"), "-progname=xelatex", "-fmt=xelatex",
-                            "-output-driver=" + os.path.join(fake, "libtx_xdvipdfmx.so") + " -q -E",
+        # Como la app: XeTeX solo escribe el .xdv y xdvipdfmx arma el PDF aparte.
+        r = subprocess.run([os.path.join(fake, "libtx_xetex.so"), "-progname=xelatex", "-fmt=xelatex", "-no-pdf",
                             "-interaction=nonstopmode", "-file-line-error", "-synctex=1", d],
                            cwd=px, env=envx, capture_output=True, text=True, errors="replace")
+        rx = subprocess.run([os.path.join(fake, "libtx_xdvipdfmx.so"), "-q", "-E", "-o", d[:-4] + ".pdf", d[:-4] + ".xdv"],
+                            cwd=px, env=envx, capture_output=True, text=True, errors="replace")
+        if rx.returncode != 0: print("xdvipdfmx:", rx.stdout[-1500:], rx.stderr[-1500:])
         dt = time.time() - t0
     pdf = os.path.join(px, d[:-4] + ".pdf")
     logtxt = open(os.path.join(px, d[:-4] + ".log"), errors="replace").read()
