@@ -102,9 +102,23 @@ public class MotorPlugin extends Plugin {
         if (!t.equals(readText(fc))) try (OutputStream o = new FileOutputStream(fc)) { o.write(t.getBytes(StandardCharsets.UTF_8)); }
     }
 
+    /** Tamaños de papel para libpaper (formato de paperspecs: nombre,ancho,alto,unidad). */
+    private void writePaperSpecs() throws IOException {
+        File dir = new File(var(), "config");
+        dir.mkdirs();
+        StringBuilder t = new StringBuilder("A4,210,297,mm\nLetter,8.5,11,in\nLegal,8.5,14,in\nExecutive,7.25,10.5,in\n"
+                + "Tabloid,11,17,in\nLedger,17,11,in\nStatement,5.5,8.5,in\nFolio,210,330,mm\nB4,250,353,mm\nB5,176,250,mm\n"
+                + "C5,162,229,mm\nDL,110,220,mm\n");
+        int[][] a = { {841, 1189}, {594, 841}, {420, 594}, {297, 420}, {210, 297}, {148, 210}, {105, 148}, {74, 105}, {52, 74}, {37, 52}, {26, 37} };
+        for (int i = 0; i < a.length; i++) if (i != 4) t.append("A").append(i).append(',').append(a[i][0]).append(',').append(a[i][1]).append(",mm\n");
+        File f = new File(dir, "paperspecs");
+        if (!t.toString().equals(readText(f))) try (OutputStream o = new FileOutputStream(f)) { o.write(t.toString().getBytes(StandardCharsets.UTF_8)); }
+    }
+
     /** XeLaTeX: su formato se arma la primera vez que se usa. */
     private void prepareXe() throws Exception {
         writeFontsConf();
+        writePaperSpecs();
         String v = assetVersion();
         File f = new File(xeFmtDir(), "xelatex.fmt"), mk = new File(xeFmtDir(), "version.txt");
         if (f.exists() && v != null && v.equals(String.valueOf(readText(mk)).trim())) return;
@@ -200,6 +214,10 @@ public class MotorPlugin extends Plugin {
         e.put("TEXMFHOME", v + "/texmf"); e.put("TEXMFCACHE", v + "/texmf-var");
         new File(v, "texmf-var").mkdirs();
         e.put("FONTCONFIG_FILE", v + "/fonts.conf");
+        // xdvipdfmx (XeLaTeX) usa libpaper de Termux, que busca los tamaños de papel en la carpeta de Termux:
+        // se le da una lista propia (config/paperspecs, ver writePaperSpecs) y A4 por defecto.
+        e.put("XDG_CONFIG_HOME", v + "/config");
+        e.put("PAPERSIZE", "a4");
         e.put("MKTEXTFM", "0"); e.put("MKTEXPK", "0"); e.put("MKTEXMF", "0"); e.put("MKTEXFMT", "0");
         return e;
     }

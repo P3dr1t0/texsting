@@ -17,6 +17,11 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.5.2] — 17 nov. 2026 · Fase 2: Beta con motor integrado · compilación 68
+
+### Corregido
+- **XeLaTeX: «xdvipdfmx:fatal: Unrecognized paper format: a4»**, que impedía armar el PDF en todos los documentos de XeLaTeX. El programa que convierte el resultado en PDF busca la lista de tamaños de papel en la carpeta de Termux, y dentro de TeXsting esa carpeta no existe. Ahora la app le da su propia lista (A0–A10, Carta, Oficio, Tabloide, B4, B5…) con A4 por defecto.
+
 ## [0.5.1] — 16 nov. 2026 · Fase 2: Beta con motor integrado · compilación 67
 
 ### Corregido
