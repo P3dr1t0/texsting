@@ -11,15 +11,13 @@
 \usepackage{xcolor}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,angles,quotes,calc}
-\usepackage[most]{tcolorbox}
-\usepackage{enumitem,multicol,booktabs,array,tabularx}
+\usepackage{multicol,array,tabularx}
 \usepackage[hidelinks]{hyperref}
-\newtcolorbox{nota}{colback=blue!5,colframe=blue!50!black,breakable}
 \begin{document}
 \frontmatter
 \tableofcontents
 \mainmatter
 \chapter{Ángulos}
-\begin{nota}Un ángulo trigonométrico se genera por la rotación de un rayo: $\sin^2θ + \cos^2θ = 1$.\end{nota}
+\noindent\fcolorbox{blue!50!black}{blue!5}{\parbox{0.9\linewidth}{Un ángulo trigonométrico se genera por la rotación de un rayo: $\sin^2θ + \cos^2θ = 1$.}}
 \begin{center}\begin{tikzpicture}\draw[->] (0,0) -- (3,0); \draw (0,0) -- (30:2.5) coordinate (A); \draw (0.8,0) arc (0:30:0.8) node[midway,right] {$θ$};\end{tikzpicture}\end{center}
 \end{document}
