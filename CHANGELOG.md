@@ -17,6 +17,13 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.5.5] — 18 nov. 2026 · Fase 2: Beta con motor integrado · compilación 71
+
+### Cambios
+- **Aviso cuando las figuras o el preámbulo quedan guardados.** Al terminar en segundo plano aparece «Listo en segundo plano: la próxima compilación será más rápida ⚡». Así sabes cuándo conviene volver a compilar. En el celular, un documento con muchas figuras puede tardar un par de minutos en guardarlas.
+- **Se vuelve a intentar guardar las figuras de los documentos donde antes no se pudo.** Las versiones anteriores marcaban algunos documentos como «no se pueden guardar aparte» (Trigonometría, por ejemplo). Esa marca seguía valiendo aunque el método nuevo de la 0.5.4 sí pueda guardarlas.
+- **Si de verdad no se pueden guardar, «Log completo» dice por qué**, con el error que aparece, para poder corregirlo.
+
 ## [0.5.4] — 17 nov. 2026 · Fase 2: Beta con motor integrado · compilación 70
 
 ### Más rápido

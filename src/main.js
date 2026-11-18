@@ -1,13 +1,13 @@
 // TeXsting — punto de entrada: tema, navegación y botón Atrás de Android.
 import { App } from '@capacitor/app';
 import { applyTheme } from './theme.js';
-import { closeTopLayer } from './ui.js';
+import { closeTopLayer, toast } from './ui.js';
 import { renderHome } from './screens/home.js';
 import { renderEditor } from './screens/editor.js';
 import { renderSettings, renderTermuxSetup } from './screens/settings.js';
 import { renderNewProject } from './screens/newproject.js';
 import { initOpenWith } from './openwith.js';
-import { motorCalentar } from './motor.js';
+import { motorCalentar, motorAlTerminarFondo } from './motor.js';
 import { getSettings } from './store.js';
 
 const root = document.getElementById('app');
@@ -40,3 +40,5 @@ applyTheme();
 navigate('home').then(() => initOpenWith(navigate));
 // El motor integrado se prepara solo al abrir la app (solo trabaja la primera vez tras instalar o actualizar).
 if ((getSettings().compilador || 'auto') !== 'termux') motorCalentar().catch(() => {});
+// Cuando termina de guardar figuras o el preámbulo en segundo plano, se avisa: ya conviene volver a compilar.
+motorAlTerminarFondo((texto) => texto && toast(texto, { ms: 4500 }));

@@ -814,6 +814,7 @@ public class MotorPlugin extends Plugin {
             }
             if (bad) fmtFile.delete();
             try (OutputStream o = new FileOutputStream(info)) { o.write(((bad ? "no " : "ok ") + key).getBytes(StandardCharsets.UTF_8)); }
+            if (!bad) bgLogro = true;
         } catch (Exception e) {
             fmtFile.delete();
         }
@@ -854,6 +855,35 @@ public class MotorPlugin extends Plugin {
         try (OutputStream o = new FileOutputStream(f)) { o.write(String.valueOf(ms).getBytes(StandardCharsets.UTF_8)); } catch (IOException ignored) { }
     }
     private static File figStatus(File mainDir) { return new File(mainDir, FIG + ".txt"); }
+    /** Primera línea del estado: «ok <clave>» o «no <clave>». La segunda, si no se pudo, dice por qué. */
+    private static String figState(File mainDir) {
+        String t = readText(figStatus(mainDir));
+        return t == null ? "" : t.split("\n", 2)[0].trim();
+    }
+    private static String figReason(File mainDir) {
+        String t = readText(figStatus(mainDir));
+        String[] p = t == null ? new String[0] : t.split("\n", 2);
+        return p.length > 1 ? p[1].trim() : "";
+    }
+    private static void setFigState(File mainDir, boolean ok, String key, String reason) {
+        try (OutputStream o = new FileOutputStream(figStatus(mainDir))) {
+            o.write(((ok ? "ok " : "no ") + key + (ok || reason == null || reason.isEmpty() ? "" : "\n" + reason)).getBytes(StandardCharsets.UTF_8));
+        } catch (Exception ignored) { }
+    }
+    /** El primer error del log, en una línea (para explicar por qué algo no se pudo). */
+    private static String firstError(String log) {
+        if (log == null) return "";
+        Matcher m = ERR.matcher(log);
+        if (!m.find()) return "";
+        int a = m.start(), b = log.indexOf('\n', a);
+        String line = log.substring(a, b < 0 ? log.length() : b).trim();
+        Matcher l = Pattern.compile("\\nl\\.(\\d+) ").matcher(log.substring(a, Math.min(log.length(), a + 3000)));
+        if (line.startsWith("!") && l.find()) line += " (línea " + l.group(1) + ")";
+        return line.length() > 200 ? line.substring(0, 200) + "…" : line;
+    }
+    private volatile String figFail = "";
+    /** Algo quedó guardado en segundo plano (preámbulo o figuras): se avisa una sola vez al terminar. */
+    private volatile boolean bgLogro = false;
 
     private static List<String> figList(File mainDir, String job) {
         List<String> out = new ArrayList<>();
@@ -874,7 +904,7 @@ public class MotorPlugin extends Plugin {
 
     /** Listas si se armaron con este mismo preámbulo (si cambia, p. ej. \\pgfplotsset, hay que redibujarlas todas). */
     private boolean figsReady(File mainDir, String job, String key) {
-        return key != null && ("ok " + key).equals(String.valueOf(readText(figStatus(mainDir))).trim())
+        return key != null && ("ok " + key).equals(figState(mainDir))
                 && new File(mainDir, job + ".figlist").exists() && !figList(mainDir, job).isEmpty() && staleFigs(mainDir, job).isEmpty();
     }
 
@@ -888,7 +918,10 @@ public class MotorPlugin extends Plugin {
         // Si se cortó (llegó una compilación) o falló, el PDF puede quedar a medias: se borra.
         String lg = readText(new File(mainDir, fig + ".log"));
         boolean ok = !r.timedOut && r.code == 0 && new File(mainDir, fig + ".pdf").exists() && lg != null && lg.contains("Output written");
-        if (!ok) new File(mainDir, fig + ".pdf").delete();
+        if (!ok) {
+            new File(mainDir, fig + ".pdf").delete();
+            if (!r.timedOut) figFail = "error al dibujar una figura: " + firstError(lg);
+        }
         return ok;
     }
 
@@ -964,8 +997,8 @@ public class MotorPlugin extends Plugin {
                     + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"), mainDir, 10 * 60 * 1000);
             if (g != gen || r.timedOut) return false;
             String lg = readText(new File(mainDir, LOTE + ".log"));
-            if (lg == null || countMatches(ERR, lg) > normalErrors) return false;
-            if (eng.equals("xelatex") && !xdvToPdf(mainDir, LOTE, null)) return false;
+            if (lg == null || countMatches(ERR, lg) > normalErrors) { figFail = "error al dibujar las figuras: " + firstError(lg); return false; }
+            if (eng.equals("xelatex") && !xdvToPdf(mainDir, LOTE, null)) { figFail = "no se pudo armar el PDF de las figuras"; return false; }
             if (g != gen) return false;
             String mapa = readText(new File(mainDir, LOTE + ".mapa"));
             Matcher pm = Pattern.compile("Output written on [^(]*\\((\\d+) pages?").matcher(lg);
@@ -973,7 +1006,7 @@ public class MotorPlugin extends Plugin {
             List<String> names = new ArrayList<>();
             for (String l : mapa.split("\n")) if (!l.trim().isEmpty()) names.add(l.trim());
             // Cada figura capturada es una página; si no cuadra (algún paquete que saca páginas propias), no se arriesga.
-            if (names.size() != Integer.parseInt(pm.group(1))) return false;
+            if (names.size() != Integer.parseInt(pm.group(1))) { figFail = "las figuras no salieron una por página"; return false; }
             // Si una figura se dibujó dos veces (p. ej. dentro de align), vale la última.
             Map<String, Integer> page = new LinkedHashMap<>();
             for (int i = 0; i < names.size(); i++) page.put(names.get(i), i + 1);
@@ -1019,21 +1052,22 @@ public class MotorPlugin extends Plugin {
         final int g = gen;
         // Si se armaron con otro preámbulo u otros datos, se empieza de cero. Si solo se interrumpió
         // (llegó una compilación), se sigue donde quedó.
-        String st = String.valueOf(readText(figStatus(mainDir))).trim();
+        String st = figState(mainDir);
         if (readText(figStatus(mainDir)) != null && !st.endsWith(" " + key)) { delete(new File(mainDir, FIG)); figStatus(mainDir).delete(); }
+        figFail = "";
         Run r = mainWithFigs(mainDir, job, mainName);
         if (g != gen || r.timedOut) return;
         // Si con figuras guardadas el documento ya da más errores (p. ej. karnaugh-map o tikz-timing, que no se
         // pueden guardar aparte), se anota y no se vuelve a intentar con este preámbulo.
         String lg0 = readText(new File(mainDir, job + ".log"));
         if (lg0 == null || countMatches(ERR, lg0) > normalErrors) {
-            try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + key).getBytes(StandardCharsets.UTF_8)); }
+            setFigState(mainDir, false, key, "con las figuras aparte, el documento da un error: " + firstError(lg0));
             return;
         }
         if (figList(mainDir, job).isEmpty()) return;
         if (!drawFigs(mainDir, job, mainName, staleFigs(mainDir, job), g, normalErrors)) {
             if (g != gen) return;
-            try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + key).getBytes(StandardCharsets.UTF_8)); }
+            setFigState(mainDir, false, key, figFail.isEmpty() ? "no se pudieron dibujar las figuras" : figFail);
             return;
         }
         long t = System.currentTimeMillis();
@@ -1042,7 +1076,16 @@ public class MotorPlugin extends Plugin {
         writeMs(new File(mainDir, FIG + "-ms.txt"), System.currentTimeMillis() - t);
         String lg = readText(new File(mainDir, job + ".log"));
         boolean ok = lg != null && countMatches(ERR, lg) <= normalErrors && staleFigs(mainDir, job).isEmpty();
-        try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(((ok ? "ok " : "no ") + key).getBytes(StandardCharsets.UTF_8)); }
+        setFigState(mainDir, ok, key, lg != null && countMatches(ERR, lg) > normalErrors
+                ? "con las figuras guardadas, el documento da un error: " + firstError(lg) : "algunas figuras no quedaron guardadas");
+        if (ok) bgLogro = true;
+    }
+
+    /** Aviso para la app cuando termina algo en segundo plano. */
+    private void aviso(String text) {
+        JSObject d = new JSObject();
+        d.put("texto", text);
+        notifyListeners("fondo", d);
     }
 
     // ───────────── BibTeX y makeindex (vienen en el APK junto a pdfTeX) ─────────────
@@ -1183,7 +1226,8 @@ public class MotorPlugin extends Plugin {
                 String figKey = null;
                 String figBase = preambleKey(files, main, false);
                 if (figBase != null) {
-                    StringBuilder fk = new StringBuilder(figBase).append('\u0000').append(eng);
+                    // «figuras-2»: con el método por lote se vuelve a intentar lo que antes no se pudo.
+                    StringBuilder fk = new StringBuilder("figuras-2\u0000").append(figBase).append('\u0000').append(eng);
                     for (int i = 0; files != null && i < files.length(); i++) {
                         JSONObject f = files.getJSONObject(i);
                         String pth = f.getString("path");
@@ -1289,7 +1333,7 @@ public class MotorPlugin extends Plugin {
                         if (ok) { long tp = System.currentTimeMillis(); r = mainWithFigs(mainDir, job, mainName); passes++; pasos.add("pasada " + passes + ": " + secs(System.currentTimeMillis() - tp)); }
                         else {
                             // Esta figura no se puede guardar aparte: el proyecto vuelve a compilar como siempre.
-                            try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + figKey).getBytes(StandardCharsets.UTF_8)); }
+                            setFigState(mainDir, false, figKey, figFail.isEmpty() ? "no se pudo dibujar una figura que cambió" : figFail);
                             usedFigs = false;
                             r = run(tex(eng, null,
                                     "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainArg(mainDir, mainName)), mainDir, 10 * 60 * 1000);
@@ -1377,7 +1421,7 @@ public class MotorPlugin extends Plugin {
                 String infoNow = String.valueOf(readText(new File(mainDir, PRE + ".txt"))).trim();
                 boolean bgPre = keyNow != null && pdfBytes != null && !timedOut && !infoNow.endsWith(" " + keyNow);
                 // Si el documento usa TikZ/pgfplots, se guardan sus figuras ya dibujadas para las próximas veces.
-                String figSt = String.valueOf(readText(figStatus(mainDir))).trim();
+                String figSt = figState(mainDir);
                 boolean usesTikz = log.contains("/tikz.sty") || log.contains("pgfplots.sty") || new File(mainDir, job + ".figlist").exists();
                 boolean bgFigs = autoinstall && !usedFigs && usesTikz && figKey != null && pdfBytes != null && !timedOut
                         && !figSt.equals("no " + figKey) && !figsReady(mainDir, job, figKey);
@@ -1390,7 +1434,8 @@ public class MotorPlugin extends Plugin {
                 if (usesTikz) {
                     int nf = figList(mainDir, job).size();
                     rs.append("  figuras TikZ: ").append(usedFigs ? "se usaron las guardadas" + (nf > 0 ? " (" + nf + ")" : "")
-                            : figSt.equals("no " + figKey) ? "este documento no deja guardarlas aparte; se dibujan en cada compilación"
+                            : figSt.equals("no " + figKey) ? "no se pueden guardar aparte, se dibujan en cada compilación"
+                                + (figReason(mainDir).isEmpty() ? "" : "\n    motivo: " + figReason(mainDir))
                             : bgFigs ? "se están guardando en segundo plano para la próxima compilación"
                             : "se dibujan en cada compilación").append('\n');
                 }
@@ -1411,6 +1456,10 @@ public class MotorPlugin extends Plugin {
                     final int nErr = countMatches(ERR, log);
                     final String dk = figKey;
                     background(() -> { try { buildFigs(md, jb, mn, nErr, dk); } catch (Exception ignored) { } });
+                }
+                if (bgPre || bgFigs) {
+                    bgLogro = false;
+                    background(() -> { if (bgLogro) aviso("Listo en segundo plano: la próxima compilación será más rápida ⚡"); bgLogro = false; });
                 }
             } catch (Exception e) {
                 call.reject(String.valueOf(e.getMessage()));

@@ -49,6 +49,13 @@ export async function motorAlProgresar(cb) {
   }
 }
 
+/** Avisos de lo que termina en segundo plano (figuras o preámbulo guardados). */
+export async function motorAlTerminarFondo(cb) {
+  try {
+    await Motor.addListener('fondo', (e) => cb(e && e.texto));
+  } catch { /* sin motor integrado */ }
+}
+
 export async function motorCompilar(project, files, { autoinstall = true, engine = 'pdflatex' } = {}) {
   const data = await Motor.compilar({
     project: project.id,
