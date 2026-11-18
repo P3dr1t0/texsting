@@ -25,6 +25,7 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
   - En Física Moderna, guardar las 31 figuras pasó de 56 s a 7 s en XeLaTeX y de 39 s a 6 s en pdfLaTeX (medido en una PC; en el celular la proporción es parecida).
   - Las compilaciones siguientes pasan de ~7 s a ~2 s en esa misma PC (⚡ en el aviso).
   - Sirve para pdfLaTeX, XeLaTeX y LuaLaTeX, y el PDF queda idéntico. Si algún documento no se deja, se usa el método anterior.
+- **Los circuitos (`circuitikz`) con babel en español ya se pueden guardar como figuras.** En español, babel le da otro significado a `<` y `>`, y opciones como `i>^=` daban error al guardar cada circuito. Por eso esos documentos se compilaban siempre completos, sin ⚡. Ahora esos caracteres se apagan mientras se lee el circuito, como hace TikZ con sus propios dibujos.
 - **Si un documento no deja guardar sus figuras aparte** (p. ej. `karnaugh-map` o `tikz-timing`), la app lo detecta con la primera prueba y no lo vuelve a intentar en cada compilación.
 
 ### Cambios
