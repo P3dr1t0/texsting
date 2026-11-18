@@ -18,3 +18,8 @@ mkdir -p cr cl; pdftoppm -r 30 -png ref/$M.pdf cr/p 2>/dev/null; pdftoppm -r 30 
 d=0; big=""; for a in cr/*.png; do b=cl/$(basename $a); [ -f $b ] || { d=$((d+1)); continue; }; v=$(compare -metric AE -fuzz 15% $a $b /dev/null 2>&1); [ "${v%.*}" -gt 200 ] 2>/dev/null && { d=$((d+1)); big="$big $(basename $a):$v"; }; done
 echo "$ENG $M: figs=$n lote=$pages mapa=$mapa err(lote/doc/ref)=$errL/$errM/$errR págs=$(ls cr | wc -l)/$(ls cl | wc -l) distintas=$d$big"
 [ "$errL" -gt "$errM" ] && { echo "--- errores del lote:"; grep -m3 -B2 -A12 "^!" texsting-fig-lote.log; }
+if [ "$errL" -gt "$errM" ]; then
+  echo "--- líneas con error en el lote: $(grep -A12 '^!' texsting-fig-lote.log | grep -o '^l\.[0-9]*' | sort | uniq -c | tr '\n' ' ')"
+  echo "--- figuras de una en una (como antes):"
+  while read f; do $ENG $X -interaction=nonstopmode -jobname=$f "$FIGI\\def\\tikzexternalrealjob{$M}\\input{$M.tex}" >/dev/null 2>&1; echo "   $f: errores $(grep -c '^!' $f.log) $(grep -A12 '^!' $f.log | grep -o '^l\.[0-9]*' | sort -u | tr '\n' ' ')"; done < $M.figlist
+fi
