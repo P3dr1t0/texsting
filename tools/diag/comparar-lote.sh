@@ -6,7 +6,7 @@ pdfx(){ [ $ENG = xelatex ] && xdvipdfmx -q -E -o $1.pdf $1.xdv 2>/dev/null; }
 mkdir ref; cp $M.tex ref/; (cd ref; for i in 1 2; do $ENG $X -interaction=nonstopmode $M.tex >/dev/null 2>&1; done; ENG=$ENG; [ $ENG = xelatex ] && xdvipdfmx -q -E -o $M.pdf $M.xdv 2>/dev/null)
 mkdir -p texsting-fig; $ENG $X -interaction=nonstopmode -jobname=$M "$FIGI\\input{$M.tex}" >/dev/null 2>&1
 n=$(cat $M.figlist 2>/dev/null | wc -l)
-if [ $n = 0 ]; then echo "$ENG $M: sin figuras externas"; exit; fi
+if [ $n = 0 ]; then echo "$ENG $M: sin figuras externas"; grep -m4 -A6 "^!" $M.log; grep -m2 -A6 "^!" ref/$M.log; ls; exit; fi
 sed 's/.*/\\expandafter\\def\\csname texsting@hacer@&\\endcsname{}/' $M.figlist > texsting-fig-lote-lista.tex
 $ENG $X -interaction=nonstopmode -jobname=texsting-fig-lote "$FIGI\\input{texsting-fig-lote-lista.tex}$LOTEI\\def\\tikzexternalrealjob{$M}\\input{$M.tex}" >/dev/null 2>&1; pdfx texsting-fig-lote
 pages=$(grep -o "Output written on [^(]*(\([0-9]*\) page" texsting-fig-lote.log | grep -o "([0-9]*" | tr -d '(')

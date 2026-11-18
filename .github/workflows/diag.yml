@@ -15,7 +15,7 @@ jobs:
           cd /tmp && curl -sL https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz | tar xz && cd install-tl-2*
           printf "selected_scheme scheme-medium\nTEXDIR /tmp/tl\nTEXMFLOCAL /tmp/tl/texmf-local\nTEXMFSYSVAR /tmp/tl/texmf-var\nTEXMFSYSCONFIG /tmp/tl/texmf-config\nTEXMFVAR /tmp/tl/texmf-var\nTEXMFHOME /tmp/tl/home\nbinary_x86_64-linux 1\ninstopt_adjustpath 0\ntlpdbopt_install_docfiles 0\ntlpdbopt_install_srcfiles 0\n" > p.txt
           ./install-tl -profile p.txt -no-interaction > /dev/null
-          /tmp/tl/bin/x86_64-linux/tlmgr install circuitikz siunitx needspace tocloft tikz-timing biblatex biblatex-ieee logreq mylatexformat cm-super esint esint-type1 cancel tcolorbox pgfplots titlesec fancyhdr float enumitem tikzfill pdfcol listingsutf8 environ trimspaces fancybox > /dev/null || true
+          /tmp/tl/bin/x86_64-linux/tlmgr install circuitikz steinmetz siunitx needspace tocloft tikz-timing biblatex biblatex-ieee logreq mylatexformat cm-super esint esint-type1 cancel tcolorbox pgfplots titlesec fancyhdr float enumitem tikzfill pdfcol listingsutf8 environ trimspaces fancybox > /dev/null || true
           /tmp/tl/bin/x86_64-linux/tex --version | head -1
       - name: Herramientas
         run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils imagemagick > /dev/null

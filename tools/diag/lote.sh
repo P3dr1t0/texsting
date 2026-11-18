@@ -29,8 +29,9 @@ PY
 (cd $OUT && javac T.java 2>/dev/null && java T fig 2>/dev/null > fig.txt && java T lote 2>/dev/null > lote.txt)
 echo "lote: $(cat $OUT/lote.txt | head -c 120)…"
 mkdir -p $OUT/docs && cp $OUT/fisica-nueva.tex $OUT/docs/ && cd $OUT/docs && for z in $HERE/../../pruebas/*.zip; do unzip -q -o $z; done; cd $HERE
-for e in pdflatex xelatex lualatex; do
-  for f in $OUT/docs/fisica-nueva.tex $OUT/docs/pruebas-texsting-serie2/prueba08-circuitos-ac.tex $OUT/docs/pruebas-texsting-serie2/prueba12-documento-largo.tex $OUT/docs/pruebas-texsting-serie4/prueba25-graficas-pesadas.tex $OUT/docs/pruebas-texsting-serie2/prueba11-digital-senales.tex; do
+for e in ${MOTORES:-pdflatex xelatex lualatex}; do
+  TODOS="$OUT/docs/fisica-nueva.tex $OUT/docs/pruebas-texsting-serie2/prueba08-circuitos-ac.tex $OUT/docs/pruebas-texsting-serie2/prueba12-documento-largo.tex $OUT/docs/pruebas-texsting-serie4/prueba25-graficas-pesadas.tex $OUT/docs/pruebas-texsting-serie2/prueba11-digital-senales.tex"
+  for f in $(eval echo ${DOCS:-$TODOS}); do
     [ $e = lualatex ] && [ $(basename $f) != fisica-nueva.tex ] && continue
     s=$(date +%s); bash comparar-lote.sh $e $f; echo "   ($(( $(date +%s) - s )) s)"
   done
