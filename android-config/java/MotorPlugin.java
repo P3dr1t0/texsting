@@ -829,7 +829,7 @@ public class MotorPlugin extends Plugin {
     private static String figInject() {
         // tcolorbox dibuja sus cajas con TikZ: «shield externalize» evita que se intenten guardar como figuras
         // (si no, las cajas «breakable» rompen la compilación).
-        return "\\AddToHook{begindocument/before}{\\IfPackageLoadedTF{tikz}{\\usetikzlibrary{external}"
+        return "\\makeatletter\\AddToHook{begindocument/before}{\\IfPackageLoadedTF{tikz}{\\usetikzlibrary{external}"
                 + "\\tikzexternalize[mode=list and make,prefix=" + FIG + "/]"
                 + "\\IfPackageLoadedTF{tcolorbox}{\\tcbset{shield externalize}}{}"
                 // circuitikz es \begin{tikzpicture} con otro nombre: así sus circuitos también se guardan.
@@ -839,7 +839,14 @@ public class MotorPlugin extends Plugin {
                 // tikzpicture con la biblioteca babel, y se restauran al terminar.
                 + "\\AddToHook{env/circuitikz/before}{\\expandafter\\ifx\\csname iftikz@handle@active@code\\endcsname\\iftrue\\csname tikz@switchoff@shorthands\\endcsname\\fi}"
                 + "\\AddToHook{env/circuitikz/after}{\\csname tikz@orig@shorthands\\endcsname\\expandafter\\let\\csname tikz@orig@shorthands\\expandafter\\endcsname\\csname pgfutil@empty\\endcsname}"
-                + "}{}}{}}";
+                + "}{}"
+                // Dibujos sobre la página (portadas, marcos: «remember picture», «overlay») no se guardan aparte:
+                // guardados ocupan una página entera y empujan el contenido (portada en blanco, páginas de más).
+                + "\\AddToHook{begindocument/end}{\\let\\texsting@pic\\tikzpicture"
+                + "\\def\\tikzpicture{\\@ifnextchar[\\texsting@pico\\texsting@pic}"
+                + "\\def\\texsting@pico[#1]{\\in@{remember picture}{#1}\\ifin@\\else\\in@{overlay}{#1}\\fi"
+                + "\\ifin@\\tikzset{external/export next=false}\\fi\\texsting@pic[#1]}}"
+                + "}{}}\\makeatother";
     }
     static String safeJob(String name) {
         String s = name.replaceAll("[^A-Za-z0-9._-]", "_");
@@ -1048,7 +1055,16 @@ public class MotorPlugin extends Plugin {
     }
 
     /** En segundo plano: lista las figuras, dibuja cada una y comprueba que el resultado no tenga más errores. */
-    private void buildFigs(File mainDir, String job, String mainName, int normalErrors, String key) throws Exception {
+    /** Páginas que dice el log («Output written on x.pdf (12 pages»); -1 si no lo dice. */
+    private static int pagesOf(String log) {
+        if (log == null) return -1;
+        Matcher m = Pattern.compile("Output written on [^(]*\\((\\d+) pages?").matcher(log);
+        int n = -1;
+        while (m.find()) n = Integer.parseInt(m.group(1));
+        return n;
+    }
+
+    private void buildFigs(File mainDir, String job, String mainName, int normalErrors, int normalPages, String key) throws Exception {
         final int g = gen;
         // Si se armaron con otro preámbulo u otros datos, se empieza de cero. Si solo se interrumpió
         // (llegó una compilación), se sigue donde quedó.
@@ -1075,9 +1091,15 @@ public class MotorPlugin extends Plugin {
         if (g != gen || r.timedOut) return;
         writeMs(new File(mainDir, FIG + "-ms.txt"), System.currentTimeMillis() - t);
         String lg = readText(new File(mainDir, job + ".log"));
-        boolean ok = lg != null && countMatches(ERR, lg) <= normalErrors && staleFigs(mainDir, job).isEmpty();
+        int pg = pagesOf(lg);
+        // Si con las figuras guardadas cambia el número de páginas, algo no salió igual (p. ej. un dibujo sobre
+        // la página que no se reconoció): mejor compilar como siempre.
+        boolean samePages = normalPages < 0 || pg == normalPages;
+        boolean ok = lg != null && countMatches(ERR, lg) <= normalErrors && staleFigs(mainDir, job).isEmpty() && samePages;
         setFigState(mainDir, ok, key, lg != null && countMatches(ERR, lg) > normalErrors
-                ? "con las figuras guardadas, el documento da un error: " + firstError(lg) : "algunas figuras no quedaron guardadas");
+                ? "con las figuras guardadas, el documento da un error: " + firstError(lg)
+                : !samePages ? "con las figuras guardadas el documento cambia de " + normalPages + " a " + pg + " páginas"
+                : "algunas figuras no quedaron guardadas");
         if (ok) bgLogro = true;
     }
 
@@ -1227,7 +1249,7 @@ public class MotorPlugin extends Plugin {
                 String figBase = preambleKey(files, main, false);
                 if (figBase != null) {
                     // «figuras-2»: con el método por lote se vuelve a intentar lo que antes no se pudo.
-                    StringBuilder fk = new StringBuilder("figuras-2\u0000").append(figBase).append('\u0000').append(eng);
+                    StringBuilder fk = new StringBuilder("figuras-3\u0000").append(figBase).append('\u0000').append(eng);
                     for (int i = 0; files != null && i < files.length(); i++) {
                         JSONObject f = files.getJSONObject(i);
                         String pth = f.getString("path");
@@ -1454,8 +1476,9 @@ public class MotorPlugin extends Plugin {
                 }
                 if (bgFigs) {
                     final int nErr = countMatches(ERR, log);
+                    final int nPag = pagesOf(log);
                     final String dk = figKey;
-                    background(() -> { try { buildFigs(md, jb, mn, nErr, dk); } catch (Exception ignored) { } });
+                    background(() -> { try { buildFigs(md, jb, mn, nErr, nPag, dk); } catch (Exception ignored) { } });
                 }
                 if (bgPre || bgFigs) {
                     bgLogro = false;

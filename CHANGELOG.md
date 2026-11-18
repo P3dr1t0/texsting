@@ -17,6 +17,14 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.5.6] — 18 nov. 2026 · Fase 2: Beta con motor integrado · compilación 72
+
+### Corregido
+- **Portada en blanco y páginas de más con las figuras guardadas.** Los dibujos que van sobre la página (portadas con franja, marcos: `remember picture` u `overlay`) se guardaban como una figura del tamaño de una hoja entera. Al ponerla en su lugar empujaba todo, así que la primera página salía en blanco y aparecían páginas de más (Física 42 → 43, Trigonometría 55 → 57).
+  - Ahora esos dibujos se dejan sin guardar y se dibujan normalmente; las demás figuras sí se guardan.
+  - Como seguro adicional, si con las figuras guardadas cambia el número de páginas, la app no las usa y compila como siempre, y «Log completo» dice por qué.
+  - Las figuras que se guardaron con el problema se vuelven a armar solas.
+
 ## [0.5.5] — 18 nov. 2026 · Fase 2: Beta con motor integrado · compilación 71
 
 ### Cambios
