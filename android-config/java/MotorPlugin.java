@@ -838,6 +838,9 @@ public class MotorPlugin extends Plugin {
         String s = name.replaceAll("[^A-Za-z0-9._-]", "_");
         return s.isEmpty() || s.startsWith("-") ? "doc" + s : s;
     }
+    private static String secs(long ms) {
+        return String.format(Locale.ROOT, "%.1f s", ms / 1000.0);
+    }
     private static long readMs(File f) {
         try { return Long.parseLong(String.valueOf(readText(f)).trim()); } catch (Exception e) { return -1; }
     }
@@ -901,6 +904,103 @@ public class MotorPlugin extends Plugin {
         return !fail.get() && g == gen;
     }
 
+    // ── Todas las figuras en una sola pasada ──
+    // Antes cada figura era una compilación aparte del documento entero (30 figuras = 30 compilaciones).
+    // Ahora una sola compilación entrega cada figura que falta como una página de texsting-fig-lote.pdf,
+    // y después cada página se copia a su archivo (pdfTeX en modo -ini, sin formato: centésimas de segundo).
+    private static final String LOTE = FIG + "-lote";
+
+    /** Se agrega a la orden: las figuras de la lista se «capturan» todas, cada una en su página. */
+    private static String loteInject() {
+        // Todo entre makeatletter y makeatother: los nombres con @ se leen al escribir el gancho.
+        return "\\makeatletter\\newwrite\\texsting@mapa\\newbox\\texsting@arranque"
+                + "\\AddToHook{begindocument/end}{\\IfPackageLoadedTF{tikz}{"
+                + "\\global\\setbox\\texsting@arranque\\copy\\pgfexternal@startupbox"
+                + "\\immediate\\openout\\texsting@mapa=\\pgfactualjobname.mapa\\relax"
+                // TikZ captura solo la figura que se llama como el trabajo; aquí, todas las de la lista.
+                + "\\def\\tikzifexternaljobnamematches#1#2#3{\\ifcsname texsting@hacer@#1\\endcsname#2\\else#3\\fi}"
+                + "\\let\\texsting@grab\\pgf@external@grab"
+                + "\\def\\pgf@external@grab#1{\\global\\setbox\\pgfexternal@startupbox\\copy\\texsting@arranque"
+                + "\\immediate\\write\\texsting@mapa{#1}\\texsting@grab{#1}}"
+                // XeLaTeX: el tamaño de cada página va aparte (si no, se acumulan y valen para todas).
+                + "\\ifdefined\\XeTeXversion\\def\\pgfsys@prepare@papersize#1#2{\\global\\pdfpagewidth=#1\\relax\\global\\pdfpageheight=#2\\relax}\\fi"
+                + "}{}}\\makeatother";
+    }
+
+    /** Copia la página n de lote.pdf como fig.pdf (con sus letras y recursos). */
+    private boolean pageToPdf(File mainDir, String lote, int n, String fig) {
+        try {
+            File out = new File(mainDir, fig + ".pdf");
+            out.delete();
+            // En modo -ini { } no agrupan: se les da su significado primero. fig es relativo (texsting-fig/doc-figure3).
+            Run r = run(Arrays.asList(pdftex().getAbsolutePath(), "-ini", "-interaction=batchmode", "-jobname=" + fig,
+                    "\\catcode`\\{=1 \\catcode`\\}=2 \\pdfoutput=1 \\pdfcompresslevel=9 \\pdfobjcompresslevel=2 "
+                    + "\\pdfximage page " + n + " {" + lote + "}"
+                    + "\\setbox0\\hbox{\\pdfrefximage\\pdflastximage}\\pdfhorigin=0pt \\pdfvorigin=0pt "
+                    + "\\pdfpagewidth=\\wd0 \\pdfpageheight=\\ht0 \\shipout\\box0 \\end"), mainDir, 60 * 1000);
+            new File(mainDir, fig + ".log").delete();
+            return !r.timedOut && r.code == 0 && out.exists() && out.length() > 0;
+        } catch (Exception e) { return false; }
+    }
+
+    /** Dibuja las figuras en una sola compilación. false: no se pudo (se usa el método de una en una). */
+    private boolean makeFigsLote(File mainDir, String job, String mainName, List<String> figs, int g, int normalErrors) {
+        if (figs.isEmpty()) return true;
+        try {
+            new File(mainDir, FIG).mkdirs();
+            String eng = engineOf(mainDir);
+            StringBuilder defs = new StringBuilder();
+            for (String f : figs) defs.append("\\expandafter\\def\\csname texsting@hacer@").append(f).append("\\endcsname{}\n");
+            try (OutputStream o = new FileOutputStream(new File(mainDir, LOTE + "-lista.tex"))) { o.write(defs.toString().getBytes(StandardCharsets.UTF_8)); }
+            for (String ext : new String[] { ".pdf", ".xdv", ".mapa", ".log" }) new File(mainDir, LOTE + ext).delete();
+            Run r = run(tex(eng, null, "-interaction=nonstopmode", "-jobname=" + LOTE,
+                    figInject() + extraInject(mainDir) + "\\input{" + LOTE + "-lista.tex}" + loteInject()
+                    + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"), mainDir, 10 * 60 * 1000);
+            if (g != gen || r.timedOut) return false;
+            String lg = readText(new File(mainDir, LOTE + ".log"));
+            if (lg == null || countMatches(ERR, lg) > normalErrors) return false;
+            if (eng.equals("xelatex") && !xdvToPdf(mainDir, LOTE, null)) return false;
+            if (g != gen) return false;
+            String mapa = readText(new File(mainDir, LOTE + ".mapa"));
+            Matcher pm = Pattern.compile("Output written on [^(]*\\((\\d+) pages?").matcher(lg);
+            if (mapa == null || !pm.find()) return false;
+            List<String> names = new ArrayList<>();
+            for (String l : mapa.split("\n")) if (!l.trim().isEmpty()) names.add(l.trim());
+            // Cada figura capturada es una página; si no cuadra (algún paquete que saca páginas propias), no se arriesga.
+            if (names.size() != Integer.parseInt(pm.group(1))) return false;
+            // Si una figura se dibujó dos veces (p. ej. dentro de align), vale la última.
+            Map<String, Integer> page = new LinkedHashMap<>();
+            for (int i = 0; i < names.size(); i++) page.put(names.get(i), i + 1);
+            for (String f : figs) if (!page.containsKey(f)) return false;
+            int n = Math.max(1, Math.min(3, Runtime.getRuntime().availableProcessors() / 2));
+            final String tname = Thread.currentThread().getName() + "-fig";
+            ExecutorService pool = Executors.newFixedThreadPool(n, x -> new Thread(x, tname));
+            final java.util.concurrent.atomic.AtomicBoolean fail = new java.util.concurrent.atomic.AtomicBoolean();
+            List<java.util.concurrent.Future<?>> pend = new ArrayList<>();
+            for (String f : figs) {
+                final int pg = page.get(f);
+                pend.add(pool.submit(() -> { if (!fail.get() && g == gen && !pageToPdf(mainDir, LOTE + ".pdf", pg, f)) fail.set(true); }));
+            }
+            for (java.util.concurrent.Future<?> x : pend) try { x.get(); } catch (Exception ignored) { }
+            pool.shutdown();
+            boolean ok = !fail.get() && g == gen;
+            if (!ok) for (String f : figs) new File(mainDir, f + ".pdf").delete();
+            return ok;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            for (String ext : new String[] { ".pdf", ".xdv", ".synctex.gz" }) new File(mainDir, LOTE + ext).delete();
+        }
+    }
+
+    /** Lote primero; si no se pudo, las que falten de una en una (como antes). */
+    private boolean drawFigs(File mainDir, String job, String mainName, List<String> figs, int g, int normalErrors) {
+        if (figs.isEmpty()) return true;
+        if (makeFigsLote(mainDir, job, mainName, figs, g, normalErrors)) return true;
+        if (g != gen) return false;
+        return makeFigs(mainDir, job, mainName, staleFigs(mainDir, job), g);
+    }
+
     private Run mainWithFigs(File mainDir, String job, String mainName) throws Exception {
         new File(mainDir, FIG).mkdirs();
         return run(tex(engineOf(mainDir), null, "-interaction=nonstopmode",
@@ -917,8 +1017,15 @@ public class MotorPlugin extends Plugin {
         if (readText(figStatus(mainDir)) != null && !st.endsWith(" " + key)) { delete(new File(mainDir, FIG)); figStatus(mainDir).delete(); }
         Run r = mainWithFigs(mainDir, job, mainName);
         if (g != gen || r.timedOut) return;
+        // Si con figuras guardadas el documento ya da más errores (p. ej. karnaugh-map o tikz-timing, que no se
+        // pueden guardar aparte), se anota y no se vuelve a intentar con este preámbulo.
+        String lg0 = readText(new File(mainDir, job + ".log"));
+        if (lg0 == null || countMatches(ERR, lg0) > normalErrors) {
+            try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + key).getBytes(StandardCharsets.UTF_8)); }
+            return;
+        }
         if (figList(mainDir, job).isEmpty()) return;
-        if (!makeFigs(mainDir, job, mainName, staleFigs(mainDir, job), g)) {
+        if (!drawFigs(mainDir, job, mainName, staleFigs(mainDir, job), g, normalErrors)) {
             if (g != gen) return;
             try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + key).getBytes(StandardCharsets.UTF_8)); }
             return;
@@ -1090,6 +1197,8 @@ public class MotorPlugin extends Plugin {
                 if (useFigs) usePre = false;
                 long firstRunMs = -1;
                 boolean usedPre = usePre, usedFigs = useFigs;
+                // Para el «Log completo»: cuánto tomó cada paso, y así saber qué conviene acelerar.
+                List<String> pasos = new ArrayList<>();
                 while (true) {
                     // Como latexmk: se repite mientras cambien los archivos auxiliares (índice, referencias), hasta 4 veces.
                     int p = 0;
@@ -1102,6 +1211,7 @@ public class MotorPlugin extends Plugin {
                                 mainDir, 10 * 60 * 1000);
                         if (firstRunMs < 0) firstRunMs = System.currentTimeMillis() - tRun;
                         p++; passes++;
+                        pasos.add("pasada " + passes + (useFigs ? " (figuras guardadas)" : usePre ? " (preámbulo guardado)" : "") + ": " + secs(System.currentTimeMillis() - tRun));
                         output.append(r.out);
                         if (r.timedOut) { timedOut = true; break; }
                         String lg = readText(new File(dir, stem + ".log"));
@@ -1167,8 +1277,10 @@ public class MotorPlugin extends Plugin {
                     List<String> stale = staleFigs(mainDir, job);
                     if (!stale.isEmpty()) {
                         progress(stale.size() == 1 ? "Dibujando la figura que cambió…" : "Dibujando las " + stale.size() + " figuras que cambiaron…");
-                        boolean ok = makeFigs(mainDir, job, mainName, stale, gen);
-                        if (ok) { r = mainWithFigs(mainDir, job, mainName); passes++; }
+                        long tFig = System.currentTimeMillis();
+                        boolean ok = drawFigs(mainDir, job, mainName, stale, gen, countMatches(ERR, lgf));
+                        pasos.add("dibujar " + stale.size() + (stale.size() == 1 ? " figura: " : " figuras: ") + secs(System.currentTimeMillis() - tFig));
+                        if (ok) { long tp = System.currentTimeMillis(); r = mainWithFigs(mainDir, job, mainName); passes++; pasos.add("pasada " + passes + ": " + secs(System.currentTimeMillis() - tp)); }
                         else {
                             // Esta figura no se puede guardar aparte: el proyecto vuelve a compilar como siempre.
                             try (OutputStream o = new FileOutputStream(figStatus(mainDir))) { o.write(("no " + figKey).getBytes(StandardCharsets.UTF_8)); }
@@ -1199,6 +1311,7 @@ public class MotorPlugin extends Plugin {
                 }
                 if (eng.equals("xelatex") && !timedOut) {
                     progress("Armando el PDF…");
+                    long tx = System.currentTimeMillis();
                     StringBuilder xo = new StringBuilder();
                     if (!xdvToPdf(dir, stem, xo) && autoinstall) {
                         // «Could not locate a virtual/physical font for TFM "esint10"»: es una letra Type 1 que no
@@ -1222,6 +1335,7 @@ public class MotorPlugin extends Plugin {
                         if (got) { progress("Armando el PDF con las letras nuevas…"); xo.setLength(0); xdvToPdf(dir, stem, xo); }
                     }
                     output.append(xo);
+                    pasos.add("armar el PDF (xdvipdfmx): " + secs(System.currentTimeMillis() - tx));
                 }
                 byte[] pdfBytes = readBytes(pdf);
                 boolean hasErrors = errPat.matcher(log).find();
@@ -1252,20 +1366,42 @@ public class MotorPlugin extends Plugin {
                 if (firstRunMs > 0 && rounds == 0 && (usedPre || usedFigs)) writeMs(new File(mainDir, (usedFigs ? FIG : PRE) + "-ms.txt"), firstRunMs);
                 res.put("preambuloGuardado", usedPre || usedFigs);
                 res.put("figurasGuardadas", usedFigs);
-                call.resolve(res);
-                // Después de responder: si el preámbulo cambió, se arma el nuevo para la próxima compilación.
+                // Qué se hará después de responder (para el resumen).
                 String keyNow = usePreSetting ? preambleKey(files, main) : null;
                 String infoNow = String.valueOf(readText(new File(mainDir, PRE + ".txt"))).trim();
-                final File md = mainDir; final String mn = mainName; final String jb = job;
-                if (keyNow != null && pdfBytes != null && !timedOut && !infoNow.endsWith(" " + keyNow)) {
-                    final String kn = keyNow;
-                    background(() -> buildPre(md, mn, kn));
-                }
+                boolean bgPre = keyNow != null && pdfBytes != null && !timedOut && !infoNow.endsWith(" " + keyNow);
                 // Si el documento usa TikZ/pgfplots, se guardan sus figuras ya dibujadas para las próximas veces.
                 String figSt = String.valueOf(readText(figStatus(mainDir))).trim();
                 boolean usesTikz = log.contains("/tikz.sty") || log.contains("pgfplots.sty") || new File(mainDir, job + ".figlist").exists();
-                if (autoinstall && !usedFigs && usesTikz && figKey != null && pdfBytes != null && !timedOut
-                        && !figSt.equals("no " + figKey) && !figsReady(mainDir, job, figKey)) {
+                boolean bgFigs = autoinstall && !usedFigs && usesTikz && figKey != null && pdfBytes != null && !timedOut
+                        && !figSt.equals("no " + figKey) && !figsReady(mainDir, job, figKey);
+                StringBuilder rs = new StringBuilder("[TeXsting] Tiempos (").append(eng.equals("xelatex") ? "XeLaTeX" : eng.equals("lualatex") ? "LuaLaTeX" : "pdfLaTeX")
+                        .append(", ").append(secs(t2 - t0)).append(" en total):\n");
+                if (t1 - t0 >= 500) rs.append("  preparar el motor: ").append(secs(t1 - t0)).append('\n');
+                if (formatoMs >= 500) rs.append("  preparar ").append(eng.equals("xelatex") ? "XeLaTeX" : "LuaLaTeX").append(" (solo la primera vez): ").append(secs(formatoMs)).append('\n');
+                if (!installedNow.isEmpty()) rs.append("  paquetes descargados: ").append(String.join(", ", installedNow)).append('\n');
+                for (String ps : pasos) rs.append("  ").append(ps).append('\n');
+                if (usesTikz) {
+                    int nf = figList(mainDir, job).size();
+                    rs.append("  figuras TikZ: ").append(usedFigs ? "se usaron las guardadas" + (nf > 0 ? " (" + nf + ")" : "")
+                            : figSt.equals("no " + figKey) ? "este documento no deja guardarlas aparte; se dibujan en cada compilación"
+                            : bgFigs ? "se están guardando en segundo plano para la próxima compilación"
+                            : "se dibujan en cada compilación").append('\n');
+                }
+                if (eng.equals("pdflatex")) rs.append("  preámbulo guardado: ").append(usedPre ? "sí" : bgPre ? "se está armando para la próxima compilación" : "no").append('\n');
+                if (eng.equals("xelatex")) {
+                    File[] fc = new File(var(), "fontconfig").listFiles();
+                    rs.append("  caché de fuentes del sistema: ").append(fc == null || fc.length == 0 ? "vacía" : fc.length + " archivos").append('\n');
+                }
+                res.put("resumen", rs.toString());
+                call.resolve(res);
+                // Después de responder: si el preámbulo cambió, se arma el nuevo para la próxima compilación.
+                final File md = mainDir; final String mn = mainName; final String jb = job;
+                if (bgPre) {
+                    final String kn = keyNow;
+                    background(() -> buildPre(md, mn, kn));
+                }
+                if (bgFigs) {
                     final int nErr = countMatches(ERR, log);
                     final String dk = figKey;
                     background(() -> { try { buildFigs(md, jb, mn, nErr, dk); } catch (Exception ignored) { } });

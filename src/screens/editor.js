@@ -6,7 +6,7 @@ import { el, icon, toast, sheet, panel, promptText, confirmDialog, dialog, pickF
 import { createPdfViewer } from '../pdfview.js';
 import { parseSynctex, forward, inverse } from '../synctex.js';
 import { motorAlProgresar } from '../motor.js';
-import { compileProject, CompileError, chooseEngine, engineExplanation, ENGINE_LABEL } from '../compiler.js';
+import { compileProject, CompileError, chooseEngine, engineExplanation, engineNeeds, ENGINE_LABEL } from '../compiler.js';
 import { parseLog, parseBibOutput, summarize } from '../logparser.js';
 import { analyzeProject } from '../structure.js';
 import { SYMBOLS, KEYBAR, ENGINES, envSnippet } from '../latex-data.js';
@@ -638,7 +638,8 @@ export async function renderEditor(root, { id }, navigate) {
       const logMsgs = parseLog(r.log, project.main, srcMap);
       messages = [...logMsgs, ...parseBibOutput(r.output, srcMap, project.main, logMsgs)];
       renderMessages(r);
-      rawLog.textContent = r.log || r.output || '';
+      // Arriba del log, cuánto tomó cada paso (motor integrado): así se ve qué es lo lento.
+      rawLog.textContent = (r.resumen ? r.resumen + '\n' : '') + (r.log || r.output || '');
       // Si esta compilación no dio PDF, el que se ve es el anterior; si dio PDF pero con
       // errores, puede estar incompleto. Las dos cosas se avisan con una franja sobre el PDF.
       const hadPdf = !!pdfPane.querySelector('.pdfv-page-el');
@@ -671,6 +672,19 @@ export async function renderEditor(root, { id }, navigate) {
         project.avisoLua = true;
         touchProject(project.id, { avisoLua: true }).catch(() => {});
         if (!engineNote) engineNote = { text: 'Se compiló con LuaLaTeX: XeLaTeX todavía no viene en el motor integrado, pero fontspec, unicode-math y polyglossia funcionan igual.' };
+      }
+      // Documento preparado para los dos motores (\ifPDFTeX … \else fontspec … \fi) que se compila con XeLaTeX/LuaLaTeX
+      // y tarda: se ofrece una vez pasarlo a pdfLaTeX, que es varias veces más rápido.
+      const mainText = (files.find((f) => f.path === project.main) || {}).text || '';
+      if (!engineNote && r.integrado && (r.engine === 'xelatex' || r.engine === 'lualatex') && r.status === 'success' && r.elapsed >= 10
+          && ech && !ech.reason && !project.avisoPdflatex && /\\if(PDFTeX|pdftex)\b/.test(mainText) && !Object.keys(engineNeeds(files, project.main)).length) {
+        project.avisoPdflatex = true;
+        touchProject(project.id, { avisoPdflatex: true }).catch(() => {});
+        engineNote = {
+          text: `Este documento también compila con pdfLaTeX (tiene \\ifPDFTeX), que es varias veces más rápido.`,
+          action: 'Usar pdfLaTeX',
+          onAction: async () => { project.engine = 'pdflatex'; await saveProject(project); lastEngineShown = null; renderFiles(); compile(); },
+        };
       }
       if (r.integrado && r.missing && r.missing.length && /File `[^']+\.(sty|cls)' not found/.test(r.log || '')) {
         toast('No se pudo descargar: ' + r.missing.join(', ') + '. Revisa tu conexión a internet y vuelve a compilar.', { kind: 'error', ms: 9000 });

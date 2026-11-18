@@ -86,6 +86,39 @@ function stripComments(line) {
   return line.replace(/(^|[^\\])%.*$/, '$1');
 }
 
+// Condicionales de motor: \ifPDFTeX … \else (aquí va lo de XeLaTeX/LuaLaTeX) \fi, \ifxetex/\iftutex … \fi.
+const IF_PDF = /^(ifPDFTeX|ifpdftex)$/;
+const IF_UNI = /^(iftutex|ifTUTeX|ifxetex|ifXeTeX|ifluatex|ifLuaTeX)$/;
+
+/**
+ * Para cada línea: true si está en una rama que pdfLaTeX se salta (el \else de \ifPDFTeX o el cuerpo de
+ * \ifxetex/\iftutex/\ifluatex). Lo que hay ahí (p. ej. \usepackage{fontspec}) no obliga a cambiar de motor:
+ * el documento ya está preparado para compilar con pdfLaTeX.
+ */
+export function guardedLines(text) {
+  const lines = text.split('\n');
+  const out = new Array(lines.length).fill(false);
+  const stack = [];
+  const guarded = () => stack.some((f) => (f.kind === 'pdf' && f.inElse) || (f.kind === 'uni' && !f.inElse));
+  const tok = /\\(newif\s*\\)?(if[A-Za-z@]*|else|fi)\b(\s*\{)?/g;
+  for (let i = 0; i < lines.length; i++) {
+    const ln = stripComments(lines[i]);
+    let start = guarded();
+    let m;
+    tok.lastIndex = 0;
+    while ((m = tok.exec(ln))) {
+      const name = m[2];
+      if (m[1] || m[3]) continue; // \newif\ifalgo o macros con llaves (\ifthenelse{…}, \ifdef{…} de etoolbox)
+      if (name === 'else') { if (stack.length) stack[stack.length - 1].inElse = true; }
+      else if (name === 'fi') stack.pop();
+      else stack.push({ kind: IF_PDF.test(name) ? 'pdf' : IF_UNI.test(name) ? 'uni' : 'otro', inElse: false });
+      if (guarded()) start = true;
+    }
+    out[i] = start;
+  }
+  return out;
+}
+
 /** Busca en los archivos .tex lo que obliga a usar un motor. Devuelve { lua, xe, unicode } con { file, line, what }. */
 export function engineNeeds(files, main) {
   const out = {};
@@ -93,9 +126,11 @@ export function engineNeeds(files, main) {
   texs.sort((a, b) => (a.path === main ? -1 : b.path === main ? 1 : 0));
   for (const f of texs) {
     const lines = f.text.split('\n');
+    const skip = /\\if(PDFTeX|pdftex|tutex|TUTeX|xetex|XeTeX|luatex|LuaTeX)\b/.test(f.text) ? guardedLines(f.text) : null;
     for (let i = 0; i < lines.length; i++) {
       const ln = stripComments(lines[i]);
       if (!ln.includes('\\')) continue;
+      if (skip && skip[i]) continue;
       for (const n of NEEDS) {
         const key = n.engine === 'lualatex' ? 'lua' : n.engine === 'xelatex' ? 'xe' : 'unicode';
         if (out[key]) continue;
