@@ -832,7 +832,13 @@ public class MotorPlugin extends Plugin {
                 + "\\tikzexternalize[mode=list and make,prefix=" + FIG + "/]"
                 + "\\IfPackageLoadedTF{tcolorbox}{\\tcbset{shield externalize}}{}"
                 // circuitikz es \begin{tikzpicture} con otro nombre: así sus circuitos también se guardan.
-                + "\\IfPackageLoadedTF{circuitikz}{\\RenewDocumentEnvironment{circuitikz}{+b}{\\begin{tikzpicture}#1\\end{tikzpicture}}{}}{}}{}}";
+                + "\\IfPackageLoadedTF{circuitikz}{\\RenewDocumentEnvironment{circuitikz}{+b}{\\begin{tikzpicture}#1\\end{tikzpicture}}{}"
+                // Al leer el circuito de una vez, los caracteres que babel activa (en español, < y >) quedaban activos
+                // dentro de TikZ y opciones como i>^= daban error al guardar la figura. Se apagan antes, como hace
+                // tikzpicture con la biblioteca babel, y se restauran al terminar.
+                + "\\AddToHook{env/circuitikz/before}{\\expandafter\\ifx\\csname iftikz@handle@active@code\\endcsname\\iftrue\\csname tikz@switchoff@shorthands\\endcsname\\fi}"
+                + "\\AddToHook{env/circuitikz/after}{\\csname tikz@orig@shorthands\\endcsname\\expandafter\\let\\csname tikz@orig@shorthands\\expandafter\\endcsname\\csname pgfutil@empty\\endcsname}"
+                + "}{}}{}}";
     }
     static String safeJob(String name) {
         String s = name.replaceAll("[^A-Za-z0-9._-]", "_");
