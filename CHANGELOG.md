@@ -17,6 +17,21 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.5.4] — 17 nov. 2026 · Fase 2: Beta con motor integrado · compilación 70
+
+### Más rápido
+- **Las figuras TikZ se guardan en una sola compilación, y no en una por figura.** Las figuras dibujadas se guardan para no redibujarlas cada vez que compilas. Antes eso costaba una compilación del documento entero por cada figura: 31 figuras eran 31 compilaciones en segundo plano. En XeLaTeX eso podía tomar varios minutos, y si volvías a compilar antes, se cortaba.
+  - Ahora una sola compilación saca todas las figuras juntas y la app las separa en centésimas de segundo.
+  - En Física Moderna, guardar las 31 figuras pasó de 56 s a 7 s en XeLaTeX y de 39 s a 6 s en pdfLaTeX (medido en una PC; en el celular la proporción es parecida).
+  - Las compilaciones siguientes pasan de ~7 s a ~2 s en esa misma PC (⚡ en el aviso).
+  - Sirve para pdfLaTeX, XeLaTeX y LuaLaTeX, y el PDF queda idéntico. Si algún documento no se deja, se usa el método anterior.
+- **Si un documento no deja guardar sus figuras aparte** (p. ej. `karnaugh-map` o `tikz-timing`), la app lo detecta con la primera prueba y no lo vuelve a intentar en cada compilación.
+
+### Cambios
+- **Tiempos de cada paso en «Log completo»**: cuánto tomó cada pasada, el armado del PDF y las figuras, y si se usaron las figuras o el preámbulo guardados. Así se ve qué es lo lento de cada documento.
+- **Los documentos preparados para los dos motores ya no se pasan solos a XeLaTeX.** Si un documento carga fontspec solo dentro de `\ifPDFTeX … \else … \fi`, ya está listo para pdfLaTeX, y la app ya no lo cambia a XeLaTeX.
+- **Sugerencia de usar pdfLaTeX.** Si un documento así se compila con XeLaTeX o LuaLaTeX y tarda, la app sugiere una vez pasarlo a pdfLaTeX, que es varias veces más rápido, con un botón «Usar pdfLaTeX».
+
 ## [0.5.3] — 17 nov. 2026 · Fase 2: Beta con motor integrado · compilación 69
 
 ### Corregido

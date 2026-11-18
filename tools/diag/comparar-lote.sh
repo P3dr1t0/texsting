@@ -17,3 +17,4 @@ errL=$(grep -c "^!" texsting-fig-lote.log); errM=$(grep -c "^!" $M.log); errR=$(
 mkdir -p cr cl; pdftoppm -r 30 -png ref/$M.pdf cr/p 2>/dev/null; pdftoppm -r 30 -png $M.pdf cl/p 2>/dev/null
 d=0; big=""; for a in cr/*.png; do b=cl/$(basename $a); [ -f $b ] || { d=$((d+1)); continue; }; v=$(compare -metric AE -fuzz 15% $a $b /dev/null 2>&1); [ "${v%.*}" -gt 200 ] 2>/dev/null && { d=$((d+1)); big="$big $(basename $a):$v"; }; done
 echo "$ENG $M: figs=$n lote=$pages mapa=$mapa err(lote/doc/ref)=$errL/$errM/$errR págs=$(ls cr | wc -l)/$(ls cl | wc -l) distintas=$d$big"
+[ "$errL" -gt "$errM" ] && { echo "--- errores del lote:"; grep -m3 -B2 -A12 "^!" texsting-fig-lote.log; }
