@@ -127,6 +127,17 @@ a { color: inherit; }
 .compile-btn.busy { background: var(--surface-2); color: var(--text); }
 .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid var(--muted); border-top-color: var(--accent); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* Indicador de progreso bajo la barra superior: compilación (barra + paso) y trabajo en segundo plano. */
+.topbar { position: relative; }
+.compile-progress { position: absolute; left: 0; right: 0; top: 100%; z-index: 30; pointer-events: none; display: flex; flex-direction: column; align-items: center; }
+.compile-progress[hidden] { display: none; }
+.cp-track { width: 100%; height: 3px; background: color-mix(in srgb, var(--accent) 18%, transparent); overflow: hidden; }
+.cp-bar { height: 100%; width: 0; background: var(--accent); transition: width .5s linear; }
+.compile-progress.indet .cp-bar, .compile-progress.fondo .cp-bar { width: 35%; transition: none; animation: cp-ir 1.4s ease-in-out infinite; }
+.compile-progress.fondo .cp-bar { background: var(--muted); animation-duration: 2.2s; }
+@keyframes cp-ir { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+.cp-txt { margin-top: 6px; padding: 3px 11px; border-radius: 12px; font-size: 12.5px; background: var(--surface-2); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.25); max-width: 92%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.compile-progress.fondo .cp-txt { color: var(--muted); }
 
 /* Editor: espacio de trabajo */
 .editor-screen { position: relative; }

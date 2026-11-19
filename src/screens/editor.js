@@ -5,7 +5,7 @@ import { getProject, saveProject, touchProject, listFiles, putFile, deleteFile, 
 import { el, icon, toast, sheet, panel, promptText, confirmDialog, dialog, pickFiles, esc } from '../ui.js';
 import { createPdfViewer } from '../pdfview.js';
 import { parseSynctex, forward, inverse } from '../synctex.js';
-import { motorAlProgresar } from '../motor.js';
+import { motorAlProgresar, motorAlPaso, motorAlFondo } from '../motor.js';
 import { compileProject, CompileError, chooseEngine, engineExplanation, engineNeeds, ENGINE_LABEL } from '../compiler.js';
 import { parseLog, parseBibOutput, summarize } from '../logparser.js';
 import { analyzeProject } from '../structure.js';
@@ -105,6 +105,12 @@ export async function renderEditor(root, { id }, navigate) {
     ['files', 'Archivos', 'files'], ['outline', 'Estructura', 'outline'], ['code', 'Código', 'code'], ['pdf', 'PDF', 'pdf'], ['messages', 'Mensajes', 'log'],
   ];
   const bottomnav = el('nav', { class: 'bottomnav' }, ...tabs.map(([k, label, ic]) => el('button', { dataset: { tab: k }, onclick: () => showPanel(k), html: `${icon(ic)}<span>${label}</span><i class="badge" hidden></i>` })));
+  // Indicador de progreso bajo la barra: al compilar (barra + paso actual + segundos) y mientras se guardan
+  // figuras o el preámbulo en segundo plano (barra fina en movimiento + aviso).
+  const progBar = el('div', { class: 'cp-bar' });
+  const progTxt = el('span', { class: 'cp-txt' });
+  const progress = el('div', { class: 'compile-progress', hidden: true, 'aria-live': 'polite' }, el('div', { class: 'cp-track' }, progBar), progTxt);
+  topbar.append(progress);
   const screen = el('div', { class: 'screen editor-screen', dataset: { tab: 'code' } }, topbar, workspace, bottomnav);
   root.append(screen);
 
@@ -619,21 +625,70 @@ export async function renderEditor(root, { id }, navigate) {
     toast(`Línea ${ech.magic.line} corregida: ahora pide ${ENGINE_LABEL[ech.engine]}`);
   }
 
+  // ---------- Trabajo en segundo plano ----------
+  let fondoTexto = '';
+  function mostrarFondo() {
+    if (compiling) return;
+    if (!fondoTexto) { progress.hidden = true; return; }
+    progress.hidden = false;
+    progress.className = 'compile-progress fondo';
+    progBar.style.width = '';
+    progTxt.textContent = fondoTexto;
+  }
+  let stopFondo = () => {};
+  motorAlFondo((e) => { fondoTexto = e.activo ? (e.texto || 'Trabajando en segundo plano…') : ''; mostrarFondo(); }).then((f) => { stopFondo = f; });
+
   async function compile() {
     if (compiling) return;
+    fondoTexto = '';
     compiling = true;
     saveSoon.flush();
     await saveCurrent();
     const t0 = Date.now();
     document.querySelector('.toast')?.classList.remove('show');
     setCompileState('busy');
-    const tick = setInterval(() => setCompileState('busy', Math.round((Date.now() - t0) / 1000) + ' s'), 1000);
-    // Motor integrado: avisa cuando baja un paquete que falta (solo la primera vez).
-    const stopProgress = getSettings().compilador !== 'termux' ? await motorAlProgresar((t) => t && toast(t, { ms: 6000 })) : () => {};
+    // Cuánto tardó la última vez este proyecto: con eso la barra estima el avance (sin dato, se mueve sin porcentaje).
+    // Se guardan dos: con ⚡ (preámbulo o figuras guardados) y sin; la primera pasada dice cuál toca.
+    const keyT = 'texsting.tiempo.' + project.id;
+    const leer = (k) => { try { return Number(localStorage.getItem(k)) || 0; } catch { return 0; } };
+    let est = leer(keyT + '.ultimo');
+    let paso = 'Compilando';
+    const pintar = () => {
+      const s = (Date.now() - t0) / 1000;
+      setCompileState('busy', Math.round(s) + ' s');
+      progress.hidden = false;
+      progress.className = 'compile-progress ' + (est ? 'det' : 'indet');
+      // Hasta el tiempo estimado avanza parejo; si se pasa, se acerca a 95 % sin llegar.
+      const f = est ? (s <= est ? 0.9 * s / est : 0.9 + 0.05 * (1 - Math.exp(-(s - est) / Math.max(5, est / 3)))) : 0;
+      progBar.style.width = est ? Math.round(f * 100) + '%' : '';
+      progTxt.textContent = `${paso} · ${Math.round(s)} s${est ? ' de ~' + Math.round(est) + ' s' : ''}`;
+    };
+    pintar();
+    const tick = setInterval(pintar, 500);
+    // Motor integrado: el paso actual y los avisos (p. ej. «Descargando el paquete…») van en el indicador.
+    const integ = getSettings().compilador !== 'termux';
+    const stopProgress = integ ? await motorAlProgresar((t) => { if (t) { paso = t.replace(/…$/, ''); pintar(); } }) : () => {};
+    const stopPaso = integ ? await motorAlPaso((t) => {
+      if (!t) return;
+      if (/^Pasada 1\b/.test(t)) {
+        const rapido = t.includes('⚡');
+        // Lo que ya pasó (preparar, descargar) se suma a lo que suele tardar este tipo de compilación.
+        const e = leer(keyT + (rapido ? '.rapido' : '.normal'));
+        if (e) est = (Date.now() - t0) / 1000 + e;
+        paso = t.replace(' ⚡', '');
+      } else paso = t;
+      pintar();
+    }) : () => {};
     try {
       files = await listFiles(project.id);
       const r = await compileProject(project, files);
       lastResult = r;
+      if (r && r.elapsed && r.status !== 'failed') {
+        try {
+          localStorage.setItem(keyT + '.ultimo', String(r.elapsed));
+          localStorage.setItem(keyT + ((r.preambuloGuardado || r.figurasGuardadas) ? '.rapido' : '.normal'), String(r.elapsed));
+        } catch { /* sin almacenamiento */ }
+      }
       const srcMap = Object.fromEntries(files.filter((f) => f.kind === 'text').map((f) => [f.path, f.text]));
       const logMsgs = parseLog(r.log, project.main, srcMap);
       messages = [...logMsgs, ...parseBibOutput(r.output, srcMap, project.main, logMsgs)];
@@ -716,8 +771,10 @@ export async function renderEditor(root, { id }, navigate) {
     } finally {
       clearInterval(tick);
       stopProgress();
+      stopPaso();
       compiling = false;
       setCompileState('idle');
+      if (fondoTexto) mostrarFondo(); else progress.hidden = true;
     }
   }
 
@@ -928,6 +985,7 @@ export async function renderEditor(root, { id }, navigate) {
       WIDE.removeEventListener('change', onWide);
       document.removeEventListener('visibilitychange', onHide);
       window.removeEventListener('resize', onResize);
+      stopFondo();
       viewer.clear();
     },
   };

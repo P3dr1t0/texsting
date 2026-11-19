@@ -511,6 +511,20 @@ public class MotorPlugin extends Plugin {
 
     private volatile boolean quiet;
 
+    /** Paso actual de la compilación, para la barra de progreso del editor («Pasada 2», «Armando el PDF»). */
+    private void paso(String text) {
+        if (quiet) return;
+        JSObject d = new JSObject();
+        d.put("texto", text);
+        notifyListeners("paso", d);
+    }
+    /** Si hay trabajo en segundo plano (figuras, preámbulo): el editor muestra un indicador mientras dure. */
+    private void fondoEstado(boolean activo, String texto) {
+        JSObject d = new JSObject();
+        d.put("activo", activo);
+        d.put("texto", texto);
+        notifyListeners("fondoEstado", d);
+    }
     private void progress(String text) {
         if (quiet) return;
         JSObject d = new JSObject();
@@ -1133,7 +1147,44 @@ public class MotorPlugin extends Plugin {
         return n;
     }
 
+    /**
+     * Las compilaciones de fondo (con las figuras aún sin dibujar) reescriben el .aux y el índice con otros
+     * números de página. Si llegaba una compilación antes de que terminaran, veía el índice cambiado y hacía
+     * una segunda pasada completa (en Circuitos, +40 s). Por eso se guardan antes y se reponen al terminar
+     * o al cortarse: la compilación espera a que el fondo suelte el candado, así que no se pisan.
+     */
+    private static Map<File, byte[]> snapshotAux(File mainDir, String job) {
+        Map<File, byte[]> m = new LinkedHashMap<>();
+        for (String ext : new String[] { ".toc", ".lof", ".lot", ".out", ".nav", ".snm" }) m.put(new File(mainDir, job + ext), readBytes(new File(mainDir, job + ext)));
+        java.util.ArrayDeque<File> pend = new java.util.ArrayDeque<>();
+        pend.add(mainDir);
+        while (!pend.isEmpty()) {
+            File[] fs = pend.poll().listFiles();
+            if (fs == null) continue;
+            for (File f : fs) {
+                if (f.isDirectory()) { if (!f.getName().equals(FIG)) pend.add(f); }
+                else if (f.getName().endsWith(".aux") && !f.getName().startsWith(FIG)) m.put(f, readBytes(f));
+            }
+        }
+        m.putIfAbsent(new File(mainDir, job + ".aux"), null);
+        return m;
+    }
+    private static void restoreAux(Map<File, byte[]> snap) {
+        for (Map.Entry<File, byte[]> e : snap.entrySet()) {
+            try {
+                if (e.getValue() == null) e.getKey().delete();
+                else try (OutputStream o = new FileOutputStream(e.getKey())) { o.write(e.getValue()); }
+            } catch (Exception ignored) { }
+        }
+    }
+
     private void buildFigs(File mainDir, String job, String mainName, int normalErrors, int normalPages, String key) throws Exception {
+        Map<File, byte[]> snap = snapshotAux(mainDir, job);
+        try { buildFigsDentro(mainDir, job, mainName, normalErrors, normalPages, key); }
+        finally { restoreAux(snap); }
+    }
+
+    private void buildFigsDentro(File mainDir, String job, String mainName, int normalErrors, int normalPages, String key) throws Exception {
         final int g = gen;
         // Si se armaron con otro preámbulo u otros datos, se empieza de cero. Si solo se interrumpió
         // (llegó una compilación), se sigue donde quedó.
@@ -1344,6 +1395,7 @@ public class MotorPlugin extends Plugin {
                     int p = 0;
                     while (p < 4) {
                         String before = digest(dir, stem);
+                        paso((passes == 0 ? "Pasada 1" : "Pasada " + (passes + 1) + " (índice y referencias)") + (useFigs || usePre ? " ⚡" : ""));
                         long tRun = System.currentTimeMillis();
                         r = useFigs ? mainWithFigs(mainDir, job, mainName, usePre)
                                 : run(tex(eng, usePre ? PRE : null,
@@ -1451,7 +1503,7 @@ public class MotorPlugin extends Plugin {
                     log = normal == null ? "" : normal;
                 }
                 if (eng.equals("xelatex") && !timedOut) {
-                    progress("Armando el PDF…");
+                    paso("Armando el PDF");
                     long tx = System.currentTimeMillis();
                     StringBuilder xo = new StringBuilder();
                     if (!xdvToPdf(dir, stem, xo) && autoinstall) {
@@ -1551,7 +1603,12 @@ public class MotorPlugin extends Plugin {
                 }
                 if (bgPre || bgFigs) {
                     bgLogro = false;
-                    background(() -> { if (bgLogro) aviso("Listo en segundo plano: la próxima compilación será más rápida ⚡"); bgLogro = false; });
+                    fondoEstado(true, bgFigs ? "Guardando figuras para la próxima compilación…" : "Guardando el preámbulo para la próxima compilación…");
+                    background(() -> {
+                        fondoEstado(false, "");
+                        if (bgLogro) aviso("Listo en segundo plano: la próxima compilación será más rápida ⚡");
+                        bgLogro = false;
+                    });
                 }
             } catch (Exception e) {
                 call.reject(String.valueOf(e.getMessage()));

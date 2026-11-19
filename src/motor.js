@@ -49,6 +49,26 @@ export async function motorAlProgresar(cb) {
   }
 }
 
+/** Pasos de la compilación («Pasada 2», «Armando el PDF») para la barra de progreso. Devuelve cómo dejar de escuchar. */
+export async function motorAlPaso(cb) {
+  try {
+    const h = await Motor.addListener('paso', (e) => cb(e && e.texto));
+    return () => { try { h.remove(); } catch { /* nada */ } };
+  } catch {
+    return () => {};
+  }
+}
+
+/** Trabajo en segundo plano: cb({ activo, texto }) al empezar y al terminar. Devuelve cómo dejar de escuchar. */
+export async function motorAlFondo(cb) {
+  try {
+    const h = await Motor.addListener('fondoEstado', (e) => cb(e || {}));
+    return () => { try { h.remove(); } catch { /* nada */ } };
+  } catch {
+    return () => {};
+  }
+}
+
 /** Avisos de lo que termina en segundo plano (figuras o preámbulo guardados). */
 export async function motorAlTerminarFondo(cb) {
   try {

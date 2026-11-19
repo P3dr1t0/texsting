@@ -17,6 +17,19 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.6.2] — 18 nov. 2026 · Fase 2: Beta con motor integrado · compilación 75
+
+### Nuevo
+- **Indicador de progreso al compilar.** Bajo la barra superior aparece una barra de avance con el paso actual y los segundos (por ejemplo «Pasada 1 · 12 s de ~40 s», «Armando el PDF», «Descargando el paquete…»).
+  - La barra estima el avance con lo que tardó ese documento la última vez. La app recuerda dos tiempos, con ⚡ y sin ⚡, y la primera pasada dice cuál toca.
+  - La primera vez, sin ese dato, la barra se mueve sin porcentaje.
+- **Indicador de trabajo en segundo plano.** Mientras se guardan las figuras o el preámbulo aparece «Guardando figuras para la próxima compilación…» con una barra en movimiento. Desaparece cuando llega el aviso «Listo en segundo plano».
+
+### Corregido
+- **Dos pasadas completas al volver a compilar antes de que terminara el guardado en segundo plano** (en Circuitos, dos veces 40 s).
+  - Mientras guardaba las figuras, la app compilaba el documento sin ellas y dejaba el índice y las referencias con otros números de página. La compilación siguiente veía el índice cambiado y repetía la pasada.
+  - Ahora esos archivos (.aux, .toc…) se guardan antes y se reponen al terminar o al cortarse.
+
 ## [0.6.1] — 18 nov. 2026 · Fase 2: Beta con motor integrado · compilación 74
 
 ### Más rápido
