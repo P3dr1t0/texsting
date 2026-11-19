@@ -20,7 +20,7 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 ## [0.6.0] — 18 nov. 2026 · Fase 2: Beta con motor integrado · compilación 73
 
 ### Más liviana
-- **El APK baja unos 20 MB** (de ~63 a ~42 MB). Los datos de idiomas de ICU que trae XeLaTeX pasan de 33.6 MB a 12.8 MB.
+- **La app ocupa ~21 MB menos en el teléfono, y el APK pesa 7 MB menos** (de 63 a 56 MB; dentro del APK esos datos van comprimidos). Los datos de idiomas de ICU que trae XeLaTeX pasan de 33.6 MB a 12.8 MB.
   - ICU tiene una parte para cortes de línea, conversión de texto y normalización, que XeLaTeX sí usa. La otra parte (orden alfabético, fechas, monedas, unidades, husos horarios) ni siquiera viene en la app, así que sus datos nunca se leían y se quitaron.
   - Lo que queda es idéntico byte por byte al original.
 - **Todas las librerías están alineadas a 16 KB**, como exige Google Play. La única que faltaba (`libandroid-complex-math`, de la que LuaLaTeX solo usa una función, `cpow`) se reemplazó por una propia de 20 líneas, con resultados idénticos a los de la biblioteca estándar.
