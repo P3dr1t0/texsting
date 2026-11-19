@@ -17,6 +17,13 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.6.1] — 18 nov. 2026 · Fase 2: Beta con motor integrado · compilación 74
+
+### Más rápido
+- **Las figuras se guardan usando varios núcleos a la vez.** Con 8 figuras o más, se reparten entre hasta 3 compilaciones simultáneas (una por cada par de núcleos). Cada una dibuja solo su parte.
+  - En la tablet (8 núcleos), el aviso «Listo en segundo plano» debería llegar en aproximadamente la mitad del tiempo. Circuitos tiene 136 figuras.
+  - También acelera la compilación cuando cambias varias figuras a la vez.
+
 ## [0.6.0] — 18 nov. 2026 · Fase 2: Beta con motor integrado · compilación 73
 
 ### Más liviana

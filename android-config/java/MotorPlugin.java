@@ -1023,24 +1023,51 @@ public class MotorPlugin extends Plugin {
     }
 
     /** Dibuja las figuras en una sola compilación. false: no se pudo (se usa el método de una en una). */
+    /**
+     * Las figuras se reparten entre varias compilaciones a la vez (una por cada par de núcleos, hasta 3).
+     * Cada una recorre el documento entero, pero solo dibuja su parte: con muchas figuras, el tiempo
+     * de guardarlas baja casi a la mitad o a un tercio.
+     */
     private boolean makeFigsLote(File mainDir, String job, String mainName, List<String> figs, int g, int normalErrors) {
+        if (figs.isEmpty()) return true;
+        int n = Math.max(1, Math.min(3, Runtime.getRuntime().availableProcessors() / 2));
+        if (figs.size() < 8) n = 1;  // con pocas figuras no compensa recorrer el documento varias veces
+        if (n == 1) return makeFigsLoteUno(mainDir, job, mainName, figs, g, normalErrors, LOTE, 3);
+        List<List<String>> grupos = new ArrayList<>();
+        for (int k = 0; k < n; k++) grupos.add(new ArrayList<>());
+        for (int i = 0; i < figs.size(); i++) grupos.get(i % n).add(figs.get(i));
+        final String tname = Thread.currentThread().getName() + "-lote";
+        ExecutorService pool = Executors.newFixedThreadPool(n, x -> new Thread(x, tname));
+        List<java.util.concurrent.Future<Boolean>> pend = new ArrayList<>();
+        for (int k = 0; k < n; k++) {
+            final List<String> grupo = grupos.get(k);
+            final String nombre = LOTE + (k + 1);
+            pend.add(pool.submit(() -> makeFigsLoteUno(mainDir, job, mainName, grupo, g, normalErrors, nombre, 1)));
+        }
+        boolean ok = true;
+        for (java.util.concurrent.Future<Boolean> x : pend) try { ok &= x.get(); } catch (Exception e) { ok = false; }
+        pool.shutdown();
+        return ok && g == gen;
+    }
+
+    private boolean makeFigsLoteUno(File mainDir, String job, String mainName, List<String> figs, int g, int normalErrors, String lote, int hilos) {
         if (figs.isEmpty()) return true;
         try {
             new File(mainDir, FIG).mkdirs();
             String eng = engineOf(mainDir);
             StringBuilder defs = new StringBuilder();
             for (String f : figs) defs.append("\\expandafter\\def\\csname texsting@hacer@").append(f).append("\\endcsname{}\n");
-            try (OutputStream o = new FileOutputStream(new File(mainDir, LOTE + "-lista.tex"))) { o.write(defs.toString().getBytes(StandardCharsets.UTF_8)); }
-            for (String ext : new String[] { ".pdf", ".xdv", ".mapa", ".log" }) new File(mainDir, LOTE + ext).delete();
-            Run r = run(tex(eng, null, "-interaction=nonstopmode", "-jobname=" + LOTE,
-                    figInput(mainDir) + extraInject(mainDir) + "\\input{" + LOTE + "-lista.tex}" + loteInject()
+            try (OutputStream o = new FileOutputStream(new File(mainDir, lote + "-lista.tex"))) { o.write(defs.toString().getBytes(StandardCharsets.UTF_8)); }
+            for (String ext : new String[] { ".pdf", ".xdv", ".mapa", ".log" }) new File(mainDir, lote + ext).delete();
+            Run r = run(tex(eng, null, "-interaction=nonstopmode", "-jobname=" + lote,
+                    figInput(mainDir) + extraInject(mainDir) + "\\input{" + lote + "-lista.tex}" + loteInject()
                     + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"), mainDir, 10 * 60 * 1000);
             if (g != gen || r.timedOut) return false;
-            String lg = readText(new File(mainDir, LOTE + ".log"));
+            String lg = readText(new File(mainDir, lote + ".log"));
             if (lg == null || countMatches(ERR, lg) > normalErrors) { figFail = "error al dibujar las figuras: " + firstError(lg); return false; }
-            if (eng.equals("xelatex") && !xdvToPdf(mainDir, LOTE, null)) { figFail = "no se pudo armar el PDF de las figuras"; return false; }
+            if (eng.equals("xelatex") && !xdvToPdf(mainDir, lote, null)) { figFail = "no se pudo armar el PDF de las figuras"; return false; }
             if (g != gen) return false;
-            String mapa = readText(new File(mainDir, LOTE + ".mapa"));
+            String mapa = readText(new File(mainDir, lote + ".mapa"));
             Matcher pm = Pattern.compile("Output written on [^(]*\\((\\d+) pages?").matcher(lg);
             if (mapa == null || !pm.find()) return false;
             List<String> names = new ArrayList<>();
@@ -1051,14 +1078,14 @@ public class MotorPlugin extends Plugin {
             Map<String, Integer> page = new LinkedHashMap<>();
             for (int i = 0; i < names.size(); i++) page.put(names.get(i), i + 1);
             for (String f : figs) if (!page.containsKey(f)) return false;
-            int n = Math.max(1, Math.min(3, Runtime.getRuntime().availableProcessors() / 2));
+            int n = hilos;
             final String tname = Thread.currentThread().getName() + "-fig";
             ExecutorService pool = Executors.newFixedThreadPool(n, x -> new Thread(x, tname));
             final java.util.concurrent.atomic.AtomicBoolean fail = new java.util.concurrent.atomic.AtomicBoolean();
             List<java.util.concurrent.Future<?>> pend = new ArrayList<>();
             for (String f : figs) {
                 final int pg = page.get(f);
-                pend.add(pool.submit(() -> { if (!fail.get() && g == gen && !pageToPdf(mainDir, LOTE + ".pdf", pg, f)) fail.set(true); }));
+                pend.add(pool.submit(() -> { if (!fail.get() && g == gen && !pageToPdf(mainDir, lote + ".pdf", pg, f)) fail.set(true); }));
             }
             for (java.util.concurrent.Future<?> x : pend) try { x.get(); } catch (Exception ignored) { }
             pool.shutdown();
@@ -1068,7 +1095,7 @@ public class MotorPlugin extends Plugin {
         } catch (Exception e) {
             return false;
         } finally {
-            for (String ext : new String[] { ".pdf", ".xdv", ".synctex.gz" }) new File(mainDir, LOTE + ext).delete();
+            for (String ext : new String[] { ".pdf", ".xdv", ".synctex.gz" }) new File(mainDir, lote + ext).delete();
         }
     }
 
