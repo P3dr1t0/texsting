@@ -789,6 +789,22 @@ public class MotorPlugin extends Plugin {
     }
 
     /** Arma el formato con el preámbulo (en segundo plano, después de una compilación normal). */
+    /**
+     * Va en la orden que arma el preámbulo guardado, antes de mylatexformat:
+     * - \\prevdepth no se guarda en un formato, y la clase (article, book…) lo deja en 0: sin esto la primera página
+     *   (p. ej. la portada) salía unos 13 pt más arriba que compilando normal. Se anota al guardar y se repone.
+     * - Al empezar el documento se carga texsting-ganchos.tex: ahí la app pone las figuras guardadas (o nada),
+     *   y así el preámbulo guardado y las figuras guardadas se pueden usar juntos.
+     */
+    private static final String PRE_GANCHOS = "\\makeatletter"
+            // Una clase puede cargar otra (\\LoadClass): se cambia una sola vez.
+            + "\\AddToHook{class/after}{\\ifdefined\\texsting@stop\\else\\let\\texsting@stop\\MYLATEX@StopAtdocument"
+            + "\\def\\MYLATEX@StopAtdocument#1{\\xdef\\texsting@pd{\\the\\prevdepth}\\texsting@stop{#1}}\\fi}"
+            + "\\AddToHook{begindocument/before}{\\ifdefined\\texsting@pd\\prevdepth=\\texsting@pd\\relax\\fi"
+            + "\\InputIfFileExists{texsting-ganchos.tex}{}{}}\\makeatother\\input";
+    /** La clave del preámbulo guardado cambia cuando cambia cómo se arma (así se rehace solo). */
+    private static String preKeyOf(String docKey) { return docKey == null ? null : "pre2-" + docKey; }
+
     private void buildPre(File mainDir, String mainName, String key) {
         File info = new File(mainDir, PRE + ".txt"), fmtFile = new File(mainDir, PRE + ".fmt");
         try {
@@ -796,7 +812,7 @@ public class MotorPlugin extends Plugin {
             for (int attempt = 0; attempt < 3; attempt++) {
                 fmtFile.delete();
                 Run r = run(Arrays.asList(pdftex().getAbsolutePath(), "-ini", "-interaction=nonstopmode", "-jobname=" + PRE,
-                        "-progname=pdflatex", "&pdflatex", "mylatexformat.ltx", mainName.contains(" ") ? "\"" + mainName + "\"" : mainName), mainDir, 3 * 60 * 1000);
+                        "-progname=pdflatex", "&pdflatex", PRE_GANCHOS, "mylatexformat.ltx", mainName.contains(" ") ? "\"" + mainName + "\"" : mainName), mainDir, 3 * 60 * 1000);
                 String lg = readText(new File(mainDir, PRE + ".log"));
                 bad = r.timedOut || !fmtFile.exists() || lg == null || Pattern.compile("^!", Pattern.MULTILINE).matcher(lg).find();
                 if (!bad || r.timedOut || lg == null) break;
@@ -826,6 +842,23 @@ public class MotorPlugin extends Plugin {
     private static final Pattern ERR = Pattern.compile("^(!(?! Package tikz Warning)|.*:\\d+: )", Pattern.MULTILINE);
 
     /** Se agrega por la línea de comandos, sin tocar tu archivo. */
+    /** Lo que el preámbulo guardado carga al empezar el documento: las figuras guardadas, o nada. */
+    private static void ganchos(File mainDir, boolean figuras) {
+        File f = new File(mainDir, "texsting-ganchos.tex");
+        String want = figuras ? "% TeXsting: figuras guardadas (lo escribe la app)\n" + figInject() + "\n" : "% TeXsting: sin figuras guardadas\n";
+        if (!want.equals(readText(f))) {
+            try (OutputStream o = new FileOutputStream(f)) { o.write(want.getBytes(StandardCharsets.UTF_8)); } catch (Exception ignored) { }
+        }
+    }
+    /** Lo de figInject() va en un archivo: así la primera línea del log no es un bloque de código de la app. */
+    private static String figInput(File mainDir) {
+        File f = new File(mainDir, "texsting-figuras.tex");
+        String want = "% TeXsting: figuras TikZ guardadas aparte (lo escribe la app)\n" + figInject() + "\n";
+        if (!want.equals(readText(f))) {
+            try (OutputStream o = new FileOutputStream(f)) { o.write(want.getBytes(StandardCharsets.UTF_8)); } catch (Exception ignored) { }
+        }
+        return "\\input{texsting-figuras.tex}";
+    }
     private static String figInject() {
         // tcolorbox dibuja sus cajas con TikZ: «shield externalize» evita que se intenten guardar como figuras
         // (si no, las cajas «breakable» rompen la compilación).
@@ -919,7 +952,7 @@ public class MotorPlugin extends Plugin {
         new File(mainDir, FIG).mkdirs();
         new File(mainDir, fig + ".pdf").delete();
         Run r = run(tex(engineOf(mainDir), null, "-interaction=batchmode",
-                "-halt-on-error", "-jobname=" + fig, figInject() + extraInject(mainDir) + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"),
+                "-halt-on-error", "-jobname=" + fig, figInput(mainDir) + extraInject(mainDir) + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"),
                 mainDir, 3 * 60 * 1000);
         if (engineOf(mainDir).equals("xelatex") && !r.timedOut && r.code == 0) xdvToPdf(mainDir, fig, null);
         // Si se cortó (llegó una compilación) o falló, el PDF puede quedar a medias: se borra.
@@ -1000,7 +1033,7 @@ public class MotorPlugin extends Plugin {
             try (OutputStream o = new FileOutputStream(new File(mainDir, LOTE + "-lista.tex"))) { o.write(defs.toString().getBytes(StandardCharsets.UTF_8)); }
             for (String ext : new String[] { ".pdf", ".xdv", ".mapa", ".log" }) new File(mainDir, LOTE + ext).delete();
             Run r = run(tex(eng, null, "-interaction=nonstopmode", "-jobname=" + LOTE,
-                    figInject() + extraInject(mainDir) + "\\input{" + LOTE + "-lista.tex}" + loteInject()
+                    figInput(mainDir) + extraInject(mainDir) + "\\input{" + LOTE + "-lista.tex}" + loteInject()
                     + "\\def\\tikzexternalrealjob{" + job + "}\\input{" + mainName + "}"), mainDir, 10 * 60 * 1000);
             if (g != gen || r.timedOut) return false;
             String lg = readText(new File(mainDir, LOTE + ".log"));
@@ -1048,9 +1081,18 @@ public class MotorPlugin extends Plugin {
     }
 
     private Run mainWithFigs(File mainDir, String job, String mainName) throws Exception {
+        return mainWithFigs(mainDir, job, mainName, false);
+    }
+    /** Con el preámbulo guardado (pdfLaTeX) las figuras entran por texsting-ganchos.tex (ver buildPre). */
+    private Run mainWithFigs(File mainDir, String job, String mainName, boolean pre) throws Exception {
         new File(mainDir, FIG).mkdirs();
+        if (pre) {
+            ganchos(mainDir, true);
+            return run(tex("pdflatex", PRE, "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder",
+                    "-jobname=" + job, mainName), mainDir, 10 * 60 * 1000);
+        }
         return run(tex(engineOf(mainDir), null, "-interaction=nonstopmode",
-                "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, figInject() + extraInject(mainDir) + "\\input{" + mainName + "}"),
+                "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, figInput(mainDir) + extraInject(mainDir) + "\\input{" + mainName + "}"),
                 mainDir, 10 * 60 * 1000);
     }
 
@@ -1258,15 +1300,14 @@ public class MotorPlugin extends Plugin {
                     }
                     figKey = sha1(fk.toString());
                 }
-                String preKey = usePreSetting ? docKey : null;
+                String preKey = usePreSetting ? preKeyOf(docKey) : null;
                 String preInfo = String.valueOf(readText(new File(mainDir, PRE + ".txt"))).trim();
                 boolean usePre = preKey != null && new File(mainDir, PRE + ".fmt").exists()
                         && (preInfo.equals("ok " + preKey) || preInfo.equals("verificado " + preKey));
                 boolean useFigs = autoinstall && figsReady(mainDir, job, figKey);
                 // Con las dos cosas listas, se usa la que dio la compilación más rápida en este proyecto.
-                long preMs = readMs(new File(mainDir, PRE + "-ms.txt")), figMs = readMs(new File(mainDir, FIG + "-ms.txt"));
-                if (useFigs && usePre && (preMs < 0 || (figMs >= 0 && preMs <= figMs))) useFigs = false;
-                if (useFigs) usePre = false;
+                // Preámbulo guardado y figuras guardadas se usan juntos (las figuras entran por texsting-ganchos.tex).
+                if (usePre && !useFigs) ganchos(mainDir, false);
                 long firstRunMs = -1;
                 boolean usedPre = usePre, usedFigs = useFigs;
                 // Para el «Log completo»: cuánto tomó cada paso, y así saber qué conviene acelerar.
@@ -1277,13 +1318,13 @@ public class MotorPlugin extends Plugin {
                     while (p < 4) {
                         String before = digest(dir, stem);
                         long tRun = System.currentTimeMillis();
-                        r = useFigs ? mainWithFigs(mainDir, job, mainName)
+                        r = useFigs ? mainWithFigs(mainDir, job, mainName, usePre)
                                 : run(tex(eng, usePre ? PRE : null,
                                 "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainArg(mainDir, mainName)),
                                 mainDir, 10 * 60 * 1000);
                         if (firstRunMs < 0) firstRunMs = System.currentTimeMillis() - tRun;
                         p++; passes++;
-                        pasos.add("pasada " + passes + (useFigs ? " (figuras guardadas)" : usePre ? " (preámbulo guardado)" : "") + ": " + secs(System.currentTimeMillis() - tRun));
+                        pasos.add("pasada " + passes + (useFigs && usePre ? " (preámbulo y figuras guardados)" : useFigs ? " (figuras guardadas)" : usePre ? " (preámbulo guardado)" : "") + ": " + secs(System.currentTimeMillis() - tRun));
                         output.append(r.out);
                         if (r.timedOut) { timedOut = true; break; }
                         String lg = readText(new File(dir, stem + ".log"));
@@ -1352,7 +1393,7 @@ public class MotorPlugin extends Plugin {
                         long tFig = System.currentTimeMillis();
                         boolean ok = drawFigs(mainDir, job, mainName, stale, gen, countMatches(ERR, lgf));
                         pasos.add("dibujar " + stale.size() + (stale.size() == 1 ? " figura: " : " figuras: ") + secs(System.currentTimeMillis() - tFig));
-                        if (ok) { long tp = System.currentTimeMillis(); r = mainWithFigs(mainDir, job, mainName); passes++; pasos.add("pasada " + passes + ": " + secs(System.currentTimeMillis() - tp)); }
+                        if (ok) { long tp = System.currentTimeMillis(); r = mainWithFigs(mainDir, job, mainName, usePre); passes++; pasos.add("pasada " + passes + ": " + secs(System.currentTimeMillis() - tp)); }
                         else {
                             // Esta figura no se puede guardar aparte: el proyecto vuelve a compilar como siempre.
                             setFigState(mainDir, false, figKey, figFail.isEmpty() ? "no se pudo dibujar una figura que cambió" : figFail);
@@ -1379,6 +1420,7 @@ public class MotorPlugin extends Plugin {
                     boolean preOk = without >= withPre;
                     try (OutputStream o = new FileOutputStream(new File(mainDir, PRE + ".txt"))) { o.write(((preOk ? "verificado " : "no ") + preKey).getBytes(StandardCharsets.UTF_8)); }
                     if (!preOk) { new File(mainDir, PRE + ".fmt").delete(); usedPre = false; }
+                    usedFigs = false;  // este PDF salió de la compilación normal
                     log = normal == null ? "" : normal;
                 }
                 if (eng.equals("xelatex") && !timedOut) {
@@ -1439,7 +1481,7 @@ public class MotorPlugin extends Plugin {
                 res.put("preambuloGuardado", usedPre || usedFigs);
                 res.put("figurasGuardadas", usedFigs);
                 // Qué se hará después de responder (para el resumen).
-                String keyNow = usePreSetting ? preambleKey(files, main) : null;
+                String keyNow = usePreSetting ? preKeyOf(preambleKey(files, main)) : null;
                 String infoNow = String.valueOf(readText(new File(mainDir, PRE + ".txt"))).trim();
                 boolean bgPre = keyNow != null && pdfBytes != null && !timedOut && !infoNow.endsWith(" " + keyNow);
                 // Si el documento usa TikZ/pgfplots, se guardan sus figuras ya dibujadas para las próximas veces.

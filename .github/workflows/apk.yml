@@ -72,6 +72,21 @@ jobs:
           else
             echo "::warning::El APK sale sin motor integrado"
           fi
+      - name: Achicar el motor (datos de ICU) y alinear a 16 KB
+        run: |
+          L=android/app/src/main/jniLibs/arm64-v8a
+          if [ -f $L/libtx_icudata.so ]; then
+            python3 tools/apk/recortar_icu.py $L/libtx_icudata.so || echo "::warning::No se pudieron recortar los datos de ICU"
+          fi
+          if [ -f $L/libandroid-complex-math.so ]; then
+            bash tools/apk/complex_math.sh /tmp/libandroid-complex-math.so && cp /tmp/libandroid-complex-math.so $L/ || echo "::warning::No se pudo rearmar libandroid-complex-math"
+          fi
+          # Google Play pide páginas de 16 KB en todas las librerías.
+          for f in $L/*.so; do
+            a=$(readelf -lW $f | awk '$1=="LOAD"{print $NF}' | sort -u | tr '\n' ' ')
+            case "$a" in *0x1000\ *|*0x2000\ *) echo "::warning::$(basename $f) no está alineada a 16 KB ($a)";; esac
+          done
+          du -sh $L
 
       - name: Compilar APK
         run: |

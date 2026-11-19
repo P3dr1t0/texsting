@@ -17,6 +17,23 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.6.0] — 18 nov. 2026 · Fase 2: Beta con motor integrado · compilación 73
+
+### Más liviana
+- **El APK baja unos 20 MB** (de ~63 a ~42 MB). Los datos de idiomas de ICU que trae XeLaTeX pasan de 33.6 MB a 12.8 MB.
+  - ICU tiene una parte para cortes de línea, conversión de texto y normalización, que XeLaTeX sí usa. La otra parte (orden alfabético, fechas, monedas, unidades, husos horarios) ni siquiera viene en la app, así que sus datos nunca se leían y se quitaron.
+  - Lo que queda es idéntico byte por byte al original.
+- **Todas las librerías están alineadas a 16 KB**, como exige Google Play. La única que faltaba (`libandroid-complex-math`, de la que LuaLaTeX solo usa una función, `cpow`) se reemplazó por una propia de 20 líneas, con resultados idénticos a los de la biblioteca estándar.
+
+### Más rápido (pdfLaTeX)
+- **El preámbulo guardado y las figuras guardadas ahora se usan juntos.** Antes eran excluyentes y la app usaba el que hubiera sido más rápido. En Física Moderna con pdfLaTeX (medido en una PC): 1.7 s con las figuras, 1.1 s con las dos cosas.
+
+### Corregido
+- **Con el preámbulo guardado de pdfLaTeX, la primera página salía unos 13 pt más arriba** que compilando normal. Se notaba en portadas con `\vspace*` al inicio. El formato guardado perdía un valor interno de TeX (`\prevdepth`) que la clase del documento deja en 0. Ahora se anota al guardar el preámbulo y se repone, y la página sale idéntica. Los preámbulos guardados se rehacen solos una vez.
+
+### Cambios
+- **«Log completo» ya no empieza con una línea larga de código de la app**: lo que activa las figuras guardadas va en un archivo aparte.
+
 ## [0.5.6] — 18 nov. 2026 · Fase 2: Beta con motor integrado · compilación 72
 
 ### Corregido
