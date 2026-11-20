@@ -19,7 +19,7 @@ Compila **en tu propio teléfono** con TeX Live, **sin instalar nada más**: el 
 - **Barra de teclas LaTeX** sobre el teclado del teléfono (`\ { } $ ^ _ & \\`…) y panel de **símbolos** (griego, operadores, relaciones, flechas…).
 - **Estructura** del documento (secciones, figuras, tablas, `\input`, comentarios `% TODO`), tocando un elemento vas a esa línea.
 - **Asistentes**: tabla, matriz, lista, figura, circuito (circuitikz), gráfica (pgfplots), código (listings), ecuaciones. Si falta el `\usepackage`, te ofrece agregarlo.
-- **Compilación** dentro de la app con pdfLaTeX, XeLaTeX o LuaLaTeX (fuentes OpenType, también las del teléfono); recompila referencias, bibliografía (BibTeX) e índice solo, como latexmk.
+- **Compilación** dentro de la app con pdfLaTeX, XeLaTeX o LuaLaTeX (fuentes OpenType, también las del teléfono); recompila referencias, bibliografía (BibTeX o biber) e índice solo, como latexmk.
 - **Rápido**: guarda el preámbulo ya cargado y las figuras (TikZ, pgfplots, circuitikz) ya dibujadas, y solo redibuja las que cambian.
 - **Paquetes al vuelo**, como MiKTeX: si un paquete falta, se descarga e instala automáticamente al compilar.
 - **Mensajes** de error en español con la línea exacta; tocando el error, vas al código. También el log completo.
@@ -74,7 +74,6 @@ Compilar en una computadora (opcional): `npm install && npm run build && npm run
 ## Próximos pasos previstos
 
 - SyncTeX: tocar el PDF y saltar a la línea del código (y al revés).
-- biber dentro del motor integrado y recortar ICU para achicar el APK.
 - Revisión ortográfica en español.
 - Marcar en el editor las líneas con error.
 

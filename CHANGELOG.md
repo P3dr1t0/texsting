@@ -17,6 +17,18 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.1] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 86
+
+### Nuevo
+- **biber dentro del motor** ([#1](https://github.com/P3dr1t0/texsting/issues/1)). Los documentos con `biblatex` ahora compilan igual que en Overleaf o TeXstudio, con biber, sin cambiar nada. Antes la app forzaba BibTeX, que no sirve para estilos como `style=ieee` ni para varias opciones de biblatex.
+  - Biber 2.22, la misma versión que pide el biblatex de TeX Live 2026. Funciona con el Perl de Termux compilado para Android.
+  - En la prueba, en un equipo Android (aarch64), el `.bbl` sale idéntico al del biber oficial y tarda unos 0,6 s.
+  - Corre solo cuando hace falta, como latexmk: cuando cambian las citas o el `.bib`.
+  - La primera vez descomprime sus módulos (≈40 MB, solo una vez).
+  - Lo arma `.github/workflows/biber.yml` (`tools/biber/`) y queda en la release `biber-android`. El APK lo toma de ahí, y si no estuviera, vuelve a usar BibTeX como antes.
+
+---
+
 ## [0.9.0] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 85
 
 ### Nuevo
