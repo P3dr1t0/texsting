@@ -139,3 +139,25 @@ export async function motorAlDescargar(cb) {
     return () => {};
   }
 }
+
+// ───────── Sugerencias al editor ─────────
+const FORM_SUGERENCIAS = 'https://docs.google.com/forms/d/e/1FAIpQLSdtuH7tih4GNh_KR9Wpw686RAfnNwvX5Il3iCO4hCBA7lPPnA/formResponse';
+/** «Marca Modelo · Android N», o null (versión web). */
+export async function motorEquipo() {
+  if (!Capacitor.isNativePlatform()) return null;
+  try { return (await Motor.equipo()).equipo || null; } catch { return null; }
+}
+/** Envía la sugerencia al formulario. Lanza un error con un mensaje legible si no se pudo. */
+export async function motorEnviarSugerencia({ texto, version = '', equipo = '' }) {
+  if (!Capacitor.isNativePlatform()) {
+    // Versión web: el navegador lo envía directo (no se puede leer la respuesta de Google).
+    const body = new URLSearchParams({ 'entry.1559012784': texto, 'entry.2119423398': version, 'entry.793621952': equipo });
+    await fetch(FORM_SUGERENCIAS, { method: 'POST', mode: 'no-cors', body });
+    return;
+  }
+  try {
+    await Motor.enviarSugerencia({ texto, version, equipo });
+  } catch (e) {
+    throw new Error(String((e && e.message) || e || '') || 'No se pudo enviar');
+  }
+}

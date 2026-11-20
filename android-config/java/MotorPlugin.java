@@ -1014,6 +1014,46 @@ public class MotorPlugin extends Plugin {
         });
     }
 
+    // ───────────── Sugerencias al editor (Ajustes): se envían al formulario de Google de texsting.app@gmail.com ─────────────
+    private static final String FORM_SUGERENCIAS = "https://docs.google.com/forms/d/e/1FAIpQLSdtuH7tih4GNh_KR9Wpw686RAfnNwvX5Il3iCO4hCBA7lPPnA/formResponse";
+
+    /** Marca y modelo del equipo con su versión de Android (p. ej. «Xiaomi 24117RK2CG · Android 16»). */
+    @PluginMethod
+    public void equipo(PluginCall call) {
+        String fab = String.valueOf(android.os.Build.MANUFACTURER), mod = String.valueOf(android.os.Build.MODEL);
+        String nombre = mod.toLowerCase(Locale.ROOT).startsWith(fab.toLowerCase(Locale.ROOT)) ? mod : fab + " " + mod;
+        JSObject r = new JSObject();
+        r.put("equipo", nombre + " · Android " + android.os.Build.VERSION.RELEASE);
+        call.resolve(r);
+    }
+
+    @PluginMethod
+    public void enviarSugerencia(PluginCall call) {
+        final String texto = call.getString("texto", ""), version = call.getString("version", ""), equipo = call.getString("equipo", "");
+        new Thread(() -> {
+            try {
+                String body = "entry.1559012784=" + java.net.URLEncoder.encode(texto, "UTF-8")
+                        + "&entry.2119423398=" + java.net.URLEncoder.encode(version, "UTF-8")
+                        + "&entry.793621952=" + java.net.URLEncoder.encode(equipo, "UTF-8");
+                HttpURLConnection c = (HttpURLConnection) new URL(FORM_SUGERENCIAS).openConnection();
+                c.setRequestMethod("POST");
+                c.setDoOutput(true);
+                c.setConnectTimeout(20000);
+                c.setReadTimeout(30000);
+                c.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+                try (OutputStream o = c.getOutputStream()) { o.write(body.getBytes(StandardCharsets.UTF_8)); }
+                int code = c.getResponseCode();
+                c.disconnect();
+                if (code == 200) call.resolve();
+                else call.reject("El formulario respondió " + code);
+            } catch (java.net.UnknownHostException e) {
+                call.reject("Sin conexión a internet");
+            } catch (Exception e) {
+                call.reject(String.valueOf(e.getMessage()));
+            }
+        }, "texsting-sugerencia").start();
+    }
+
     @PluginMethod
     public void paquetes(PluginCall call) {
         JSObject r = new JSObject();

@@ -557,3 +557,17 @@ span.lic-chip { border-color: var(--border); color: var(--muted); cursor: defaul
 
 /* Tablet: panel de mensajes agrandado a toda la altura del área de trabajo */
 .editor-screen.show-messages.messages-max .messages { top: 0; left: 0; height: auto; border-top: none; z-index: 8; }
+
+/* Ajustes → Enviar una sugerencia */
+.sug-texto { width: 100%; box-sizing: border-box; min-height: 180px; resize: vertical; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; line-height: 1.5; }
+.sug-texto:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.sug-contador { text-align: right; color: var(--muted); margin-top: -4px; }
+.sug-contador.excedido { color: var(--danger); font-weight: 600; }
+.sug-adjuntar { display: flex; gap: 10px; align-items: flex-start; line-height: 1.4; }
+.sug-adjuntar input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); }
+.sug-aviso { padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--warn) 14%, transparent); line-height: 1.45; }
+.sug-gracias { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 8px; }
+.sug-gracias-icono { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.sug-gracias-icono svg { width: 30px; height: 30px; }
+.sug-gracias h2 { margin: 4px 0 0; }
+.sug-gracias p { margin: 0; max-width: 420px; line-height: 1.5; }

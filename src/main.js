@@ -7,6 +7,7 @@ import { renderEditor } from './screens/editor.js';
 import { renderSettings, renderTermuxSetup } from './screens/settings.js';
 import { renderLicencias } from './screens/licencias.js';
 import { renderPapelera } from './screens/papelera.js';
+import { renderSugerencias } from './screens/sugerencias.js';
 import { purgeTrash } from './store.js';
 import { renderNewProject } from './screens/newproject.js';
 import { initOpenWith } from './openwith.js';
@@ -23,7 +24,7 @@ export async function navigate(name, params = {}) {
     try { await current.cleanup(); } catch (e) { console.error(e); }
   }
   root.replaceChildren();
-  const screens = { new: renderNewProject, home: renderHome, editor: renderEditor, settings: renderSettings, termux: renderTermuxSetup, licencias: renderLicencias, papelera: renderPapelera };
+  const screens = { new: renderNewProject, home: renderHome, editor: renderEditor, settings: renderSettings, termux: renderTermuxSetup, licencias: renderLicencias, papelera: renderPapelera, sugerencias: renderSugerencias };
   current = { name, ...(await screens[name](root, params, navigate)) };
   window.scrollTo(0, 0);
 }

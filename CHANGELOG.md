@@ -17,6 +17,18 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.11] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 97
+
+### Nuevo
+- **Enviar una sugerencia** (Ajustes → Acerca de): escribe una idea, un problema o algo que te gustaría ver, y le llega directo al editor sin salir de la app.
+  - Hasta 200 palabras, con contador, y una sugerencia por semana.
+  - Lo que escribas se queda guardado aunque cierres la pantalla, o si no hay internet en ese momento.
+  - Opcionalmente incluye la versión de la app y el modelo del equipo.
+  - Se envía sin nombre ni correo.
+- **Contacto y política de privacidad** en Ajustes: texsting.app@gmail.com y https://p3dr1t0.github.io/texsting/privacidad
+
+---
+
 ## [0.9.10] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 96
 
 ### Mejorado
