@@ -1,6 +1,6 @@
 // Almacenamiento local de proyectos y archivos (IndexedDB dentro de la app).
 const DB_NAME = 'texsting';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 let dbPromise = null;
 
 function db() {
@@ -16,6 +16,8 @@ function db() {
         }
         if (!d.objectStoreNames.contains('outputs')) d.createObjectStore('outputs', { keyPath: 'projectId' });
         if (!d.objectStoreNames.contains('templates')) d.createObjectStore('templates', { keyPath: 'id' });
+        // Papelera: archivos eliminados dentro de un proyecto (los proyectos eliminados solo llevan la marca «papelera»).
+        if (!d.objectStoreNames.contains('papelera')) d.createObjectStore('papelera', { keyPath: 'id' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -60,7 +62,80 @@ export function isTextPath(path) {
 
 export async function listProjects() {
   const all = await tx(['projects'], 'readonly', (t) => reqP(t.objectStore('projects').getAll()));
-  return all.sort((a, b) => b.updated - a.updated);
+  return all.filter((p) => !p.papelera).sort((a, b) => b.updated - a.updated);
+}
+
+// ───────── Papelera: lo eliminado espera 15 días antes de borrarse de verdad ─────────
+export const DIAS_PAPELERA = 15;
+
+/** Proyecto a la papelera: deja de verse en la lista, pero sus archivos siguen (y su carpeta va a .Papelera). */
+export async function projectToTrash(id) {
+  const p = await getProject(id);
+  if (!p) return;
+  p.papelera = Date.now();
+  await tx(['projects'], 'readwrite', (t) => t.objectStore('projects').put(p));
+  avisar('aPapelera', p);
+}
+
+export async function restoreProject(id) {
+  const p = await getProject(id);
+  if (!p || !p.papelera) return;
+  delete p.papelera;
+  await tx(['projects'], 'readwrite', (t) => t.objectStore('projects').put(p));
+  avisar('restaurado', p);
+  return p;
+}
+
+/** Archivo de un proyecto a la papelera (se guarda su contenido para poder restaurarlo). */
+export async function fileToTrash(projectId, path) {
+  const f = await getFile(projectId, path);
+  if (!f) return;
+  const p = await getProject(projectId);
+  const id = newId();
+  await tx(['papelera'], 'readwrite', (t) => t.objectStore('papelera').put({ id, projectId, proyecto: p ? p.name : '', path, file: f, borrado: Date.now() }));
+  await deleteFile(projectId, path);
+  return id;
+}
+
+/** Lo que hay en la papelera: { proyectos: [...], archivos: [...] }, lo más reciente primero. */
+export async function listTrash() {
+  const all = await tx(['projects'], 'readonly', (t) => reqP(t.objectStore('projects').getAll()));
+  const archivos = await tx(['papelera'], 'readonly', (t) => reqP(t.objectStore('papelera').getAll()));
+  return {
+    proyectos: all.filter((p) => p.papelera).sort((a, b) => b.papelera - a.papelera),
+    archivos: archivos.sort((a, b) => b.borrado - a.borrado),
+  };
+}
+
+/** Devuelve el archivo a su proyecto (con otro nombre si ya hay uno igual). */
+export async function restoreFile(entryId) {
+  const e = await tx(['papelera'], 'readonly', (t) => reqP(t.objectStore('papelera').get(entryId)));
+  if (!e) return null;
+  const p = await getProject(e.projectId);
+  if (!p) throw new Error('Su proyecto ya no existe');
+  let path = e.path;
+  if (await getFile(e.projectId, path)) {
+    const m = path.match(/^(.*?)(\.[^./]+)?$/);
+    for (let i = 2; ; i++) { const c = `${m[1]} (restaurado${i > 2 ? ' ' + (i - 1) : ''})${m[2] || ''}`; if (!(await getFile(e.projectId, c))) { path = c; break; } }
+  }
+  await putFile(e.projectId, e.file.kind === 'binary' ? { path, data: e.file.data } : { path, text: e.file.text });
+  if (p.papelera) await restoreProject(p.id);
+  await tx(['papelera'], 'readwrite', (t) => t.objectStore('papelera').delete(entryId));
+  return { project: p, path };
+}
+
+export async function deleteTrashFile(entryId) {
+  await tx(['papelera'], 'readwrite', (t) => t.objectStore('papelera').delete(entryId));
+}
+
+/** Borra de verdad lo que lleva más de 15 días en la papelera. Devuelve cuántas cosas borró. */
+export async function purgeTrash(dias = DIAS_PAPELERA) {
+  const limite = Date.now() - dias * 864e5;
+  const { proyectos, archivos } = await listTrash();
+  let n = 0;
+  for (const p of proyectos) if (p.papelera < limite) { await deleteProject(p.id); n++; }
+  for (const a of archivos) if (a.borrado < limite) { await deleteTrashFile(a.id); n++; }
+  return n;
 }
 
 export async function getProject(id) {

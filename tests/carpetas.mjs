@@ -20,7 +20,7 @@ await ctx.addInitScript(() => {
     async listar({ doc, recursivo }) {
       const fs = load(); if (!fs[doc]) throw new Error('no existe');
       const out = [];
-      const walk = (id, base) => { for (const k of hijos(fs, id)) { const n = k.split('/').pop(); out.push({ path: base + n, doc: k, dir: !!fs[k].dir, size: (fs[k].data || '').length, mtime: fs[k].mtime }); if (fs[k].dir && recursivo) walk(k, base + n + '/'); } };
+      const walk = (id, base) => { for (const k of hijos(fs, id)) { const n = k.split('/').pop(); if (n.startsWith('.')) continue; out.push({ path: base + n, doc: k, dir: !!fs[k].dir, size: (fs[k].data || '').length, mtime: fs[k].mtime }); if (fs[k].dir && recursivo) walk(k, base + n + '/'); } };
       walk(doc, ''); return { items: out };
     },
     async leer({ doc }) { return { data: load()[doc].data }; },
@@ -32,6 +32,7 @@ await ctx.addInitScript(() => {
     async borrar({ doc, path }) { const fs = load(); const id = path ? doc + '/' + path : doc; for (const k of Object.keys(fs)) if (k === id || k.startsWith(id + '/')) delete fs[k]; save(fs); },
     async renombrar({ doc, path, nombre }) { const fs = load(); const id = path ? doc + '/' + path : doc; const nid = id.replace(/[^/]*$/, nombre); for (const k of Object.keys(fs)) if (k === id || k.startsWith(id + '/')) { fs[nid + k.slice(id.length)] = fs[k]; delete fs[k]; } save(fs); return { doc: nid }; },
     async crearEnDocumentos({ nombre }) { const fs = load(); fs['primary:Documents/' + nombre] = { dir: true, mtime: ++t }; save(fs); window.__elegir = 'primary:Documents/' + nombre; return { ok: true }; },
+    async mover({ doc, hacia }) { const fs = load(); if (!fs[doc]) throw new Error('no existe'); const nid = hacia + '/' + doc.split('/').pop(); for (const k of Object.keys(fs)) if (k === doc || k.startsWith(doc + '/')) { fs[nid + k.slice(doc.length)] = fs[k]; delete fs[k]; } save(fs); return { doc: nid }; },
     async acceso({ doc }) { return { permiso: true, existe: !!load()[doc] }; },
   };
 });
@@ -103,9 +104,9 @@ console.log('tras renombrar:', (await fsKeys()).filter((k) => /Projects_LaTeX\/[
 await page.locator('.project-card:has-text("Renombrado") [aria-label="Opciones"]').click(); await page.click('.sheet-item:has-text("Eliminar")');
 await page.waitForTimeout(300);
 console.log('mensaje:', await page.textContent('.dialog'));
-await page.click('.dialog >> button:has-text("Eliminar")');
+await page.click('.dialog >> button:has-text("Mover a la papelera")');
 await page.waitForTimeout(800);
-console.log('tras eliminar:', (await fsKeys()).filter((k) => /Projects_LaTeX\/[^/]+$/.test(k)));
+console.log('tras eliminar:', (await fsKeys()).filter((k) => /Projects_LaTeX\/(Papelera de TeXsting\/)?[^/]+$/.test(k)));
 await page.locator('.project-card:has-text("Tesis") [aria-label="Opciones"]').click(); await page.click('.sheet-item:has-text("Eliminar")');
 await page.waitForTimeout(300);
 console.log('mensaje externa:', await page.textContent('.dialog'));
@@ -144,5 +145,29 @@ await page.click('.project-card:has-text("Práctica") .project-open'); await pag
 await page.focus('.basic-editor'); await page.keyboard.press('Control+End'); await page.keyboard.type('\n% tras renombrar');
 await page.waitForTimeout(2500);
 console.log('11 escritura:', await page.evaluate(() => { const fs = window.__fs.load(); const k = Object.keys(fs).find((k) => k.startsWith('primary:Documents/MisTex/Práctica') && k.endsWith('.tex')); return k ? atob(fs[k].data).slice(-20) : 'NO'; }));
+// 12) Papelera: el proyecto eliminado en 7) está ahí y su carpeta en «Papelera de TeXsting»
+await page.goto('http://127.0.0.1:8080/index.html'); await page.waitForTimeout(1200);
+console.log('12 botón papelera:', await page.textContent('.home-papelera'));
+console.log('12 carpetas en papelera:', (await fsKeys()).filter((k) => /Papelera de TeXsting\/[^/]+$/.test(k)));
+await page.click('.home-papelera'); await page.waitForSelector('.papelera-item');
+await page.screenshot({ path: `${OUT}/carpetas-08-papelera.png` });
+console.log('12 en la papelera:', await page.$$eval('.papelera-item .lic-nombre', (a) => a.map((x) => x.textContent)));
+await page.click('.papelera-item:has-text("Renombrado") >> text=Restaurar'); await page.waitForTimeout(1200);
+console.log('12 tras restaurar:', (await fsKeys()).filter((k) => /(MisTex|Papelera)\/[^/]+$/.test(k)));
+// 13) Archivo a la papelera desde el editor y restaurarlo
+await page.goto('http://127.0.0.1:8080/index.html'); await page.waitForTimeout(800);
+await page.click('.project-card:has-text("Práctica") .project-open'); await page.waitForSelector('.editor-screen');
+await page.click('.bottomnav [data-tab="files"]'); await page.waitForTimeout(300);
+await page.click('[aria-label="Opciones de notas.txt"]');
+await page.waitForTimeout(300);
+await page.click('.sheet-item:has-text("Eliminar")').catch((e) => console.log('13 sin menú', e.message.slice(0, 80)));
+await page.click('.dialog >> button:has-text("Mover a la papelera")').catch(() => {});
+await page.waitForTimeout(1200);
+console.log('13 notas.txt en la carpeta:', (await fsKeys()).some((k) => k.endsWith('Práctica Uno/notas.txt')));
+await page.goto('http://127.0.0.1:8080/index.html'); await page.waitForTimeout(800);
+await page.click('.home-papelera'); await page.waitForSelector('.papelera-item');
+console.log('13 papelera:', await page.$$eval('.papelera-item .lic-nombre', (a) => a.map((x) => x.textContent)));
+await page.click('.papelera-item:has-text("notas.txt") >> text=Restaurar'); await page.waitForTimeout(1200);
+console.log('13 restaurado en la carpeta:', (await fsKeys()).some((k) => k.endsWith('Práctica Uno/notas.txt')));
 console.log('ERRORES:', errors.length ? errors : 'ninguno');
 await b.close();

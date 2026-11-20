@@ -13,6 +13,8 @@ const Carpetas = prueba || registerPlugin('Carpetas');
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 const RAIZ = 'Projects_LaTeX';
+// Proyectos eliminados: su carpeta va aquí (dentro de Projects_LaTeX, visible desde Archivos) hasta que se borran de verdad a los 15 días.
+const PAPELERA = 'Papelera de TeXsting';
 const VINC_KEY = 'texsting.carpetas';
 
 /** Archivos que genera la compilación: no son del proyecto (no se importan desde la carpeta). */
@@ -81,7 +83,10 @@ async function escribir(id, f) {
 /** Nombre libre dentro de la carpeta raíz: «Tarea», «Tarea (2)»… */
 async function nombreLibre(nombre) {
   const r = raiz();
-  const { items } = await Carpetas.listar({ tree: r.tree, doc: r.doc });
+  return nombreLibreEn(r.tree, r.doc, nombre);
+}
+async function nombreLibreEn(tree, doc, nombre) {
+  const { items } = await Carpetas.listar({ tree, doc });
   const usados = new Set(items.map((i) => i.path.toLowerCase()));
   const base = sanitizeName(nombre).replace(/[\\/:*?"<>|]/g, '-').trim() || 'Proyecto';
   if (!usados.has(base.toLowerCase())) return base;
@@ -132,6 +137,52 @@ setEspejo({
       const r = await Carpetas.renombrar({ tree: v.tree, doc: v.doc, nombre: nuevo });
       const act = vinculo(p.id);
       if (act) setVinculo(p.id, { ...act, doc: r.doc, nombre: nuevo, ruta: act.ruta.replace(/[^/]*$/, nuevo) });
+    }).catch(falla);
+  },
+  aPapelera(p) {
+    const v = activo(p.id);
+    const r = raiz();
+    if (!v || v.externa || !r) return;  // una carpeta abierta desde otro lugar no se mueve
+    enCola(p.id, async () => {
+      const { doc: papel } = await Carpetas.carpeta({ tree: r.tree, doc: r.doc, nombre: PAPELERA });
+      const nombre = await nombreLibreEn(r.tree, papel, v.nombre);
+      let doc;
+      try {
+        if (v.tree !== r.tree) throw new Error('otra carpeta');
+        if (nombre !== v.nombre) await Carpetas.renombrar({ tree: v.tree, doc: v.doc, nombre });
+        const actual = nombre !== v.nombre ? (await Carpetas.listar({ tree: r.tree, doc: r.doc })).items.find((i) => i.path === nombre).doc : v.doc;
+        ({ doc } = await Carpetas.mover({ tree: r.tree, doc: actual, desde: r.doc, hacia: papel }));
+      } catch {
+        // Sin «mover» (algunos teléfonos): se copia a la papelera y se borra la original.
+        ({ doc } = await Carpetas.carpeta({ tree: r.tree, doc: papel, nombre }));
+        setVinculo(p.id, { ...v, tree: r.tree, doc });
+        for (const f of await listFiles(p.id)) await escribir(p.id, f);
+        await Carpetas.borrar({ tree: v.tree, doc: v.doc }).catch(() => {});
+      }
+      setVinculo(p.id, { ...vinculo(p.id), tree: r.tree, doc, nombre, ruta: r.ruta + '/' + PAPELERA + '/' + nombre, enPapelera: true });
+    }).catch(falla);
+  },
+  restaurado(p) {
+    const v = vinculo(p.id);
+    const r = raiz();
+    if (!v || !v.enPapelera || !r) return;
+    enCola(p.id, async () => {
+      const { doc: papel } = await Carpetas.carpeta({ tree: r.tree, doc: r.doc, nombre: PAPELERA });
+      const nombre = await nombreLibre(p.name);
+      let doc;
+      try {
+        if (nombre !== v.nombre) await Carpetas.renombrar({ tree: r.tree, doc: v.doc, nombre });
+        const actual = nombre !== v.nombre ? (await Carpetas.listar({ tree: r.tree, doc: papel })).items.find((i) => i.path === nombre).doc : v.doc;
+        ({ doc } = await Carpetas.mover({ tree: r.tree, doc: actual, desde: papel, hacia: r.doc }));
+      } catch {
+        ({ doc } = await Carpetas.carpeta({ tree: r.tree, doc: r.doc, nombre }));
+        const viejo = v.doc;
+        setVinculo(p.id, { ...v, doc });
+        for (const f of await listFiles(p.id)) await escribir(p.id, f);
+        await Carpetas.borrar({ tree: r.tree, doc: viejo }).catch(() => {});
+      }
+      const act = vinculo(p.id);
+      setVinculo(p.id, { ...act, doc, nombre, ruta: r.ruta + '/' + nombre, enPapelera: false, falta: false });
     }).catch(falla);
   },
   eliminado(p) {
@@ -291,7 +342,7 @@ export async function abrirCarpeta() {
 }
 
 /** ¿Está este vínculo dentro de la carpeta propia? */
-const enRaiz = (v, r) => v && !v.externa && r && v.ruta && v.ruta.startsWith(r.ruta + '/');
+const enRaiz = (v, r) => v && !v.externa && !v.enPapelera && r && v.ruta && v.ruta.startsWith(r.ruta + '/');
 
 /**
  * Revisa la carpeta propia al volver al inicio:
@@ -304,13 +355,15 @@ export async function revisarRaiz() {
   const r = raiz();
   const res = { nuevos: [], renombrados: [], faltan: [], raizFalta: false };
   if (!r || !disponible()) return res;
+  // Los vínculos se leen ANTES de mirar la carpeta: un proyecto que se está creando en este momento (su carpeta
+  // todavía no aparecía en la lista) no debe confundirse con uno cuya carpeta se borró.
+  const todos = vinculos();
   let items;
   try { ({ items } = await Carpetas.listar({ tree: r.tree, doc: r.doc })); } catch (e) {
     const a = await Carpetas.acceso({ tree: r.tree, doc: r.doc }).catch(() => ({}));
     if (a.existe === false || a.permiso === false) { res.raizFalta = true; return res; }
     throw e;
   }
-  const todos = vinculos();
   const docs = new Set(items.filter((i) => i.dir).map((i) => i.doc));
   // Proyectos de esta carpeta cuya carpeta ya no aparece.
   const perdidos = Object.entries(todos).filter(([, v]) => enRaiz(v, r) && !docs.has(v.doc)).map(([id, v]) => ({ id, v }));
@@ -319,7 +372,7 @@ export async function revisarRaiz() {
   let sinTex = {};
   try { sinTex = JSON.parse(localStorage.getItem(VINC_KEY + '.sintex') || '{}'); } catch { /* vacío */ }
   for (const it of items) {
-    if (!it.dir || conocidas.has(it.doc) || sinTex[it.doc] === it.mtime) continue;
+    if (!it.dir || it.path.startsWith('.') || it.path === PAPELERA || conocidas.has(it.doc) || sinTex[it.doc] === it.mtime) continue;
     // ¿Es la carpeta de un proyecto perdido con otro nombre? Se compara qué archivos tiene.
     if (perdidos.length) {
       const { items: dentro } = await Carpetas.listar({ tree: r.tree, doc: it.doc, recursivo: true }).catch(() => ({ items: [] }));
@@ -352,7 +405,10 @@ export async function revisarRaiz() {
   const actual = vinculos();
   for (const { id, v } of perdidos) {
     if (!(await getProject(id))) { delete actual[id]; continue; }
-    actual[id] = { ...v, falta: true };
+    // Se confirma una por una: solo se avisa si de verdad no existe (no por una lista leída a destiempo).
+    const a = await Carpetas.acceso({ tree: v.tree, doc: v.doc }).catch(() => ({}));
+    if (a.existe !== false) continue;
+    actual[id] = { ...(actual[id] || v), falta: true };
     res.faltan.push({ id, nombre: v.nombre, ruta: v.ruta });
   }
   guardarVinculos(actual);

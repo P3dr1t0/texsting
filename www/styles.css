@@ -543,3 +543,8 @@ span.lic-chip { border-color: var(--border); color: var(--muted); cursor: defaul
 .home-aviso[hidden] { display: none; }
 .home-aviso.alerta { border-color: var(--danger, #c0392b); }
 .home-aviso.alerta > div:first-child svg { color: var(--danger, #c0392b); }
+/* Papelera */
+.papelera-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.topbar.simple h1 { flex: 1; }
+.home-papelera { align-self: center; display: inline-flex; align-items: center; gap: 6px; }
+.btn.danger.ghost { background: transparent; border-color: transparent; color: var(--danger); }

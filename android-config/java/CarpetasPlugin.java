@@ -262,6 +262,19 @@ public class CarpetasPlugin extends Plugin {
         } catch (Exception e) { call.reject(String.valueOf(e.getMessage())); }
     }
 
+    /** Mueve una carpeta o archivo («doc», que está en «desde») a otra carpeta («hacia»), dentro del mismo permiso. */
+    @PluginMethod
+    public void mover(PluginCall call) {
+        try {
+            Uri tree = Uri.parse(call.getString("tree"));
+            Uri u = DocumentsContract.moveDocument(cr(), doc(tree, call.getString("doc")), doc(tree, call.getString("desde")), doc(tree, call.getString("hacia")));
+            if (u == null) throw new Exception("No se pudo mover");
+            JSObject r = new JSObject();
+            r.put("doc", DocumentsContract.getDocumentId(u));
+            call.resolve(r);
+        } catch (Exception e) { call.reject(String.valueOf(e.getMessage())); }
+    }
+
     private String resolver(Uri tree, String base, String path) {
         String id = base;
         if (path == null || path.isEmpty()) return id;

@@ -17,6 +17,20 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.8.0] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 84
+
+### Nuevo
+- **Papelera** ([#20](https://github.com/P3dr1t0/texsting/issues/20)). Eliminar un proyecto o un archivo ya no lo borra de inmediato: va a la papelera y **se borra solo a los 15 días**.
+  - Al eliminar aparece «Deshacer», y en el inicio un botón **Papelera · N** lleva a la lista. Ahí cada elemento dice cuántos días le quedan y tiene **Restaurar** y **Eliminar ahora**. También se puede vaciar toda la papelera.
+  - La carpeta de un proyecto eliminado se mueve a `Projects_LaTeX/Papelera de TeXsting` (visible desde Archivos). Al restaurarlo vuelve a su lugar.
+  - Una carpeta abierta desde otro lugar («Abrir → Carpeta del teléfono») nunca se mueve ni se borra: solo se quita de TeXsting.
+  - Un archivo eliminado dentro de un proyecto se restaura en el mismo proyecto. Si ya existe otro con ese nombre, se restaura como «(restaurado)».
+
+### Corregido
+- **Aviso falso de «Se eliminó la carpeta…».** Al crear un proyecto, la revisión de la carpeta podía leer la lista justo antes de que su carpeta se creara y avisar que se había eliminado. Ahora el aviso solo sale si la carpeta existió y, al volver a comprobarla una por una, de verdad ya no está.
+
+---
+
 ## [0.7.3] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 83
 
 ### Nuevo

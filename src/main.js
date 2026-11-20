@@ -6,6 +6,8 @@ import { renderHome } from './screens/home.js';
 import { renderEditor } from './screens/editor.js';
 import { renderSettings, renderTermuxSetup } from './screens/settings.js';
 import { renderLicencias } from './screens/licencias.js';
+import { renderPapelera } from './screens/papelera.js';
+import { purgeTrash } from './store.js';
 import { renderNewProject } from './screens/newproject.js';
 import { initOpenWith } from './openwith.js';
 import { motorCalentar, motorAlTerminarFondo } from './motor.js';
@@ -21,7 +23,7 @@ export async function navigate(name, params = {}) {
     try { await current.cleanup(); } catch (e) { console.error(e); }
   }
   root.replaceChildren();
-  const screens = { new: renderNewProject, home: renderHome, editor: renderEditor, settings: renderSettings, termux: renderTermuxSetup, licencias: renderLicencias };
+  const screens = { new: renderNewProject, home: renderHome, editor: renderEditor, settings: renderSettings, termux: renderTermuxSetup, licencias: renderLicencias, papelera: renderPapelera };
   current = { name, ...(await screens[name](root, params, navigate)) };
   window.scrollTo(0, 0);
 }
@@ -41,5 +43,7 @@ applyTheme();
 navigate('home').then(() => initOpenWith(navigate));
 // El motor integrado se prepara solo al abrir la app (solo trabaja la primera vez tras instalar o actualizar).
 motorCalentar().catch(() => {});
+// Lo que lleva más de 15 días en la papelera se borra de verdad.
+purgeTrash().catch(() => {});
 // Cuando termina de guardar figuras o el preámbulo en segundo plano, se avisa: ya conviene volver a compilar.
 motorAlTerminarFondo((texto) => texto && toast(texto, { ms: 4500 }));

@@ -2,7 +2,7 @@
 // con archivos, estructura, símbolos, mensajes de compilación y asistentes.
 import { createEditor } from '#editor-impl';
 import { sincronizar, guardarPdf, vinculo } from '../carpetas.js';
-import { getProject, saveProject, touchProject, listFiles, putFile, deleteFile, renameFile, getOutput, saveOutput, getSettings, setSettings, isTextPath } from '../store.js';
+import { fileToTrash, restoreFile, DIAS_PAPELERA, getProject, saveProject, touchProject, listFiles, putFile, deleteFile, renameFile, getOutput, saveOutput, getSettings, setSettings, isTextPath } from '../store.js';
 import { el, icon, toast, sheet, panel, promptText, confirmDialog, dialog, pickFiles, esc } from '../ui.js';
 import { createPdfViewer } from '../pdfview.js';
 import { parseSynctex, forward, inverse } from '../synctex.js';
@@ -373,8 +373,14 @@ export async function renderEditor(root, { id }, navigate) {
     }
     if (choice === 'delete') {
       if (f.path === project.main) { toast('No puedes eliminar el archivo principal'); return; }
-      if (!(await confirmDialog('Eliminar archivo', `¿Eliminar ${f.path}?`, { ok: 'Eliminar', danger: true }))) return;
-      await deleteFile(project.id, f.path);
+      if (!(await confirmDialog('Eliminar archivo', `«${f.path}» va a la papelera (se borra solo en ${DIAS_PAPELERA} días; hasta entonces puedes restaurarlo).`, { ok: 'Mover a la papelera', danger: true }))) return;
+      saveSoon.flush();
+      const enPapelera = await fileToTrash(project.id, f.path);
+      toast(`«${f.path}» movido a la papelera`, { action: 'Deshacer', ms: 6000, onAction: async () => {
+        const r = await restoreFile(enPapelera);
+        files = await listFiles(project.id); renderFiles(); analyze();
+        if (r) toast(`«${r.path}» restaurado`, { kind: 'ok' });
+      } });
       editor.forget(f.path);
       files = files.filter((x) => x.path !== f.path);
       if (currentPath === f.path) openFile(project.main);

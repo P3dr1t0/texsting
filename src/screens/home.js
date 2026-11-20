@@ -1,5 +1,5 @@
 // Pantalla de inicio: lista de proyectos, estado del compilador, crear e importar.
-import { listProjects, createProject, deleteProject, duplicateProject, saveProject, touchProject, listFiles, getOutput, isTextPath, getSettings, setSettings } from '../store.js';
+import { listTrash, projectToTrash, restoreProject, DIAS_PAPELERA, listProjects, createProject, deleteProject, duplicateProject, saveProject, touchProject, listFiles, getOutput, isTextPath, getSettings, setSettings } from '../store.js';
 import { el, icon, logoSvg, brandName, toast, sheet, promptText, confirmDialog, pickFiles, esc, pushBack } from '../ui.js';
 import { saveAsTemplate } from './newproject.js';
 import { ping, serverOutdated, ENGINE_LABEL } from '../compiler.js';
@@ -134,10 +134,11 @@ export async function renderHome(root, _params, navigate) {
   /** Qué pasa con la carpeta al eliminar el proyecto (para el mensaje de confirmación). */
   const alBorrar = (p) => {
     const v = vinculo(p.id);
-    if (!v) return 'y todos sus archivos de este teléfono';
-    return v.externa ? `de TeXsting (su carpeta «${v.ruta || v.nombre}» queda intacta)` : `y su carpeta «${v.ruta}» con todos sus archivos`;
+    if (!v) return 'con todos sus archivos';
+    return v.externa ? `(su carpeta «${v.ruta || v.nombre}» queda intacta)` : `y su carpeta pasa a ${raiz() ? raiz().ruta + '/Papelera de TeXsting' : 'la papelera'}`;
   };
 
+  const papeleraBtn = el('button', { class: 'btn small ghost home-papelera', hidden: true, onclick: () => navigate('papelera') });
   const screen = el('div', { class: 'screen home' },
     el('header', { class: 'home-head' },
       el('div', { class: 'brand', html: logoSvg(36) + brandName() }),
@@ -151,6 +152,7 @@ export async function renderHome(root, _params, navigate) {
     tabsRow,
     selBar,
     list,
+    papeleraBtn,
     el('p', { class: 'home-foot' }, `TeXsting ${__VERSION__} · Fase 2: Beta · software libre (GPL-3.0)`));
   root.append(screen);
 
@@ -188,6 +190,10 @@ export async function renderHome(root, _params, navigate) {
   async function refresh() {
     projects = await listProjects();
     draw();
+    const t = await listTrash().catch(() => ({ proyectos: [], archivos: [] }));
+    const n = t.proyectos.length + t.archivos.length;
+    papeleraBtn.hidden = !n;
+    papeleraBtn.innerHTML = `${icon('trash')}<span>Papelera · ${n}</span>`;
   }
 
   function card(p) {
@@ -278,12 +284,11 @@ export async function renderHome(root, _params, navigate) {
     if (!sel.length) return;
     const names = sel.slice(0, 6).map((p) => '«' + p.name + '»').join(', ') + (sel.length > 6 ? ` y ${sel.length - 6} más` : '');
     const pinned = sel.filter((p) => p.pinned).length;
-    const conCarpeta = sel.some((p) => vinculo(p.id) && !vinculo(p.id).externa);
-    const msg = `Se borrarán ${sel.length === 1 ? 'este proyecto' : `estos ${sel.length} proyectos`} y todos sus archivos${conCarpeta ? ' (también sus carpetas en ' + raiz().ruta + ')' : ' de este teléfono'}: ${names}.` +
-      (pinned ? ` (${pinned} ${pinned === 1 ? 'está fijado' : 'están fijados'}).` : '') + ' No se puede deshacer.';
-    if (!(await confirmDialog(sel.length === 1 ? 'Eliminar proyecto' : `Eliminar ${sel.length} proyectos`, msg, { ok: 'Eliminar', danger: true }))) return;
-    for (const p of sel) await deleteProject(p.id);
-    toast(sel.length === 1 ? 'Proyecto eliminado' : `${sel.length} proyectos eliminados`);
+    const msg = `${sel.length === 1 ? 'Este proyecto va' : `Estos ${sel.length} proyectos van`} a la papelera: ${names}.` +
+      (pinned ? ` (${pinned} ${pinned === 1 ? 'está fijado' : 'están fijados'}).` : '') + ` Se borra${sel.length === 1 ? '' : 'n'} solo${sel.length === 1 ? '' : 's'} en ${DIAS_PAPELERA} días; hasta entonces puedes restaurar${sel.length === 1 ? 'lo' : 'los'} desde la papelera.`;
+    if (!(await confirmDialog(sel.length === 1 ? 'Eliminar proyecto' : `Eliminar ${sel.length} proyectos`, msg, { ok: 'Mover a la papelera', danger: true }))) return;
+    for (const p of sel) await projectToTrash(p.id);
+    toast(sel.length === 1 ? 'Proyecto movido a la papelera' : `${sel.length} proyectos movidos a la papelera`, { action: 'Deshacer', ms: 6000, onAction: async () => { for (const p of sel) await restoreProject(p.id); refresh(); } });
     clearSelection(false);
     refresh();
   }
@@ -360,9 +365,9 @@ export async function renderHome(root, _params, navigate) {
     if (choice === 'tpl') await saveAsTemplate(p);
     if (choice === 'dup') { await duplicateProject(p.id, p.name + ' (copia)'); refresh(); }
     if (choice === 'delete') {
-      if (await confirmDialog('Eliminar proyecto', `Se borrará «${p.name}» ${alBorrar(p)}.${vinculo(p.id) && vinculo(p.id).externa ? '' : ' No se puede deshacer.'}`, { ok: vinculo(p.id) && vinculo(p.id).externa ? 'Quitar' : 'Eliminar', danger: true })) {
-        await deleteProject(p.id);
-        toast('Proyecto eliminado');
+      if (await confirmDialog('Eliminar proyecto', `«${p.name}» va a la papelera ${alBorrar(p)}. Se borra solo en ${DIAS_PAPELERA} días; hasta entonces puedes restaurarlo desde la papelera.`, { ok: 'Mover a la papelera', danger: true })) {
+        await projectToTrash(p.id);
+        toast('Proyecto movido a la papelera', { action: 'Deshacer', ms: 6000, onAction: async () => { await restoreProject(p.id); refresh(); } });
         refresh();
       }
     }
