@@ -81,7 +81,7 @@ Compilar en una computadora (opcional): `npm install && npm run build && npm run
 
 - **Código de TeXsting:** GPL-3.0-or-later (ver `LICENSE`). Puedes estudiarlo, modificarlo y compartirlo; si publicas una versión modificada, debe seguir siendo GPL, con su código abierto y los créditos originales.
 - **Nombre y logo:** «TeXsting» y su ícono identifican la app oficial de Pedro de la Cruz Castillo. Las versiones modificadas deben usar otro nombre y otro ícono para no confundirse con la oficial.
-- **Componentes de terceros** (cada uno con su propia licencia):
+- **Componentes de terceros** (cada uno con su propia licencia; la lista completa, con los textos de las licencias, está en la app: Ajustes → Licencias y créditos):
   - Motor integrado: pdfTeX, XeTeX, xdvipdfmx, LuaHBTeX, BibTeX, makeindex y paquetes de [TeX Live](https://tug.org/texlive/) (GPL, LPPL y otras licencias libres), compilados por [Termux](https://github.com/termux/termux-packages); los paquetes extra se descargan de [CTAN](https://ctan.org/).
   - Bibliotecas de XeTeX y LuaHBTeX: ICU (Unicode License), fontconfig (MIT), TECkit (LGPL), HarfBuzz (MIT), FreeType (FTL), GLib (LGPL-2.1), expat (MIT), libpaper, Graphite2, libiconv, PCRE2, Brotli, bzip2, zlib y libpng (licencias libres), compiladas por Termux.
   - Editor: [CodeMirror 6](https://codemirror.net/) y Lezer (MIT).

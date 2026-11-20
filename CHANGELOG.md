@@ -17,6 +17,17 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.6.5] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 78
+
+### Nuevo
+- **Pantalla «Licencias y créditos»** (Ajustes → Acerca de → Licencias y créditos) ([#17](https://github.com/P3dr1t0/texsting/issues/17)).
+  - Autor: Pedro de la Cruz Castillo. Licencia GPL-3.0 y enlace al código en GitHub.
+  - Nota: el nombre «TeXsting» y su ícono identifican la app oficial.
+  - Cada componente de terceros aparece con lo que hace en la app, su licencia, sus autores y el enlace a su código fuente: TeX Live, paquetes de CTAN, fuentes Latin Modern y TeX Gyre, MetaPost y Lua, las bibliotecas de XeTeX y LuaTeX, CodeMirror, PDF.js, Capacitor y XZ for Java.
+  - Los textos completos de GPL-3.0, GPL-2.0, LGPL-2.1, Apache-2.0 y MIT vienen dentro de la app y se abren tocando su etiqueta. Las demás licencias abren su página oficial.
+
+---
+
 ## [0.6.4] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 77
 
 ### Corregido

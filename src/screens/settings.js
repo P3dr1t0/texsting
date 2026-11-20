@@ -138,7 +138,8 @@ export async function renderSettings(root, _p, navigate) {
       row('Números de línea', toggle('lineNumbers')),
       row('Autocompletado', toggle('autocomplete')),
       el('h3', { class: 'section-title' }, 'Acerca de'),
-      el('p', { class: 'muted', html: `TeXsting ${__VERSION__} (Fase 2: Beta con motor integrado) — editor LaTeX libre para Android (GPL-3.0).<br><a href="https://github.com/P3dr1t0/texsting/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Ver novedades de cada versión</a><br>Inspirado en la forma de trabajar de TeXstudio; no usa su código, nombre ni logo.<br>Compila con TeX Live (pdfTeX) dentro de la app, en tu propio teléfono o tablet.` }))));
+      el('p', { class: 'muted', html: `TeXsting ${__VERSION__} (Fase 2: Beta con motor integrado) — editor LaTeX libre para Android (GPL-3.0), creado por Pedro de la Cruz Castillo.<br><a href="https://github.com/P3dr1t0/texsting/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Ver novedades de cada versión</a>` }),
+      el('button', { class: 'btn', html: icon('info') + '<span>Licencias y créditos</span>', onclick: () => navigate('licencias') }))));
   return {};
 }
 

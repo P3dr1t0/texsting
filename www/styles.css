@@ -519,3 +519,14 @@ html.layer-open #app { pointer-events: none; }
 .ts-s-close { width: 34px; height: 34px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .ts-s-close .ico, .ts-s-close svg { width: 16px; height: 16px; }
 @media (max-width: 420px) { .ts-search { grid-template-columns: minmax(0, 1fr) 146px; } .ts-s-btn { font-size: 13.5px; padding: 0 4px; } .ts-s-input { padding-right: 76px; } .ts-s-count { max-width: 70px; } }
+
+/* Licencias y créditos */
+.lic-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); line-height: 1.45; }
+.lic-nombre { font-weight: 600; }
+.lic-item .small, .settings-body .small { font-size: 13px; }
+.lic-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0; }
+.lic-chip { font: inherit; font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); background: transparent; text-decoration: none; cursor: pointer; }
+span.lic-chip { border-color: var(--border); color: var(--muted); cursor: default; }
+.lic-visor { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--bg); padding-top: var(--safe-top, 0px); }
+.lic-visor-top { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 8px 16px; border-bottom: 1px solid var(--border); }
+.lic-texto { flex: 1; overflow: auto; margin: 0 auto; width: 100%; max-width: 780px; box-sizing: border-box; padding: 14px 16px calc(24px + var(--safe-bottom, 0px)); font-size: 12px; line-height: 1.45; white-space: pre-wrap; }

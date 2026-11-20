@@ -5,6 +5,7 @@ import { closeTopLayer, toast } from './ui.js';
 import { renderHome } from './screens/home.js';
 import { renderEditor } from './screens/editor.js';
 import { renderSettings, renderTermuxSetup } from './screens/settings.js';
+import { renderLicencias } from './screens/licencias.js';
 import { renderNewProject } from './screens/newproject.js';
 import { initOpenWith } from './openwith.js';
 import { motorCalentar, motorAlTerminarFondo } from './motor.js';
@@ -20,7 +21,7 @@ export async function navigate(name, params = {}) {
     try { await current.cleanup(); } catch (e) { console.error(e); }
   }
   root.replaceChildren();
-  const screens = { new: renderNewProject, home: renderHome, editor: renderEditor, settings: renderSettings, termux: renderTermuxSetup };
+  const screens = { new: renderNewProject, home: renderHome, editor: renderEditor, settings: renderSettings, termux: renderTermuxSetup, licencias: renderLicencias };
   current = { name, ...(await screens[name](root, params, navigate)) };
   window.scrollTo(0, 0);
 }
