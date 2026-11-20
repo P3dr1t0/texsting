@@ -445,8 +445,30 @@ public class MotorPlugin extends Plugin {
     // ───────────── Paquetes al vuelo (como MiKTeX): se bajan de CTAN la primera vez que hacen falta ─────────────
     private static final String[] CTAN = {
         "https://mirror.ctan.org/systems/texlive/tlnet/archive/",       // elige un espejo cercano
-        "https://mirrors.mit.edu/CTAN/systems/texlive/tlnet/archive/",  // respaldo
+        "https://mirrors.mit.edu/CTAN/systems/texlive/tlnet/archive/",  // respaldos
+        "https://ctan.math.utah.edu/ctan/tex-archive/systems/texlive/tlnet/archive/",
+        "https://mirror.math.princeton.edu/pub/CTAN/systems/texlive/tlnet/archive/",
+        "https://ftp.fau.de/ctan/systems/texlive/tlnet/archive/",
     };
+    /** El último espejo que funcionó: se prueba primero (mirror.ctan.org a veces manda a uno caído). */
+    private static volatile int espejoBueno = 0;
+
+    /** Baja un archivo de tlnet probando los espejos; si no hay internet en ese momento, espera y reintenta una vez. */
+    private static void bajarDeCtan(String archivo, File dest) throws Exception {
+        Exception last = null;
+        for (int vuelta = 0; vuelta < 2; vuelta++) {
+            boolean sinRed = true;
+            for (int k = 0; k < CTAN.length; k++) {
+                int i = (espejoBueno + k) % CTAN.length;
+                try { download(CTAN[i] + archivo, dest); espejoBueno = i; return; }
+                catch (Exception e) { last = e; if (!(e instanceof java.net.UnknownHostException)) sinRed = false; }
+            }
+            if (!sinRed) break;
+            Thread.sleep(2500);  // la conexión se cayó un momento (cambio de wifi a datos, etc.)
+        }
+        if (last instanceof java.net.UnknownHostException) throw new IOException("sin conexión a internet: no se pudo llegar a CTAN");
+        throw last;
+    }
     private static final Pattern[] MISSING = {
         Pattern.compile("LaTeX Error: File `([^']+)' not found"),
         Pattern.compile("! I can't find file `([^']+)'"),
@@ -464,6 +486,10 @@ public class MotorPlugin extends Plugin {
         Pattern.compile("Package biblatex Error: Citation style '([^']+)' not found"),
         // glossaries en otro idioma: «Please check on CTAN for a bundle called `glossaries-spanish'» (es un aviso).
         Pattern.compile("`(glossaries-[a-z]+)' or similar"),
+        // babel con un idioma cuyo .ldf viene en otro paquete: la opción ngerman de babel → ngerman.ldf (babel-german).
+        Pattern.compile("Package babel Error: Unknown option '([A-Za-z]+)'"),
+        // \babelprovide[import]{greek}: el .ini del idioma viene completo en el paquete babel (el APK trae solo algunos).
+        Pattern.compile("There is no ini file for the requested language\\s*(?:\\(babel\\)\\s*)?\\(: ([A-Za-z]+)\\)"),
     };
     // «Font shape `OT1/ptm/m/n' undefined»: LaTeX no encontró la descripción de la fuente (ot1ptm.fd)
     // y usó otra sin error. Pasa con IEEEtran (Times): hay que bajar el .fd y sus fuentes.
@@ -568,7 +594,8 @@ public class MotorPlugin extends Plugin {
                 if (i == 6) name += ".pfb";
                 if (i == 8) name += ".bbx";
                 if (i == 9) name += ".cbx";
-                if (i == 10) name += ".ldf";
+                if (i == 10 || i == 11) name += ".ldf";
+                if (i == 12) name = "babel-" + name + ".tex";
                 boolean ok = false;
                 for (String ext : INSTALLABLE) if (name.toLowerCase(Locale.ROOT).endsWith(ext)) ok = true;
                 if (ok && !found.contains(name)) found.add(name);
@@ -758,11 +785,7 @@ public class MotorPlugin extends Plugin {
         if (avisar) progress("Descargando el paquete «" + pkg + "»" + (sz != null && sz > 0 ? String.format(Locale.ROOT, " (%.1f MB)", sz / 1e6).replace('.', ',') : "") + "… (solo la primera vez)");
         File tmp = new File(getContext().getCacheDir(), pkg + ".tar.xz");
         try {
-            Exception last = null;
-            for (String m : CTAN) {
-                try { download(m + pkg + ".tar.xz", tmp); last = null; break; } catch (Exception e) { last = e; }
-            }
-            if (last != null) throw last;
+            bajarDeCtan(pkg + ".tar.xz", tmp);
             List<File> maps;
             try (InputStream in = new org.tukaani.xz.XZInputStream(new BufferedInputStream(new FileInputStream(tmp), 65536))) {
                 maps = untar(in, home());
@@ -1810,7 +1833,8 @@ public class MotorPlugin extends Plugin {
                             catch (Exception e) {
                                 if (q.equals(pkg)) failed.add(m);
                                 output.append("\n[TeXsting] No se pudo descargar ").append(q).append(": ").append(e.getMessage()).append('\n');
-                                noBajados.add(q + " (" + e.getMessage() + ")");
+                                String nb = q + " (" + e.getMessage() + ")";
+                                if (!noBajados.contains(nb)) noBajados.add(nb);
                             }
                         }
                     }

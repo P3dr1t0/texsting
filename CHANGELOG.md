@@ -17,6 +17,17 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.10] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 96
+
+### Mejorado
+- **Descargas de paquetes más resistentes.** Si un servidor de CTAN no responde, ahora se prueban 5 espejos en vez de 2, empezando por el último que funcionó. Si se cortó internet un momento, se espera un par de segundos y se intenta otra vez. El motivo del fallo sale en palabras simples («sin conexión a internet»), y cada paquete aparece una sola vez en el resumen.
+- **Idiomas de babel que no vienen en el APK:**
+  - un idioma en las opciones de babel que vive en otro paquete (p. ej. `ngerman` → `babel-german`) se baja solo;
+  - lo mismo con `\babelprovide[import]{greek}`, `{russian}`, etc., que necesitan los archivos completos de babel.
+  - Antes salía «Unknown option 'ngerman'» o «There is no ini file…».
+
+---
+
 ## [0.9.9] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 95
 
 ### Corregido
