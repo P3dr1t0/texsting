@@ -200,6 +200,55 @@ public class MotorPlugin extends Plugin {
         return v != null && fmt().exists() && v.equals(String.valueOf(readText(marker())).trim());
     }
 
+    // ───────────── biber (biblatex): Perl de Termux dentro del APK (tools/biber) ─────────────
+    private File perlDir() { return new File(base(), "perl"); }
+    private String perlVersion() {
+        try (InputStream in = getContext().getAssets().open("motor/perl-version.txt")) {
+            return new String(readAll(in), StandardCharsets.UTF_8).trim();
+        } catch (IOException e) { return null; }
+    }
+    private boolean hayBiber() { return new File(libDir(), "libtx_perl.so").exists() && perlVersion() != null; }
+
+    /** La primera vez que se necesita biber: descomprime los módulos de Perl y enlaza los compilados (están en jniLibs). */
+    private synchronized void preparePerl() throws Exception {
+        String v = perlVersion();
+        File mk = new File(perlDir(), ".version");
+        if (v == null || v.equals(String.valueOf(readText(mk)).trim())) return;
+        progress("Preparando biber (solo la primera vez)…");
+        delete(perlDir());
+        perlDir().mkdirs();
+        String rootPath = perlDir().getCanonicalPath();
+        try (ZipInputStream z = new ZipInputStream(new BufferedInputStream(getContext().getAssets().open("motor/perl.zip")))) {
+            ZipEntry e; byte[] b = new byte[65536];
+            while ((e = z.getNextEntry()) != null) {
+                File f = new File(perlDir(), e.getName());
+                if (!f.getCanonicalPath().startsWith(rootPath)) continue;
+                if (e.isDirectory()) { f.mkdirs(); continue; }
+                f.getParentFile().mkdirs();
+                try (OutputStream o = new FileOutputStream(f)) { int n; while ((n = z.read(b)) > 0) o.write(b, 0, n); }
+            }
+        }
+        String xs = readText(new File(perlDir(), "xs.txt"));
+        if (xs != null) for (String l : xs.split("\n")) {
+            int t = l.indexOf('\t');
+            if (t <= 0) continue;
+            File link = new File(perlDir(), l.substring(0, t));
+            link.getParentFile().mkdirs();
+            link.delete();
+            android.system.Os.symlink(new File(libDir(), l.substring(t + 1).trim()).getAbsolutePath(), link.getAbsolutePath());
+        }
+        try (OutputStream o = new FileOutputStream(mk)) { o.write(v.getBytes(StandardCharsets.UTF_8)); }
+    }
+
+    /** Dónde busca Perl sus módulos (los del APK, no los de Termux). */
+    private String perl5lib() {
+        File p5 = new File(perlDir(), "perl5");
+        String[] vs = p5.list((d, n) -> n.startsWith("5."));
+        if (vs == null || vs.length == 0) return null;
+        String b = p5.getAbsolutePath(), ver = vs[0];
+        return b + "/" + ver + ":" + b + "/" + ver + "/aarch64-android:" + b + "/site_perl/" + ver + ":" + b + "/site_perl/" + ver + "/aarch64-android";
+    }
+
     private Map<String, String> env() {
         String t = tl().getAbsolutePath(), v = var().getAbsolutePath();
         Map<String, String> e = new HashMap<>();
@@ -220,6 +269,7 @@ public class MotorPlugin extends Plugin {
         e.put("XDG_CONFIG_HOME", v + "/config");
         e.put("PAPERSIZE", "a4");
         e.put("MKTEXTFM", "0"); e.put("MKTEXPK", "0"); e.put("MKTEXMF", "0"); e.put("MKTEXFMT", "0");
+        if (perlDir().exists()) { String p5 = perl5lib(); if (p5 != null) e.put("PERL5LIB", p5); }
         return e;
     }
 
@@ -954,6 +1004,8 @@ public class MotorPlugin extends Plugin {
             if (stem.length() > 1 && pre.contains(stem)) k.append("\u0000").append(path).append('\u0000').append(f.optString("text", ""));
         }
         if (withVersion) k.append('\u0000').append(assetVersion());
+        // biblatex queda distinto con biber que con BibTeX: si el APK empieza a traer biber, se arma de nuevo.
+        if (pre.contains("biblatex")) k.append('\u0000').append(hayBiber() ? "biber" : "bibtex");
         return sha1(k.toString());
     }
 
@@ -1442,9 +1494,25 @@ public class MotorPlugin extends Plugin {
                     ran = true;
                 }
             }
-            // biblatex con biber (lo normal en biblatex): biber todavía no viene en el motor integrado.
-            if (new File(mainDir, job + ".bcf").exists() && output.indexOf("biber: command not found") < 0)
-                output.append("\nbiber: command not found (el motor integrado todavía no trae biber; usa \\usepackage[backend=bibtex]{biblatex})\n");
+            // biblatex con biber (lo normal en biblatex): como latexmk, se corre si cambió el .bcf o algún .bib.
+            File bcf = new File(mainDir, job + ".bcf");
+            if (bcf.exists() && hayBiber()) {
+                String b = String.valueOf(readText(bcf));
+                StringBuilder k = new StringBuilder(b);
+                Matcher m = Pattern.compile("<bcf:datasource[^>]*>([^<]+)</bcf:datasource>").matcher(b);
+                while (m.find()) { String t = readText(new File(mainDir, m.group(1).trim())); if (t != null) k.append('\u0000').append(t); }
+                String key = sha1(k.toString());
+                File stamp = new File(mainDir, job + ".texsting-biber");
+                if (!key.equals(String.valueOf(readText(stamp)).trim()) || !new File(mainDir, job + ".bbl").exists()) {
+                    preparePerl();
+                    progress("Armando la bibliografía (biber)…");
+                    Run br = run(Arrays.asList(new File(libDir(), "libtx_perl.so").getAbsolutePath(), new File(perlDir(), "biber").getAbsolutePath(), job), mainDir, 3 * 60 * 1000);
+                    output.append(br.out);
+                    if (br.code == 0) try (OutputStream o = new FileOutputStream(stamp)) { o.write(key.getBytes(StandardCharsets.UTF_8)); }
+                    ran = true;
+                }
+            } else if (bcf.exists() && output.indexOf("biber: command not found") < 0)
+                output.append("\nbiber: command not found (este APK no trae biber; usa \\usepackage[backend=bibtex]{biblatex})\n");
         } catch (Exception e) {
             output.append("\n[TeXsting] BibTeX/makeindex: ").append(e.getMessage()).append('\n');
         }
@@ -1512,7 +1580,8 @@ public class MotorPlugin extends Plugin {
                     if (f.getString("path").endsWith(".tex") && f.has("text") && bl.matcher(f.optString("text", "")).find()) biblatex = true;
                 }
                 try (OutputStream o = new FileOutputStream(new File(mainDir, "texsting-inyectar.txt"))) {
-                    o.write((biblatex ? "\\PassOptionsToPackage{backend=bibtex}{biblatex}" : "").getBytes(StandardCharsets.UTF_8));
+                    // Con biber en el APK, biblatex queda como en Overleaf (biber); sin biber, se le pide BibTeX.
+                    o.write((biblatex && !hayBiber() ? "\\PassOptionsToPackage{backend=bibtex}{biblatex}" : "").getBytes(StandardCharsets.UTF_8));
                 }
                 StringBuilder output = new StringBuilder();
                 Run r = null;

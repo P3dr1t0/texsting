@@ -34,7 +34,7 @@ jobs:
           diff <(grep -v '^%' /tmp/prueba/ref/b.bbl) <(grep -v '^%' /tmp/prueba/b.bbl) && echo "BBL IGUAL AL OFICIAL" || echo "BBL DISTINTO"
       - name: Empaquetar para el APK y probarlo como en el teléfono
         run: |
-          sudo apt-get install -y -qq patchelf > /dev/null
+          sudo apt-get install -y -qq patchelf > /dev/null; sudo chmod -R a+rwX /tmp/salida
           python3 tools/biber/empaquetar.py /tmp/salida /tmp/biber-apk
           ls -la /tmp/biber-apk/jniLibs/arm64-v8a | head -20; ls /tmp/biber-apk/jniLibs/arm64-v8a | wc -l
           tar -C /tmp/biber-apk -cJf /tmp/biber-android.tar.xz jniLibs assets

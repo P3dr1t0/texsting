@@ -72,6 +72,19 @@ jobs:
           else
             echo "::warning::El APK sale sin motor integrado"
           fi
+      - name: Biber (biblatex) dentro del APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Lo arma .github/workflows/biber.yml (Perl de Termux + Biber) y lo deja en la release «biber-android».
+          if gh release download biber-android -p biber-android.tar.xz -D /tmp -R ${{ github.repository }}; then
+            tar -C /tmp -xJf /tmp/biber-android.tar.xz
+            cp -n /tmp/jniLibs/arm64-v8a/* android/app/src/main/jniLibs/arm64-v8a/ 2>/dev/null; cp /tmp/jniLibs/arm64-v8a/libtx_p* android/app/src/main/jniLibs/arm64-v8a/
+            cp /tmp/assets/motor/* android/app/src/main/assets/motor/
+            du -sh /tmp/jniLibs /tmp/assets
+          else
+            echo "::warning::El APK sale sin biber"
+          fi
       - name: Listas de paquetes para «Usar sin internet»
         run: |
           if [ -f android/app/src/main/assets/motor/tl.zip ]; then
