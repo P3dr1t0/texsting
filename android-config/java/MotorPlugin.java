@@ -448,6 +448,9 @@ public class MotorPlugin extends Plugin {
         Pattern.compile("\\(file ([A-Za-z0-9_\\-]+)\\): Font \\1 at \\d+ not found"),
         // MetaPost dentro de LuaLaTeX (luamplib): «I can't open file `plain.mp'».
         Pattern.compile("I can't open file `([^']+\\.mp)'"),
+        // biblatex con un estilo que viene en otro paquete (style=ieee → biblatex-ieee): «Style 'ieee' not found».
+        Pattern.compile("Package biblatex Error: (?:Bibliography )?[Ss]tyle '([^']+)' not found"),
+        Pattern.compile("Package biblatex Error: Citation style '([^']+)' not found"),
     };
     // «Font shape `OT1/ptm/m/n' undefined»: LaTeX no encontró la descripción de la fuente (ot1ptm.fd)
     // y usó otra sin error. Pasa con IEEEtran (Times): hay que bajar el .fd y sus fuentes.
@@ -540,6 +543,8 @@ public class MotorPlugin extends Plugin {
                 if (i == 3) name = "tikzlibrary" + name + ".code.tex";
                 if (i == 1 && !name.contains(".")) name += ".tex";
                 if (i == 6) name += ".pfb";
+                if (i == 8) name += ".bbx";
+                if (i == 9) name += ".cbx";
                 boolean ok = false;
                 for (String ext : INSTALLABLE) if (name.toLowerCase(Locale.ROOT).endsWith(ext)) ok = true;
                 if (ok && !found.contains(name)) found.add(name);
@@ -745,6 +750,7 @@ public class MotorPlugin extends Plugin {
         }
     }
 
+    private static final Pattern BIBLATEX_OPC = Pattern.compile("\\\\usepackage\\s*\\[([^\\]]*)\\]\\s*\\{biblatex\\}");
     private static final Pattern USES = Pattern.compile("\\\\(documentclass|usepackage|RequirePackage)\\s*(?:\\[[^\\]]*\\])?\\s*\\{([^}]*)\\}");
 
     /** Antes de compilar: los \\documentclass y \\usepackage del proyecto que no estén se bajan juntos
@@ -763,6 +769,16 @@ public class MotorPlugin extends Plugin {
                 int c = -1;
                 for (int k = 0; k < l.length(); k++) { if (l.charAt(k) == '\\') { k++; continue; } if (l.charAt(k) == '%') { c = k; break; } }
                 code.append(c >= 0 ? l.substring(0, c) : l).append('\n');
+            }
+            // Estilos de biblatex que vienen en otros paquetes (style=ieee → ieee.bbx y ieee.cbx, de biblatex-ieee).
+            Matcher bm = BIBLATEX_OPC.matcher(code);
+            while (bm.find()) for (String op : bm.group(1).split(",")) {
+                String[] kv = op.split("=", 2);
+                if (kv.length < 2) continue;
+                String k = kv[0].trim(), v = kv[1].trim();
+                if (v.isEmpty() || !v.matches("[A-Za-z0-9_\\-]+")) continue;
+                if (k.equals("style") || k.equals("bibstyle")) { String fb = v + ".bbx"; if (!want.contains(fb) && !bundledNames().contains(fb)) want.add(fb); }
+                if (k.equals("style") || k.equals("citestyle")) { String fc = v + ".cbx"; if (!want.contains(fc) && !bundledNames().contains(fc)) want.add(fc); }
             }
             Matcher m = USES.matcher(code);
             while (m.find()) {
@@ -1806,6 +1822,7 @@ public class MotorPlugin extends Plugin {
                 if (t1 - t0 >= 500) rs.append("  preparar el motor: ").append(secs(t1 - t0)).append('\n');
                 if (formatoMs >= 500) rs.append("  preparar ").append(eng.equals("xelatex") ? "XeLaTeX" : "LuaLaTeX").append(" (solo la primera vez): ").append(secs(formatoMs)).append('\n');
                 if (!installedNow.isEmpty()) rs.append("  paquetes descargados: ").append(String.join(", ", installedNow)).append('\n');
+                if (biblatex) rs.append("  biblatex: ").append(hayBiber() ? "con biber" : "con BibTeX (este APK no trae biber)").append('\n');
                 for (String ps : pasos) rs.append("  ").append(ps).append('\n');
                 if (usesTikz) {
                     int nf = figList(mainDir, job).size();

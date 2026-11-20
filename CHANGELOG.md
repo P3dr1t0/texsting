@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.2] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 88
+
+### Corregido
+- **`style=ieee` (y otros estilos de biblatex que vienen en paquetes aparte) fallaba con «Style 'ieee' not found»**: la app no sabía que tenía que bajar `biblatex-ieee`. Ahora:
+  - antes de compilar, lee las opciones de `\usepackage[style=…]{biblatex}` (también `bibstyle` y `citestyle`) y baja el paquete del estilo;
+  - si igual falta un estilo, reconoce el error y lo baja.
+- El «Log completo» dice si biblatex usó biber o BibTeX.
+
+---
+
 ## [0.9.1] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 87
 
 ### Nuevo
