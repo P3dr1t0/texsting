@@ -3,7 +3,8 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { bytesToBase64, base64ToBytes } from './util.js';
 
-const Motor = registerPlugin('Motor');
+// Las pruebas automáticas pueden poner un motor falso en window.__motorPrueba.
+const Motor = (typeof window !== 'undefined' && window.__motorPrueba) || registerPlugin('Motor');
 
 /** { binario, datos, listo, version, motores: ['pdflatex', 'lualatex'] } o null si este APK/navegador no lo trae. */
 export async function motorEstado() {
@@ -120,3 +121,21 @@ export const MOTOR_PRUEBA_LUA = String.raw`\documentclass{article}
 \textbf{Negrita}, \textit{cursiva} y \texttt{monoespaciada}.
 \end{document}
 `;
+
+// ───────── «Usar sin internet»: paquetes básicos o avanzados descargados de una vez ─────────
+/** { basicos: {total, listos, descarga, instalado}, avanzados: {...}, ocupado, paquetes, descargando } o null. */
+export async function motorSinInternet() {
+  try { return await Motor.sinInternet(); } catch { return null; }
+}
+export function motorDescargarSinInternet(nivel) { return Motor.descargarSinInternet({ nivel }); }
+export function motorCancelarDescarga() { return Motor.cancelarDescarga(); }
+export function motorBorrarDescargados() { return Motor.borrarDescargados(); }
+/** Avance de la descarga: cb({ nivel, hechos, total, paquete, bytes, bytesTotal, fin, fallos, cancelado }). */
+export async function motorAlDescargar(cb) {
+  try {
+    const h = await Motor.addListener('descargaPaquetes', (e) => cb(e || {}));
+    return () => { try { h.remove(); } catch { /* nada */ } };
+  } catch {
+    return () => {};
+  }
+}

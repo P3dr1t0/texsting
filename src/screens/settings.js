@@ -1,9 +1,9 @@
 // Ajustes y guía de instalación de Termux.
 import { Clipboard } from '@capacitor/clipboard';
 import { getSettings, setSettings, ensureToken } from '../store.js';
-import { el, icon, toast, esc } from '../ui.js';
+import { el, icon, toast, esc, confirmDialog } from '../ui.js';
 import { ping, serverOutdated } from '../compiler.js';
-import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA, MOTOR_PRUEBA_LUA } from '../motor.js';
+import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA, MOTOR_PRUEBA_LUA, motorSinInternet, motorDescargarSinInternet, motorCancelarDescarga, motorBorrarDescargados, motorAlDescargar } from '../motor.js';
 import { bootstrapCommand, openTermux, TERMUX_FDROID, TERMUX_GITHUB } from '../termux.js';
 import { ENGINES } from '../latex-data.js';
 import { disponible as hayCarpetas, raiz, elegirRaiz, exportarTodos } from '../carpetas.js';
@@ -73,6 +73,69 @@ export async function renderSettings(root, _p, navigate) {
   const token = el('input', { class: 'input mono', value: ensureToken(), autocapitalize: 'off', onchange: (e) => setSettings({ token: e.target.value.trim() }) });
   const result = el('p', { class: 'muted' });
   const motorResult = el('div', { class: 'muted motor-result' });
+  // «Usar sin internet»: con conexión los paquetes se bajan solos al compilar; aquí se bajan todos de una vez.
+  const sinInternet = el('div', { class: 'sin-internet', hidden: true });
+  const MB = (b) => (b >= 1e9 ? (b / 1e9).toFixed(1).replace('.', ',') + ' GB' : Math.max(1, Math.round(b / 1e6)) + ' MB');
+  const NIVELES = {
+    basicos: ['Paquetes básicos', 'Lo de un curso de ingeniería o ciencias: TikZ, pgfplots, circuitikz, siunitx, tcolorbox, beamer, biblatex, listings, chemfig, fuentes y más.'],
+    avanzados: ['Paquetes avanzados', 'Casi todo LaTeX, como una instalación completa de MiKTeX o TeX Live: miles de paquetes, estilos de revistas y universidades.'],
+  };
+  let descarga = null;  // { nivel, hechos, total, paquete, bytes, bytesTotal }
+  async function pintarSinInternet() {
+    const st = await motorSinInternet();
+    if (!st) { sinInternet.hidden = true; return; }
+    sinInternet.hidden = false;
+    const tarjeta = (nivel) => {
+      const n = st[nivel];
+      const [titulo, texto] = NIVELES[nivel];
+      const listo = n.listos >= n.total;
+      const activa = descarga && descarga.nivel === nivel;
+      let estado;
+      let accion;
+      if (activa) {
+        const pct = descarga.bytesTotal ? Math.round(100 * descarga.bytes / descarga.bytesTotal) : 0;
+        estado = el('div', {},
+          el('div', { class: 'cp-track dl-track' }, el('div', { class: 'cp-bar', style: `width:${pct}%` })),
+          el('small', { class: 'muted' }, `Descargando ${descarga.hechos} de ${descarga.total}${descarga.paquete ? ' · ' + descarga.paquete : ''} · ${pct} %`));
+        accion = el('button', { class: 'btn small', onclick: () => motorCancelarDescarga() }, 'Cancelar');
+      } else if (listo) {
+        estado = el('small', { class: 'ok-txt' }, `✔ Listo: los ${n.total} paquetes están en el teléfono`);
+      } else {
+        estado = el('small', { class: 'muted' }, `${n.total - n.listos} paquetes por descargar · ${MB(n.descarga)} de descarga (ocupan ~${MB(n.instalado)})`);
+        accion = el('button', { class: 'btn small primary', disabled: !!descarga, onclick: () => bajar(nivel, n) }, 'Descargar');
+      }
+      return el('div', { class: 'lic-item' }, el('div', { class: 'lic-nombre' }, titulo), el('div', { class: 'muted small' }, texto), estado,
+        accion ? el('div', { class: 'papelera-btns' }, accion) : null);
+    };
+    sinInternet.replaceChildren(
+      el('h3', { class: 'section-title' }, 'Usar sin internet'),
+      el('p', { class: 'muted' }, 'Con internet, TeXsting descarga solo lo que cada documento necesita al compilar. Si vas a estar sin conexión (en clase, en un examen, de viaje), descarga antes los paquetes:'),
+      tarjeta('basicos'), tarjeta('avanzados'),
+      st.paquetes ? el('div', { class: 'set-row' },
+        el('span', { class: 'set-label' }, `Paquetes descargados: ${st.paquetes}`, el('small', {}, `Ocupan ${MB(st.ocupado)}. Si los borras, se vuelven a descargar solos cuando un documento los pida.`)),
+        el('button', { class: 'btn small', disabled: !!descarga, onclick: borrar }, 'Borrar')) : null);
+  }
+  async function bajar(nivel, n) {
+    const grande = n.descarga > 300e6;
+    if (grande && !(await confirmDialog('Descarga grande', `Son ${MB(n.descarga)} de descarga y ocupan ~${MB(n.instalado)} en el teléfono. Conviene hacerlo con wifi. Puedes seguir usando la app mientras tanto.`, { ok: 'Descargar' }))) return;
+    try {
+      descarga = { nivel, hechos: 0, total: n.total - n.listos, paquete: '', bytes: 0, bytesTotal: n.descarga };
+      await motorDescargarSinInternet(nivel);
+    } catch (e) { descarga = null; toast(e.message || String(e), { kind: 'error' }); }
+    pintarSinInternet();
+  }
+  async function borrar() {
+    if (!(await confirmDialog('Borrar paquetes descargados', 'Se liberará el espacio. Cuando un documento necesite un paquete, se volverá a descargar solo (con internet).', { ok: 'Borrar', danger: true }))) return;
+    try { const r = await motorBorrarDescargados(); toast(`Listo: se liberaron ${MB(r.liberado || 0)}`, { kind: 'ok' }); } catch (e) { toast(e.message || String(e), { kind: 'error' }); }
+    pintarSinInternet();
+  }
+  let ultimoPintado = 0;
+  const dejarDeEscuchar = await motorAlDescargar((e) => {
+    descarga = e.fin ? null : e;
+    // Pintar a lo más dos veces por segundo (con miles de paquetes llegan muchos avisos).
+    if (e.fin || Date.now() - ultimoPintado > 500) { ultimoPintado = Date.now(); pintarSinInternet(); }
+  });
+  motorSinInternet().then((st) => { if (st && st.descargando) descarga = descarga || { nivel: '?', hechos: 0, total: 0, bytes: 0, bytesTotal: 0 }; pintarSinInternet(); });
   const carpetaTxt = el('p', { class: 'muted' });
   const pintarCarpeta = () => {
     const r = raiz();
@@ -147,6 +210,7 @@ export async function renderSettings(root, _p, navigate) {
       el('p', { class: 'muted' }, 'El motor integrado compila dentro de TeXsting, sin instalar nada más: pdfLaTeX, XeLaTeX y LuaLaTeX (fuentes OpenType con fontspec, incluso las del teléfono como Roboto o Noto), BibTeX y makeindex. Los paquetes que falten (TikZ, pgfplots, circuitikz…) se descargan solos de CTAN la primera vez que los uses.'),
       el('button', { class: 'btn', onclick: probarMotor }, 'Probar motor integrado'),
       motorResult,
+      sinInternet,
       servidorPruebas,
       ...(hayCarpetas() ? [
         el('h3', { class: 'section-title' }, 'Carpeta de proyectos'),
@@ -163,7 +227,7 @@ export async function renderSettings(root, _p, navigate) {
       el('h3', { class: 'section-title' }, 'Acerca de'),
       el('p', { class: 'muted', html: `TeXsting ${__VERSION__} (Fase 2: Beta con motor integrado) — editor LaTeX libre para Android (GPL-3.0), creado por Pedro de la Cruz Castillo.<br><a href="https://github.com/P3dr1t0/texsting/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Ver novedades de cada versión</a>` }),
       el('button', { class: 'btn', html: icon('info') + '<span>Licencias y créditos</span>', onclick: () => navigate('licencias') }))));
-  return {};
+  return { cleanup: () => dejarDeEscuchar() };
 }
 
 export async function renderTermuxSetup(root, _p, navigate) {

@@ -72,6 +72,11 @@ jobs:
           else
             echo "::warning::El APK sale sin motor integrado"
           fi
+      - name: Listas de paquetes para «Usar sin internet»
+        run: |
+          if [ -f android/app/src/main/assets/motor/tl.zip ]; then
+            python3 tools/apk/sin_internet.py android/app/src/main/assets/motor || echo "::warning::No se armaron las listas de «Usar sin internet»"
+          fi
       - name: Achicar el motor (datos de ICU) y alinear a 16 KB
         run: |
           L=android/app/src/main/jniLibs/arm64-v8a

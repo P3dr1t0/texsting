@@ -10,7 +10,7 @@ import { renderPapelera } from './screens/papelera.js';
 import { purgeTrash } from './store.js';
 import { renderNewProject } from './screens/newproject.js';
 import { initOpenWith } from './openwith.js';
-import { motorCalentar, motorAlTerminarFondo } from './motor.js';
+import { motorCalentar, motorAlTerminarFondo, motorAlDescargar } from './motor.js';
 import { getSettings } from './store.js';
 
 const root = document.getElementById('app');
@@ -47,3 +47,11 @@ motorCalentar().catch(() => {});
 purgeTrash().catch(() => {});
 // Cuando termina de guardar figuras o el preámbulo en segundo plano, se avisa: ya conviene volver a compilar.
 motorAlTerminarFondo((texto) => texto && toast(texto, { ms: 4500 }));
+// Fin de la descarga de «Usar sin internet» (sigue aunque se salga de Ajustes).
+motorAlDescargar((e) => {
+  if (!e.fin) return;
+  const nombre = e.nivel === 'avanzados' ? 'los paquetes avanzados' : 'los paquetes básicos';
+  if (e.cancelado) toast(`Descarga cancelada: ${e.hechos} de ${e.total} paquetes quedaron en el teléfono`);
+  else if (e.fallos) toast(`Se descargaron ${e.hechos - e.fallos} de ${e.total}; ${e.fallos} no se pudieron (revisa la conexión y vuelve a tocar Descargar)`, { kind: 'error', ms: 7000 });
+  else toast(`Listo: ${nombre} están en el teléfono. Ya puedes compilar sin internet.`, { kind: 'ok', ms: 6000 });
+});

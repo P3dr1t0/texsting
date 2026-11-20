@@ -17,6 +17,18 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.0] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 85
+
+### Nuevo
+- **Usar sin internet** (Ajustes) ([#1](https://github.com/P3dr1t0/texsting/issues/1)). Con conexión, todo sigue igual: cada documento descarga solo los paquetes que necesita al compilar. Para estar sin conexión (en clase, en un examen) se pueden descargar antes:
+  - **Paquetes básicos:** lo de un curso de ingeniería o ciencias (TikZ, pgfplots, circuitikz, siunitx, tcolorbox, beamer, biblatex, listings, chemfig, fuentes…).
+  - **Paquetes avanzados:** casi todo LaTeX, como una instalación completa de MiKTeX o TeX Live. Antes de empezar avisa el tamaño y recomienda wifi.
+  - Cada opción muestra cuántos paquetes faltan y cuánto pesan, con barra de avance y **Cancelar**. La descarga sigue aunque salgas de Ajustes y avisa al terminar.
+  - **Borrar** libera el espacio de los paquetes descargados; se vuelven a bajar solos cuando un documento los pide.
+  - Las listas se arman al compilar el APK a partir de TeX Live (`tools/apk/sin_internet.py`), sin los paquetes que el APK ya trae.
+
+---
+
 ## [0.8.0] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 84
 
 ### Nuevo

@@ -548,3 +548,9 @@ span.lic-chip { border-color: var(--border); color: var(--muted); cursor: defaul
 .topbar.simple h1 { flex: 1; }
 .home-papelera { align-self: center; display: inline-flex; align-items: center; gap: 6px; }
 .btn.danger.ghost { background: transparent; border-color: transparent; color: var(--danger); }
+/* Usar sin internet */
+.sin-internet { display: flex; flex-direction: column; gap: 10px; }
+.dl-track { position: relative; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; margin: 6px 0 4px; }
+.dl-track .cp-bar { position: absolute; inset: 0 auto 0 0; background: var(--accent); transition: width .4s; }
+.ok-txt { color: var(--ok); }
+.btn:disabled { opacity: .45; pointer-events: none; }

@@ -662,9 +662,21 @@ public class MotorPlugin extends Plugin {
         return out;
     }
 
-    private void install(String pkg) throws Exception {
+    private final Object instalando = new Object();
+    private void install(String pkg) throws Exception { install(pkg, true); }
+
+    /** Baja e instala un paquete de CTAN. «avisar» = false: descarga de «Usar sin internet» (no es de una compilación). */
+    private void install(String pkg, boolean avisar) throws Exception {
+        synchronized (instalando) {
+            // La compilación y la descarga de «Usar sin internet» pueden pedir el mismo paquete a la vez.
+            if (installedPkgs().contains(pkg)) return;
+            installNow(pkg, avisar);
+        }
+    }
+
+    private void installNow(String pkg, boolean avisar) throws Exception {
         Long sz = sizes.get(pkg);
-        progress("Descargando el paquete «" + pkg + "»" + (sz != null && sz > 0 ? String.format(Locale.ROOT, " (%.1f MB)", sz / 1e6).replace('.', ',') : "") + "… (solo la primera vez)");
+        if (avisar) progress("Descargando el paquete «" + pkg + "»" + (sz != null && sz > 0 ? String.format(Locale.ROOT, " (%.1f MB)", sz / 1e6).replace('.', ',') : "") + "… (solo la primera vez)");
         File tmp = new File(getContext().getCacheDir(), pkg + ".tar.xz");
         try {
             Exception last = null;
@@ -771,6 +783,122 @@ public class MotorPlugin extends Plugin {
         }
         out.delete();
         return false;
+    }
+
+    // ───────────── «Usar sin internet»: bajar de una vez los paquetes básicos o los avanzados ─────────────
+    private final ExecutorService dl = Executors.newSingleThreadExecutor(r -> new Thread(r, "texsting-descargas"));
+    private volatile boolean dlCancelar, dlActiva;
+
+    /** Las listas que armó tools/apk/sin_internet.py: nivel → [[paquete, bytes de descarga, bytes instalado]]. */
+    private JSONObject listasSinInternet() throws Exception {
+        try (InputStream in = getContext().getAssets().open("motor/sin-internet.json")) {
+            return new JSONObject(new String(readAll(in), StandardCharsets.UTF_8));
+        }
+    }
+
+    private static long tamano(File f) {
+        if (f.isFile()) return f.length();
+        long t = 0;
+        File[] l = f.listFiles();
+        if (l != null) for (File x : l) t += tamano(x);
+        return t;
+    }
+
+    @PluginMethod
+    public void sinInternet(PluginCall call) {
+        try {
+            JSONObject listas = listasSinInternet();
+            Set<String> have = installedPkgs();
+            JSObject r = new JSObject();
+            for (String nivel : new String[] { "basicos", "avanzados" }) {
+                org.json.JSONArray a = listas.getJSONArray(nivel);
+                long desc = 0, inst = 0; int listos = 0;
+                for (int i = 0; i < a.length(); i++) {
+                    org.json.JSONArray x = a.getJSONArray(i);
+                    if (have.contains(x.getString(0))) { listos++; continue; }
+                    desc += x.getLong(1); inst += x.getLong(2);
+                }
+                JSObject n = new JSObject();
+                n.put("total", a.length()); n.put("listos", listos); n.put("descarga", desc); n.put("instalado", inst);
+                r.put(nivel, n);
+            }
+            r.put("ocupado", tamano(home()));
+            r.put("paquetes", have.size());
+            r.put("descargando", dlActiva);
+            call.resolve(r);
+        } catch (Exception e) { call.reject("Esta versión no trae las listas de paquetes: " + e.getMessage()); }
+    }
+
+    private void avisoDescarga(String nivel, int hechos, int total, String paquete, long bytes, long bytesTotal, boolean fin, int fallos, boolean cancelado) {
+        JSObject d = new JSObject();
+        d.put("nivel", nivel); d.put("hechos", hechos); d.put("total", total); d.put("paquete", paquete);
+        d.put("bytes", bytes); d.put("bytesTotal", bytesTotal); d.put("fin", fin); d.put("fallos", fallos); d.put("cancelado", cancelado);
+        notifyListeners("descargaPaquetes", d);
+    }
+
+    /** Baja en segundo plano los paquetes de un nivel que falten (y avisa el avance con «descargaPaquetes»). */
+    @PluginMethod
+    public void descargarSinInternet(PluginCall call) {
+        String nivel = "avanzados".equals(call.getString("nivel")) ? "avanzados" : "basicos";
+        if (dlActiva) { call.reject("Ya hay una descarga en curso"); return; }
+        dlActiva = true;
+        dlCancelar = false;
+        call.resolve();
+        dl.execute(() -> {
+            int hechos = 0, fallos = 0, total = 0;
+            long bytes = 0, bytesTotal = 0;
+            try {
+                loadIndex();
+                JSONObject listas = listasSinInternet();
+                org.json.JSONArray a = listas.getJSONArray(nivel);
+                Set<String> have = installedPkgs();
+                List<String> pend = new ArrayList<>();
+                Map<String, Long> peso = new HashMap<>();
+                for (int i = 0; i < a.length(); i++) {
+                    org.json.JSONArray x = a.getJSONArray(i);
+                    if (have.contains(x.getString(0))) continue;
+                    pend.add(x.getString(0)); peso.put(x.getString(0), x.getLong(1)); bytesTotal += x.getLong(1);
+                }
+                total = pend.size();
+                avisoDescarga(nivel, 0, total, "", 0, bytesTotal, false, 0, false);
+                for (String pkg : pend) {
+                    if (dlCancelar) break;
+                    try { install(pkg, false); } catch (Exception e) { fallos++; }
+                    hechos++;
+                    bytes += peso.getOrDefault(pkg, 0L);
+                    avisoDescarga(nivel, hechos, total, pkg, bytes, bytesTotal, false, fallos, false);
+                }
+            } catch (Exception e) { fallos++; }
+            finally {
+                dlActiva = false;
+                avisoDescarga(nivel, hechos, total, "", bytes, bytesTotal, true, fallos, dlCancelar);
+            }
+        });
+    }
+
+    @PluginMethod
+    public void cancelarDescarga(PluginCall call) { dlCancelar = true; call.resolve(); }
+
+    /** Borra los paquetes descargados (se vuelven a bajar solos cuando un documento los pida). */
+    @PluginMethod
+    public void borrarDescargados(PluginCall call) {
+        if (dlActiva) { call.reject("Espera a que termine la descarga (o cancélala)"); return; }
+        exec.execute(() -> {
+            synchronized (work) {
+                synchronized (instalando) {
+                    long antes = tamano(home());
+                    delete(home());
+                    installedFile().delete();
+                    // El mapa de fuentes con las descargadas y los cachés de fuentes de LuaLaTeX y XeLaTeX.
+                    new File(var(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map").delete();
+                    delete(new File(var(), "texmf-var/luatex-cache"));
+                    delete(new File(var(), "fontconfig"));
+                    JSObject r = new JSObject();
+                    r.put("liberado", antes);
+                    call.resolve(r);
+                }
+            }
+        });
     }
 
     @PluginMethod
