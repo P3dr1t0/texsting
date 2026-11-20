@@ -17,6 +17,25 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.18] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 105
+
+### Plantillas: personalización y 10 nuevas
+- **Ventana de personalización al elegir una plantilla.** Reemplaza a la que solo pedía el nombre.
+  - **Básica:** nombre del proyecto, título, autor(es) (uno por línea, para trabajos en grupo) y, cuando la plantilla lleva carátula: universidad, facultad, curso y docente.
+  - **Tus datos se recuerdan** para la próxima plantilla.
+  - **«Personalización avanzada»:** idioma, papel (A4 o Carta), tamaño de letra, márgenes, tipo de letra (Latin Modern, Times, Palatino o sin serifa), interlineado, color de acento, encabezado y pie de página, bibliografía y ecuaciones numeradas por sección.
+  - En las presentaciones, además, el tema y la proporción 16:9 o 4:3.
+- **10 plantillas nuevas**, y la galería ordenada en grupos:
+  - *Universidad:* Informe de circuitos (circuitikz, tabla con unidades y diagrama de Bode), Tarea con carátula, Apuntes de clase (cajas de definición, teorema, ejemplo y nota), Examen o evaluación (con puntajes) y Hoja de fórmulas (3 columnas, hoja horizontal).
+  - *Documentos:* Artículo IEEE y Tesis o proyecto de grado (portada, dedicatoria, resumen, abstract, capítulos y anexos).
+  - *Presentaciones y otros:* Currículum, Carta o solicitud formal y Figura TikZ suelta.
+- **Ninguna plantilla sale con errores al compilarla por primera vez.**
+  - Las figuras de ejemplo ahora son un recuadro «Tu figura aquí». Antes el informe de laboratorio daba el error de «example-image».
+  - Las 15 plantillas se compilaron con cuatro combinaciones de opciones cada una (60 documentos), sin errores.
+
+### Tablet
+- **El teclado ya no se abre solo al entrar a un archivo.** Ahora sale cuando tocas el código, igual que en el celular.
+
 ## [0.9.17] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 104
 
 ### Mensajes

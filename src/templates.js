@@ -531,7 +531,7 @@ Calcule $\displaystyle\int_0^{\pi} \sin x \, dx$.
 \pagestyle{empty}` }).replace(/\\usepackage\{titlesec\}[\s\S]*?\\titleformat\*\{\\subsection\}[^\n]*\n?/, '')}
 ${String.raw`
 % Títulos compactos
-\newcommand{\tema}[1]{\par\medskip{\color{acento}\large\textbf{#1}}\par\smallskip}
+\newcommand{\tema}[1]{\par\medskip{\color{acento}\large\textbf{#1}}\par\nobreak\smallskip}
 
 \begin{document}
 \begin{center}{\Large\textbf{`}${o_(o, 'titulo', 'Formulario')}}}\\end{center}
@@ -907,8 +907,8 @@ Planos, código, hojas de datos, etc.
 \\usetheme{${o.tema || 'Madrid'}}
 ${o.acento !== 'ninguno' ? `\\definecolor{acento}{HTML}{${COLORES[o.acento]}}\n\\usecolortheme[named=acento]{structure}\n` : ''}
 \\title{${o_(o, 'titulo', 'Título de la exposición')}}
-\\author{${autores(o).join(' \\and ')}}
-\\institute{${o_(o, 'universidad', '')}}
+\\author[${autores(o)[0]}${autores(o).length > 1 ? (o.idioma === 'en' ? ' et al.' : ' y otros') : ''}]{${autores(o).join(' \\and ')}}
+\\institute[]{${o_(o, 'universidad', '')}}
 \\date{\\today}
 ${String.raw`
 \begin{document}
@@ -981,7 +981,7 @@ Dos o tres líneas sobre ti: qué estudias, qué te interesa y qué buscas.
 Ingeniería \dots{} --- tercio superior
 
 \section{Experiencia}
-\textbf{Cargo} --- Empresa \hfill 2025\\
+\textbf{Cargo} --- Empresa \hfill 2025
 \begin{itemize}
   \item Logro o tarea concreta, con un resultado si es posible.
   \item Otro logro.
