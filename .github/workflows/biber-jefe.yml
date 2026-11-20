@@ -24,8 +24,8 @@ jobs:
         run: |
           gh release download biber-android -p biber-android.tar.xz -D /tmp -R ${{ github.repository }}
           mkdir -p /tmp/app && tar -C /tmp -xJf /tmp/biber-android.tar.xz && cp -r /tmp/jniLibs/arm64-v8a /tmp/app/lib && cp /tmp/assets/motor/perl.zip /tmp/app/
-          sed 's/biber b; grep.*/biber main/' tools/biber/probar_app.sh > /tmp/app/probar.sh
+          cp tools/biber/probar_app_env.sh /tmp/app/probar.sh
           mkdir -p /tmp/prueba && cp /tmp/j1/main.bcf /tmp/j1/referencias.bib /tmp/prueba/ && chmod -R 777 /tmp/app /tmp/prueba
           cat /tmp/app/probar.sh | tail -3
-          docker run --rm --privileged -v /tmp/app:/app -v /tmp/prueba:/prueba termux/termux-docker:aarch64 bash /app/probar.sh 2>&1 | tail -60
+          docker run --rm --privileged -v /tmp/app:/app -v /tmp/prueba:/prueba termux/termux-docker:aarch64 bash /app/probar.sh 2>&1 | tail -80
           ls -la /tmp/prueba; grep -c 'entry{' /tmp/prueba/main.bbl || true
