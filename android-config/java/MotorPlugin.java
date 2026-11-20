@@ -1502,6 +1502,11 @@ public class MotorPlugin extends Plugin {
                     ran = true;
                 }
             }
+        } catch (Exception e) {
+            output.append("\n[TeXsting] BibTeX: ").append(e).append('\n');
+        }
+        // Cada herramienta por separado: si una falla, las demás igual se corren.
+        try {
             File mk = new File(libDir(), "libtx_makeindex.so");
             if (mk.exists()) {
                 // Índices alfabéticos: el del documento y los de imakeidx (\makeindex[name=autores] → autores.idx).
@@ -1531,6 +1536,10 @@ public class MotorPlugin extends Plugin {
                     }
                 }
             }
+        } catch (Exception e) {
+            output.append("\n[TeXsting] makeindex: ").append(e).append('\n');
+        }
+        try {
             // biblatex con biber (lo normal en biblatex): como latexmk, se corre si cambió el .bcf o algún .bib.
             File bcf = new File(mainDir, job + ".bcf");
             if (bcf.exists() && hayBiber()) {
@@ -1551,7 +1560,7 @@ public class MotorPlugin extends Plugin {
             } else if (bcf.exists() && output.indexOf("biber: command not found") < 0)
                 output.append("\nbiber: command not found (este APK no trae biber; usa \\usepackage[backend=bibtex]{biblatex})\n");
         } catch (Exception e) {
-            output.append("\n[TeXsting] BibTeX/makeindex: ").append(e.getMessage()).append('\n');
+            output.append("\n[TeXsting] biber: ").append(e).append('\n');
         }
         return ran;
     }
