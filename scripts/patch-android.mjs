@@ -117,6 +117,11 @@ writeFileSync(path.join(javaDir, 'CarpetasPlugin.java'), conPaquete(path.join(ro
 writeFileSync(path.join(javaDir, 'MainActivity.java'), `package ${APP_ID};
 
 import android.os.Bundle;
+import android.view.ViewGroup;
+import android.webkit.WebView;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -126,6 +131,26 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(MotorPlugin.class);
         registerPlugin(CarpetasPlugin.class);
         super.onCreate(savedInstanceState);
+        // Desde Android 15 (targetSdk 35+) la app va de borde a borde y «adjustResize» ya no achica la pantalla
+        // cuando sale el teclado: el teclado tapaba la barra de teclas LaTeX. Aquí la vista web deja como margen
+        // las barras del sistema y, abajo, lo que sea mayor: la barra de gestos o el teclado.
+        WebView wv = getBridge() != null ? getBridge().getWebView() : null;
+        if (wv == null) return;
+        ViewCompat.setOnApplyWindowInsetsListener(wv, (v, ins) -> {
+            Insets bars = ins.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            Insets ime = ins.getInsets(WindowInsetsCompat.Type.ime());
+            int abajo = Math.max(bars.bottom, ime.bottom);
+            ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+            if (mlp.leftMargin != bars.left || mlp.topMargin != bars.top || mlp.rightMargin != bars.right || mlp.bottomMargin != abajo) {
+                mlp.leftMargin = bars.left;
+                mlp.topMargin = bars.top;
+                mlp.rightMargin = bars.right;
+                mlp.bottomMargin = abajo;
+                v.setLayoutParams(mlp);
+            }
+            return WindowInsetsCompat.CONSUMED;
+        });
+        ViewCompat.requestApplyInsets(wv);
     }
 }
 `);

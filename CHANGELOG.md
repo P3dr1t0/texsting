@@ -17,6 +17,14 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.15] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 102
+
+### Teclado en Android 15 y 16
+- **Arreglado: al abrir el teclado desaparecía la barra de teclas LaTeX** (Ω, begin, llaves…).
+  - Causa: desde la 0.9.12 la app apunta a Android 16, que dibuja las apps de borde a borde y ya no achica la pantalla cuando sale el teclado. El teclado quedaba encima de la barra.
+  - Ahora TeXsting reserva el espacio del teclado: la barra de teclas queda justo encima de él y la barra inferior (Archivos… Mensajes) se oculta mientras escribes, como antes.
+- Los márgenes de la barra de estado, la barra de gestos y la cámara frontal (en horizontal) los maneja ahora TeXsting directamente.
+
 ## [0.9.14] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 101
 
 ### Descargas grandes en partes

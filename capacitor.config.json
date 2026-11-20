@@ -8,7 +8,7 @@
     "cleartext": true
   },
   "android": {
-    "adjustMarginsForEdgeToEdge": "auto",
+    "adjustMarginsForEdgeToEdge": "disable",
     "allowMixedContent": true
   }
 }
