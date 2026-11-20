@@ -79,7 +79,9 @@
 \begin{center}
 \begin{tikzpicture}
   \foreach \i in {0,...,11} {
-    \draw[fill={hsb,\i/12,0.7,0.95}] (\i*30:2) circle (0.35);
+    \pgfmathsetmacro{\tono}{\i/12}
+    \definecolor{c}{hsb}{\tono,0.7,0.95}
+    \draw[fill=c] (\i*30:2) circle (0.35);
     \node at (\i*30:2) {\scriptsize \i};
   }
   \draw[thick,->] (0,0) -- (60:1.5);
