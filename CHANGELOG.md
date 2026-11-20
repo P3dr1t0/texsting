@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.7] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 93
+
+### Mejorado
+- **Cuando biber falla, ahora se ve por qué:**
+  - el panel de Mensajes muestra un error «biber no pudo armar la bibliografía» con el motivo;
+  - al principio del «Log completo», debajo de la línea «biblatex:», salen las últimas líneas que escribió biber.
+  - Antes solo se veían las citas sin definir: los mensajes de biber no quedan en el registro de LaTeX.
+
+---
+
 ## [0.9.6] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 92
 
 ### Nuevo

@@ -1466,6 +1466,8 @@ public class MotorPlugin extends Plugin {
     // ───────────── BibTeX y makeindex (vienen en el APK junto a pdfTeX) ─────────────
     /** Qué pasó con biber en esta compilación (para el resumen del «Log completo»). */
     private volatile String biberEstado = "";
+    /** Si biber falló: sus últimas líneas, para mostrarlas en el resumen del «Log completo». */
+    private volatile String biberSalida = "";
 
     private boolean auxTools(File mainDir, String job, StringBuilder output, boolean autoinstall) {
         boolean ran = false;
@@ -1559,7 +1561,15 @@ public class MotorPlugin extends Plugin {
                     progress("Armando la bibliografía (biber)…");
                     Run br = run(Arrays.asList(new File(libDir(), "libtx_perl.so").getAbsolutePath(), new File(perlDir(), "biber").getAbsolutePath(), job), mainDir, 3 * 60 * 1000);
                     output.append(br.out);
-                    biberEstado = br.code == 0 ? "biber armó la bibliografía" : "biber terminó con error (código " + br.code + "): mira sus mensajes en este registro";
+                    biberEstado = br.code == 0 ? "biber armó la bibliografía" : "biber terminó con error (código " + br.code + "): sus mensajes van abajo";
+                    if (br.code != 0) {
+                        // Sus mensajes no quedan en el .log de LaTeX: se guardan para el resumen y para el panel de Mensajes.
+                        String[] ls = br.out.trim().split("\n");
+                        StringBuilder t = new StringBuilder();
+                        for (int i = Math.max(0, ls.length - 30); i < ls.length; i++) t.append("    ").append(ls[i]).append('\n');
+                        biberSalida = t.toString();
+                        output.append("\n[TeXsting] biber falló (código ").append(br.code).append(")\n");
+                    } else biberSalida = "";
                     if (br.code == 0) try (OutputStream o = new FileOutputStream(stamp)) { o.write(key.getBytes(StandardCharsets.UTF_8)); }
                     ran = true;
                 }
@@ -1568,6 +1578,7 @@ public class MotorPlugin extends Plugin {
         } catch (Exception e) {
             output.append("\n[TeXsting] biber: ").append(e).append('\n');
             biberEstado = "biber no pudo correr: " + e;
+            output.append("\n[TeXsting] biber falló: ").append(e).append('\n');
         }
         return ran;
     }
@@ -1658,7 +1669,7 @@ public class MotorPlugin extends Plugin {
                 }
                 StringBuilder output = new StringBuilder();
                 Run r = null;
-                biberEstado = "";
+                biberEstado = ""; biberSalida = "";
                 int passes = 0, rounds = 0;
                 Set<String> firmasIntentadas = new HashSet<>();
                 boolean timedOut = false;
@@ -1888,6 +1899,7 @@ public class MotorPlugin extends Plugin {
                 if (formatoMs >= 500) rs.append("  preparar ").append(eng.equals("xelatex") ? "XeLaTeX" : "LuaLaTeX").append(" (solo la primera vez): ").append(secs(formatoMs)).append('\n');
                 if (!installedNow.isEmpty()) rs.append("  paquetes descargados: ").append(String.join(", ", installedNow)).append('\n');
                 if (biblatex) rs.append("  biblatex: ").append(hayBiber() ? "con biber · " + (biberEstado.isEmpty() ? "biber no se corrió en esta compilación" : biberEstado) : "con BibTeX (este APK no trae biber)").append('\n');
+                if (biblatex && !biberSalida.isEmpty()) rs.append("  mensajes de biber (las últimas líneas):\n").append(biberSalida);
                 for (String ps : pasos) rs.append("  ").append(ps).append('\n');
                 if (usesTikz) {
                     int nf = figList(mainDir, job).size();

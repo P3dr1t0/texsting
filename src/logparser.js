@@ -1138,6 +1138,16 @@ export function parseBibOutput(output, sources = null, main = 'main.tex', existi
         ...(bb ? { fix: { file: main, line: ln, find: bb[0], replace: 'backend=bibtex', label: 'Usar backend=bibtex' } } : {}) });
     }
   }
+  // biber falló sin un «ERROR - …» reconocible (p. ej. Perl se detuvo): igual se avisa, con su mensaje.
+  const bf = output.match(/\[TeXsting\] biber falló[^\n]*/);
+  if (bf && !out.some((e) => e.type === 'error' && /^biber/.test(e.message))) {
+    const ini = output.lastIndexOf('INFO - This is Biber', bf.index);
+    const trozo = (ini >= 0 ? output.slice(ini, bf.index) : output.slice(0, bf.index)).split('\n').map((x) => x.trim()).filter(Boolean);
+    const clave = trozo.filter((x) => /^(ERROR|FATAL)|Can't |Cannot |died|at \S+ line \d+/.test(x)).slice(0, 3);
+    const ln = findInSources(/\\usepackage(\[[^\]]*\])?\{biblatex\}/, sources, main);
+    push({ type: 'error', file: ln ? main : null, line: ln, message: 'biber no pudo armar la bibliografía' + (clave.length ? ': ' + clave[0].slice(0, 160) : ''),
+      hint: 'Por eso las citas salen sin definir. Los mensajes de biber están en «Log completo», arriba del todo' + (clave.length > 1 ? ' · ' + clave.slice(1).join(' · ').slice(0, 300) : '') });
+  }
   return out;
 }
 
