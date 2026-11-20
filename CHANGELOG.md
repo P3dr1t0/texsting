@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.8] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 94
+
+### Corregido
+- **biber dejaba de funcionar después de actualizar la app.**
+  - El síntoma: la bibliografía salía vacía y las citas sin definir.
+  - La causa: Android cambia de lugar las bibliotecas del APK en cada actualización, y los enlaces de biber seguían apuntando al lugar viejo. biber se detenía con «Can't locate loadable object for module Cwd».
+  - Ahora la app se da cuenta del cambio y vuelve a enlazarlas sola. Toma un instante y no hace falta reinstalar ni borrar nada.
+
+---
+
 ## [0.9.7] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 93
 
 ### Mejorado

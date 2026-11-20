@@ -209,23 +209,34 @@ public class MotorPlugin extends Plugin {
     }
     private boolean hayBiber() { return new File(libDir(), "libtx_perl.so").exists() && perlVersion() != null; }
 
-    /** La primera vez que se necesita biber: descomprime los módulos de Perl y enlaza los compilados (están en jniLibs). */
+    /**
+     * La primera vez que se necesita biber: descomprime los módulos de Perl y enlaza los compilados (están en jniLibs).
+     * Los enlaces apuntan a la carpeta de bibliotecas del APK, y Android la cambia de lugar en cada actualización
+     * (/data/app/~~…/lib/arm64): por eso se anota cuál era y, si cambió, se vuelven a enlazar (sin descomprimir de nuevo).
+     */
     private synchronized void preparePerl() throws Exception {
         String v = perlVersion();
+        if (v == null) return;
         File mk = new File(perlDir(), ".version");
-        if (v == null || v.equals(String.valueOf(readText(mk)).trim())) return;
-        progress("Preparando biber (solo la primera vez)…");
-        delete(perlDir());
-        perlDir().mkdirs();
-        String rootPath = perlDir().getCanonicalPath();
-        try (ZipInputStream z = new ZipInputStream(new BufferedInputStream(getContext().getAssets().open("motor/perl.zip")))) {
-            ZipEntry e; byte[] b = new byte[65536];
-            while ((e = z.getNextEntry()) != null) {
-                File f = new File(perlDir(), e.getName());
-                if (!f.getCanonicalPath().startsWith(rootPath)) continue;
-                if (e.isDirectory()) { f.mkdirs(); continue; }
-                f.getParentFile().mkdirs();
-                try (OutputStream o = new FileOutputStream(f)) { int n; while ((n = z.read(b)) > 0) o.write(b, 0, n); }
+        String lib = libDir().getAbsolutePath();
+        String[] hecho = String.valueOf(readText(mk)).trim().split("\n");
+        boolean mismaVersion = hecho.length > 0 && v.equals(hecho[0].trim());
+        boolean mismaCarpeta = hecho.length > 1 && lib.equals(hecho[1].trim());
+        if (mismaVersion && mismaCarpeta) return;
+        if (!mismaVersion) {
+            progress("Preparando biber (solo la primera vez)…");
+            delete(perlDir());
+            perlDir().mkdirs();
+            String rootPath = perlDir().getCanonicalPath();
+            try (ZipInputStream z = new ZipInputStream(new BufferedInputStream(getContext().getAssets().open("motor/perl.zip")))) {
+                ZipEntry e; byte[] b = new byte[65536];
+                while ((e = z.getNextEntry()) != null) {
+                    File f = new File(perlDir(), e.getName());
+                    if (!f.getCanonicalPath().startsWith(rootPath)) continue;
+                    if (e.isDirectory()) { f.mkdirs(); continue; }
+                    f.getParentFile().mkdirs();
+                    try (OutputStream o = new FileOutputStream(f)) { int n; while ((n = z.read(b)) > 0) o.write(b, 0, n); }
+                }
             }
         }
         String xs = readText(new File(perlDir(), "xs.txt"));
@@ -235,9 +246,9 @@ public class MotorPlugin extends Plugin {
             File link = new File(perlDir(), l.substring(0, t));
             link.getParentFile().mkdirs();
             link.delete();
-            android.system.Os.symlink(new File(libDir(), l.substring(t + 1).trim()).getAbsolutePath(), link.getAbsolutePath());
+            android.system.Os.symlink(new File(lib, l.substring(t + 1).trim()).getAbsolutePath(), link.getAbsolutePath());
         }
-        try (OutputStream o = new FileOutputStream(mk)) { o.write(v.getBytes(StandardCharsets.UTF_8)); }
+        try (OutputStream o = new FileOutputStream(mk)) { o.write((v + "\n" + lib).getBytes(StandardCharsets.UTF_8)); }
     }
 
     /** Dónde busca Perl sus módulos (los del APK, no los de Termux). */
