@@ -48,9 +48,9 @@ xs, n_xs = [], 0
 z = zipfile.ZipFile(os.path.join(ASSETS, "perl.zip"), "w", zipfile.ZIP_DEFLATED, compresslevel=9)
 FUERA = re.compile(r"(\.pod$|\.packlist$|perllocal\.pod$|/\.meta/|/CORE/|/pod/|\.h$|\.a$|/man/"
                    # Codificaciones chinas, japonesas y coreanas (≈8 MB): Biber trabaja en UTF-8 y Latin-1.
-                   r"|/Encode/(CN|JP|KR|TW|JIS2K)(/|\.pm$|\.so$)"
+                   r"|/Encode/(CN|JP|KR|TW|JIS2K|HanExtra|EUCJPASCII)(/|\.pm$|\.so$)"
                    # Lo que solo sirve para instalar o probar módulos.
-                   r"|/(CPAN|ExtUtils|TAP|Test2?|Module/Build|App/Cpan|Devel/PPPort|perl5db)\b)")
+                   r"|/(CPAN|TAP|Test2?|Module/Build|App/Cpan|Devel/PPPort|perl5db)\b)")
 total = 0
 for d, _, fs in os.walk(lib):
     for f in fs:
