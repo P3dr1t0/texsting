@@ -17,6 +17,17 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.6] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 92
+
+### Nuevo
+- **Agrandar el panel de mensajes (tablet):** un botón junto a «Log completo» lleva el panel a toda la pantalla de trabajo, encima del código y del PDF. Sirve para leer muchos errores con calma o fotografiarlos. El mismo botón lo devuelve a su tamaño.
+- **Copiar los mensajes como texto (teléfono y tablet):**
+  - con la lista abierta, copia los errores y avisos visibles con su línea, la explicación y el texto original;
+  - con el «Log completo» abierto, copia el registro entero;
+  - se puede pegar en WhatsApp, en un correo o en un chat para pedir ayuda, en vez de mandar fotos.
+
+---
+
 ## [0.9.5] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 91
 
 ### Corregido

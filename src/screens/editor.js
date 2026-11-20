@@ -1,5 +1,6 @@
 // Pantalla del editor: código + PDF lado a lado (tablet) o en pestañas (teléfono),
 // con archivos, estructura, símbolos, mensajes de compilación y asistentes.
+import { Clipboard } from '@capacitor/clipboard';
 import { createEditor } from '#editor-impl';
 import { sincronizar, guardarPdf, vinculo } from '../carpetas.js';
 import { fileToTrash, restoreFile, DIAS_PAPELERA, getProject, saveProject, touchProject, listFiles, putFile, deleteFile, renameFile, getOutput, saveOutput, getSettings, setSettings, isTextPath } from '../store.js';
@@ -94,10 +95,38 @@ export async function renderEditor(root, { id }, navigate) {
   const rawLog = el('pre', { class: 'raw-log', hidden: true });
   const msgFilter = { error: true, warning: true, badbox: false };
   const filterBtns = el('div', { class: 'msg-filters' });
+  // Tablet: el panel de mensajes se puede agrandar a toda la altura (para leer o fotografiar muchos errores).
+  const maxBtn = el('button', { class: 'icon-btn sm wide-only', title: 'Agrandar el panel', 'aria-label': 'Agrandar el panel de mensajes', html: icon('expand'),
+    onclick: () => {
+      const on = !screen.classList.contains('messages-max');
+      screen.classList.toggle('messages-max', on);
+      maxBtn.innerHTML = icon(on ? 'shrink' : 'expand');
+      maxBtn.title = on ? 'Achicar el panel' : 'Agrandar el panel';
+      maxBtn.setAttribute('aria-label', on ? 'Achicar el panel de mensajes' : 'Agrandar el panel de mensajes');
+    } });
+  // Copiar todo como texto: más fácil de compartir (o de pegar para pedir ayuda) que una foto.
+  async function copiarMensajes() {
+    const tipo = (m) => (m.cascade != null ? 'En cadena' : m.type === 'error' ? 'Error' : m.info ? 'Info' : m.type === 'warning' ? 'Aviso' : 'Caja');
+    const lineas = messages.filter((m) => msgFilter[m.type]).map((m) => {
+      const donde = m.line ? ` (${m.file && m.file !== project.main ? m.file.split('/').pop() + ', ' : ''}línea ${m.line})` : '';
+      return `[${tipo(m)}]${donde} ${m.hint || m.message}` + (m.hint && m.hint !== m.message ? `\n    ${m.message}` : '') + (m.context && m.context.trim() ? `\n    ${m.context.trim()}` : '');
+    });
+    const sm = summarize(messages);
+    const texto = !rawLog.hidden ? rawLog.textContent
+      : `${project.name} — ${sm.errors} errores, ${sm.warnings} advertencias, ${sm.badboxes} cajas\n\n` + (lineas.join('\n\n') || 'Sin mensajes.');
+    try {
+      await Clipboard.write({ string: texto });
+    } catch {
+      try { await navigator.clipboard.writeText(texto); } catch { toast('No se pudo copiar', { kind: 'error' }); return; }
+    }
+    toast(!rawLog.hidden ? 'Log completo copiado' : `Copiados ${lineas.length} mensajes`, { kind: 'ok' });
+  }
   const messagesPane = el('section', { class: 'messages' },
     el('div', { class: 'msg-head' },
       el('strong', {}, 'Mensajes'), msgCounts, filterBtns,
       el('button', { class: 'btn ghost sm', onclick: () => { rawLog.hidden = !rawLog.hidden; msgList.hidden = !rawLog.hidden; } }, 'Log completo'),
+      el('button', { class: 'icon-btn sm', title: 'Copiar los mensajes como texto', 'aria-label': 'Copiar mensajes', html: icon('copy'), onclick: () => copiarMensajes() }),
+      maxBtn,
       el('button', { class: 'icon-btn sm wide-only', 'aria-label': 'Cerrar mensajes', html: icon('close'), onclick: () => screen.classList.remove('show-messages') })),
     msgList, rawLog);
 
