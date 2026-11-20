@@ -451,6 +451,8 @@ public class MotorPlugin extends Plugin {
         // biblatex con un estilo que viene en otro paquete (style=ieee → biblatex-ieee): «Style 'ieee' not found».
         Pattern.compile("Package biblatex Error: (?:Bibliography )?[Ss]tyle '([^']+)' not found"),
         Pattern.compile("Package biblatex Error: Citation style '([^']+)' not found"),
+        // glossaries en otro idioma: «Please check on CTAN for a bundle called `glossaries-spanish'» (es un aviso).
+        Pattern.compile("`(glossaries-[a-z]+)' or similar"),
     };
     // «Font shape `OT1/ptm/m/n' undefined»: LaTeX no encontró la descripción de la fuente (ot1ptm.fd)
     // y usó otra sin error. Pasa con IEEEtran (Times): hay que bajar el .fd y sus fuentes.
@@ -545,6 +547,7 @@ public class MotorPlugin extends Plugin {
                 if (i == 6) name += ".pfb";
                 if (i == 8) name += ".bbx";
                 if (i == 9) name += ".cbx";
+                if (i == 10) name += ".ldf";
                 boolean ok = false;
                 for (String ext : INSTALLABLE) if (name.toLowerCase(Locale.ROOT).endsWith(ext)) ok = true;
                 if (ok && !found.contains(name)) found.add(name);

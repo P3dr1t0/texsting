@@ -19,8 +19,8 @@ for d in jefe*/; do
   for i in *.idx; do [ -f "$i" ] && makeindex "$i" > /dev/null 2>&1; done
   [ -f main.nlo ] && makeindex main.nlo -s nomencl.ist -o main.nls > /dev/null 2>&1
   run; [ -f main.bcf ] && biber main >> biber.out 2>&1; run
-  echo "=== $d ($eng): pdf=$([ -f main.pdf ] && echo sí || echo NO) páginas=$(pdfinfo main.pdf 2>/dev/null | awk '/Pages/{print $2}') errores=$(grep -c '^!\|:[0-9]*: ' main.log) indefinidas=$(grep -c 'undefined' main.log) $(( $(date +%s) - t0 )) s"
-  grep -A3 '^!\|\.tex:[0-9]*: ' main.log | head -24
+  echo "=== $d ($eng): pdf=$([ -f main.pdf ] && echo sí || echo NO) páginas=$(pdfinfo main.pdf 2>/dev/null | awk '/Pages/{print $2}') errores=$(grep -cE '^!|^[^ ]+:[0-9]+: ' main.log) indefinidas=$(grep -c 'undefined' main.log) $(( $(date +%s) - t0 )) s"
+  grep -A3 -E '^!|^[^ ]+:[0-9]+: ' main.log | head -24
   grep -i "warning.*undefined\|Citation.*undefined" main.log | head -5
   grep -i "error\|WARN" biber.out 2>/dev/null | head -5
   cd ..

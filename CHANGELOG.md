@@ -17,6 +17,14 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.4] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 90
+
+### Corregido
+- **glossaries en español:** el aviso «No language module detected for `spanish'… glossaries-spanish» ahora hace que la app baje `glossaries-spanish` sola, y los títulos del glosario salen en español.
+- Jefe 1: se arregló la prueba, no la app. Usaba `\nomunit`, que hay que definir aparte (no viene en `nomencl`). El script de referencia ahora también cuenta los errores que vienen de archivos auxiliares, como `main.nls`.
+
+---
+
 ## [0.9.3] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 89
 
 ### Nuevo

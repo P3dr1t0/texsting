@@ -25,12 +25,15 @@
 \makeindex[name=autores,title={Índice de autores},intoc]
 \usepackage[intoc,spanish]{nomencl}
 \makenomenclature
+% \nomunit no viene en nomencl: se define como en su manual (la unidad a la derecha de cada símbolo).
+\newcommand{\nomunit}[1]{\renewcommand{\nomentryend}{\hspace*{\fill}#1}}
 \usepackage{hyperref}
 \hypersetup{colorlinks, linkcolor=blue!50!black, citecolor=green!40!black, urlcolor=teal}
 \usepackage[spanish,capitalise]{cleveref}
 \usepackage[acronym,toc,nonumberlist]{glossaries}
 \makeglossaries
 \input{glosario}
+\setlength{\marginparwidth}{2cm}
 \usepackage{todonotes}
 
 \lstset{basicstyle=\ttfamily\small, columns=fullflexible, frame=single, breaklines=true,
