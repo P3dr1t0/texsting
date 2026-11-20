@@ -11,7 +11,9 @@ curl -fsSL https://cpanmin.us | perl - App::cpanminus || exit 1
 # Biber no está en CPAN: se baja su código de GitHub (misma versión que TeX Live) y se instalan sus dependencias.
 cd ~ && curl -fsSL "https://github.com/plk/biber/archive/refs/tags/v$VER.tar.gz" -o biber.tgz && tar xzf biber.tgz && cd "biber-$VER" || exit 1
 cpanm --notest Module::Build Config::AutoConf ExtUtils::LibBuilder || { tail -60 ~/.cpanm/build.log; exit 1; }
-cpanm --notest --installdeps . || { tail -150 ~/.cpanm/build.log; exit 1; }
+cpanm --notest --installdeps . || true
+# LWP::Protocol::https solo sirve para .bib en internet (https://…): si no compila, Biber funciona igual.
+cpanm --notest Net::SSLeay IO::Socket::SSL LWP::Protocol::https || { grep -B5 -A30 -i "error" ~/.cpanm/build.log | tail -60; }
 perl Build.PL && ./Build && ./Build install || exit 1
 which biber && biber --version
 cd /prueba && biber b && grep -c 'entry{' b.bbl || true; head -40 b.bbl
