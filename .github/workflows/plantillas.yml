@@ -1,0 +1,32 @@
+name: Plantillas (compilar todas)
+on:
+  workflow_dispatch:
+jobs:
+  compilar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: TeX Live
+        run: |
+          cd /tmp && for m in https://mirror.ctan.org https://mirrors.mit.edu/CTAN https://mirrors.rit.edu/CTAN; do curl -sfL $m/systems/texlive/tlnet/install-tl-unx.tar.gz -o itl.tgz && tar xzf itl.tgz && break; sleep 5; done; cd install-tl-2*
+          printf "selected_scheme scheme-basic\nTEXDIR /tmp/tl\nTEXMFLOCAL /tmp/tl/texmf-local\nTEXMFSYSVAR /tmp/tl/texmf-var\nTEXMFSYSCONFIG /tmp/tl/texmf-config\nTEXMFVAR /tmp/tl/texmf-var\nTEXMFHOME /tmp/tl/home\nbinary_x86_64-linux 1\ninstopt_adjustpath 0\ntlpdbopt_install_docfiles 0\ntlpdbopt_install_srcfiles 0\n" > p.txt
+          ./install-tl -profile p.txt -no-interaction > /dev/null
+          export PATH=/tmp/tl/bin/x86_64-linux:$PATH
+          tlmgr install collection-latexrecommended collection-fontsrecommended collection-langspanish collection-langenglish collection-pictures collection-latexextra collection-mathscience collection-publishers latexmk > /dev/null 2>&1 || true
+          echo /tmp/tl/bin/x86_64-linux >> $GITHUB_PATH
+      - name: Armar y compilar
+        run: |
+          node tools/plantillas/generar.mjs /tmp/p
+          cd /tmp/p; fallas=0
+          for d in */; do
+            d=${d%/}
+            (cd $d && latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex > compilar.txt 2>&1)
+            err=$(grep -c '^!' $d/main.log 2>/dev/null); warn=$(grep -cE 'Warning' $d/main.log 2>/dev/null)
+            if [ -f $d/main.pdf ] && [ "$err" = 0 ]; then echo "OK   $d  (avisos: $warn)"; else echo "FALLA $d"; grep -A3 '^!' $d/main.log | head -8; fallas=$((fallas+1)); fi
+          done
+          echo "Fallas: $fallas"
+          mkdir -p /tmp/pdfs; for d in */; do d=${d%/}; [ -f $d/main.pdf ] && cp $d/main.pdf /tmp/pdfs/$d.pdf; grep -E 'LaTeX Warning|Package .* Warning|Overfull|Underfull' $d/main.log | sort | uniq -c | sort -rn | head -6 | sed "s|^|$d: |"; done > /tmp/pdfs/avisos.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: plantillas-pdf, path: /tmp/pdfs }
