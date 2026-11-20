@@ -79,9 +79,8 @@
 \begin{center}
 \begin{tikzpicture}
   \foreach \i in {0,...,11} {
-    \pgfmathsetmacro{\tono}{\i/12}
-    \definecolor{c}{hsb}{\tono,0.7,0.95}
-    \draw[fill=c] (\i*30:2) circle (0.35);
+    \pgfmathtruncatemacro{\p}{\i*100/11}
+    \draw[fill=red!\p!blue!60] (\i*30:2) circle (0.35);
     \node at (\i*30:2) {\scriptsize \i};
   }
   \draw[thick,->] (0,0) -- (60:1.5);

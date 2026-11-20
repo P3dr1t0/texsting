@@ -44,13 +44,15 @@ con marcador amarillo que también puede seguir en la línea siguiente sin probl
     for _, c in utf8.codes(s) do table.insert(t, 1, utf8.char(c)) end
     return table.concat(t)
   end
-  function letras(p)
+  -- Con babel en español las comillas " no pueden ir dentro de \directlua: los textos van aquí.
+  function ejemplos()
+    tex.sprint(string.format("«Anita lava la tina» al revés es «%s», y «ñandú» es «%s». ",
+      al_reves("Anita lava la tina"), al_reves("ñandú")))
+    local p = "electrónica"
     tex.sprint(string.format("La palabra «%s» tiene %d letras.", p, utf8.len(p)))
   end
 \end{luacode*}
-«Anita lava la tina» al revés es «\directlua{tex.sprint(al_reves("Anita lava la tina"))}», y
-«ñandú» es «\directlua{tex.sprint(al_reves("ñandú"))}».
-\directlua{letras("electrónica")}
+\directlua{ejemplos()}
 
 \section{Microtipografía}
 Con \texttt{microtype} (expansión y protrusión de caracteres) los párrafos justificados
