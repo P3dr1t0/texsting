@@ -157,6 +157,13 @@ a { color: inherit; }
 /* Barra de teclas LaTeX */
 .keybar { display: flex; gap: 5px; overflow-x: auto; padding: 6px 6px calc(6px + 0px); background: var(--surface); border-top: 1px solid var(--border); flex: none; scrollbar-width: none; }
 .keybar::-webkit-scrollbar { display: none; }
+/* Celular en horizontal con el teclado abierto: casi no queda alto. Se oculta la cabecera (vuelve al cerrar
+   el teclado) y la barra de teclas se hace más delgada, para que se vean varias líneas de código. */
+@media (max-height: 360px) {
+  .editor-screen.kb-open .topbar { display: none; }
+  .editor-screen.kb-open .keybar { padding: 3px 4px; gap: 4px; }
+  .editor-screen.kb-open .kb { height: 32px; min-width: 36px; padding: 0 8px; font-size: 14px; }
+}
 .kb { min-width: 40px; height: 38px; padding: 0 10px; border-radius: 9px; background: var(--surface-2); font-family: var(--mono); font-size: 15px; flex: none; display: grid; place-items: center; }
 .kb:active { background: var(--accent); color: var(--on-accent); }
 .kb-accent { background: var(--ink); color: var(--bg); font-family: var(--ui); font-weight: 700; font-size: 14px; }

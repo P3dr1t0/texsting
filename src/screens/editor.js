@@ -1045,11 +1045,14 @@ export async function renderEditor(root, { id }, navigate) {
   }
   const onHide = () => { if (document.hidden) saveSoon.flush(); else alVolver(); };
   document.addEventListener('visibilitychange', onHide);
-  // Oculta la barra inferior cuando el teclado del teléfono está abierto.
-  let maxH = window.innerHeight;
+  // Oculta la barra inferior cuando el teclado del teléfono está abierto. La altura «sin teclado» se recuerda
+  // aparte en vertical y en horizontal (si no, en horizontal parecía que el teclado estaba siempre abierto).
+  const orientacion = () => (window.screen.orientation && window.screen.orientation.type ? window.screen.orientation.type.startsWith('landscape') : window.innerWidth > window.innerHeight) ? 'h' : 'v';
+  const maxH = { [orientacion()]: window.innerHeight };
   const onResize = () => {
-    maxH = Math.max(maxH, window.innerHeight);
-    screen.classList.toggle('kb-open', window.innerHeight < maxH * 0.78);
+    const o = orientacion();
+    maxH[o] = Math.max(maxH[o] || 0, window.innerHeight);
+    screen.classList.toggle('kb-open', window.innerHeight < maxH[o] * 0.78);
   };
   window.addEventListener('resize', onResize);
 

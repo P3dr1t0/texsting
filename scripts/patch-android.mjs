@@ -116,12 +116,15 @@ writeFileSync(path.join(javaDir, 'MotorPlugin.java'), conPaquete(path.join(root,
 writeFileSync(path.join(javaDir, 'CarpetasPlugin.java'), conPaquete(path.join(root, 'android-config', 'java', 'CarpetasPlugin.java')));
 writeFileSync(path.join(javaDir, 'MainActivity.java'), `package ${APP_ID};
 
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -151,6 +154,25 @@ public class MainActivity extends BridgeActivity {
             return WindowInsetsCompat.CONSUMED;
         });
         ViewCompat.requestApplyInsets(wv);
+        barraDeEstado(getResources().getConfiguration());
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration c) {
+        super.onConfigurationChanged(c);
+        barraDeEstado(c);
+    }
+
+    /** Celular en horizontal: sin barra de estado (se ve deslizando desde arriba), para ganar alto con el teclado.
+     *  En la tablet (o en vertical) se deja como siempre. */
+    private void barraDeEstado(Configuration c) {
+        WindowInsetsControllerCompat w = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (c.orientation == Configuration.ORIENTATION_LANDSCAPE && c.smallestScreenWidthDp < 600) {
+            w.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            w.hide(WindowInsetsCompat.Type.statusBars());
+        } else {
+            w.show(WindowInsetsCompat.Type.statusBars());
+        }
     }
 }
 `);

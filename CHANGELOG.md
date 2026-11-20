@@ -17,6 +17,15 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.16] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 103
+
+### Escribir con el celular en horizontal
+- **Con el teclado abierto en horizontal ahora se ven unas 4 o 5 líneas de código.** Antes la cabecera y la barra de teclas ocupaban todo el alto que deja el teclado y no se veía ninguna línea.
+  - **Se oculta la cabecera** mientras el teclado está abierto. Vuelve al cerrarlo, con compilar, buscar y compartir.
+  - **La barra de teclas LaTeX se hace más delgada** en ese caso.
+- **En el celular en horizontal se oculta la barra de estado** (hora, batería), como al ver un video. Se ve deslizando desde arriba. En la tablet y en vertical no cambia.
+- **Arreglado:** en horizontal sin teclado, la app creía que el teclado estaba abierto y ocultaba la barra de abajo (Archivos… Mensajes).
+
 ## [0.9.15] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 102
 
 ### Teclado en Android 15 y 16
