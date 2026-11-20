@@ -16,13 +16,14 @@ cpanm --notest --installdeps . || true
 cpanm --notest Net::SSLeay IO::Socket::SSL LWP::Protocol::https || { grep -B5 -A30 -i "error" ~/.cpanm/build.log | tail -60; }
 perl Build.PL && ./Build && ./Build install || exit 1
 echo BIBER-INICIO
-which biber && biber --version
-cd /prueba && biber b; grep -c 'entry{' b.bbl || true; head -30 b.bbl; cat b.blg | tail -20
+B=$PREFIX/bin/biber
+perl $B --version
+cd /prueba && time perl $B b; grep -c 'entry{' b.bbl || true; head -30 b.bbl; cat b.blg | tail -20
 echo BIBER-FIN
 set +x
 P=$PREFIX
 mkdir -p /salida
-cp $(which biber) /salida/biber
+cp $PREFIX/bin/biber /salida/biber
 tar -C $P -cJf /salida/perl-termux.tar.xz bin/perl lib/perl5 lib/libperl.so 2>/dev/null || tar -C $P -cJf /salida/perl-termux.tar.xz bin/perl lib/perl5
 # Bibliotecas que piden los módulos compilados (XML::LibXML, Net::SSLeay…).
 find $P/lib/perl5 -name '*.so' | while read f; do readelf -d "$f" | grep NEEDED; done | sort | uniq -c | sort -rn > /salida/needed.txt
