@@ -226,7 +226,7 @@ const FONT_ALTERNATIVES = {
   'century gothic': 'texgyreadventor',
 };
 
-// Fuentes que vienen con TeX Live. En Termux, XeLaTeX (con un servidor viejo) no las
+// Fuentes que vienen con TeX Live. Con un servidor de TeX antiguo, XeLaTeX no las
 // encuentra por su nombre; por archivo siempre funcionan.
 const FOUR = (base) => `${base}}[Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]`;
 const TL_FONTS = {
@@ -397,7 +397,7 @@ function enrich(entry, head, sources, main, top = '') {
     }
     if (tl) {
       const isLM = /^latin modern (roman|math)$/i.test(name);
-      entry.hint = `«${name}» viene con TeX Live, pero XeLaTeX no la encontró por su nombre en este equipo (se arregla actualizando el servidor de Termux). ` +
+      entry.hint = `«${name}» viene con TeX Live, pero XeLaTeX no la encontró por su nombre en este equipo (pasa con servidores de TeX antiguos). ` +
         `Mientras tanto, escríbela por archivo: \\${cmd}{${spec}` + (isLM ? ` — o borra la línea: ${isMath ? 'Latin Modern Math' : 'Latin Modern'} ya es la fuente por defecto` : '');
     } else if (alt) {
       entry.hint = `La fuente «${name}» no está instalada (es de Windows/Mac). Una parecida que viene con TeX Live: \\${cmd}{${FOUR(alt)} — o borra la línea para usar Latin Modern`;

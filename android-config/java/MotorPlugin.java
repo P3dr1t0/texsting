@@ -525,6 +525,21 @@ public class MotorPlugin extends Plugin {
         d.put("texto", texto);
         notifyListeners("fondoEstado", d);
     }
+    /**
+     * Tramo del trabajo de fondo para el porcentaje: va de «desde» a «hasta» (0–100) y se espera que tarde
+     * «segundos». El editor avanza la barra solo dentro del tramo; al llegar el siguiente salta a su inicio.
+     */
+    private void fondoPaso(String texto, int desde, int hasta, double segundos) {
+        JSObject d = new JSObject();
+        d.put("activo", true);
+        d.put("texto", texto);
+        d.put("desde", desde);
+        d.put("hasta", hasta);
+        d.put("segundos", Math.max(2, segundos));
+        notifyListeners("fondoEstado", d);
+    }
+    /** Lo que tardó la última pasada completa: con eso se estima cuánto toma el trabajo de fondo. */
+    private volatile long pasadaMs = 30000;
     private void progress(String text) {
         if (quiet) return;
         JSObject d = new JSObject();
@@ -821,6 +836,7 @@ public class MotorPlugin extends Plugin {
 
     private void buildPre(File mainDir, String mainName, String key) {
         File info = new File(mainDir, PRE + ".txt"), fmtFile = new File(mainDir, PRE + ".fmt");
+        fondoPaso("Guardando el preámbulo", 0, 100, pasadaMs * 0.4 / 1000.0);
         try {
             boolean bad = true;
             for (int attempt = 0; attempt < 3; attempt++) {
@@ -1191,6 +1207,8 @@ public class MotorPlugin extends Plugin {
         String st = figState(mainDir);
         if (readText(figStatus(mainDir)) != null && !st.endsWith(" " + key)) { delete(new File(mainDir, FIG)); figStatus(mainDir).delete(); }
         figFail = "";
+        double P = pasadaMs / 1000.0;
+        fondoPaso("Guardando figuras", 0, 15, P * 0.35);
         Run r = mainWithFigs(mainDir, job, mainName);
         if (g != gen || r.timedOut) return;
         // Si con figuras guardadas el documento ya da más errores (p. ej. karnaugh-map o tikz-timing, que no se
@@ -1201,12 +1219,16 @@ public class MotorPlugin extends Plugin {
             return;
         }
         if (figList(mainDir, job).isEmpty()) return;
-        if (!drawFigs(mainDir, job, mainName, staleFigs(mainDir, job), g, normalErrors)) {
+        List<String> porDibujar = staleFigs(mainDir, job);
+        int par = porDibujar.size() >= 8 ? Math.max(1, Math.min(3, Runtime.getRuntime().availableProcessors() / 2)) : 1;
+        fondoPaso("Guardando figuras", 15, 88, P * 1.15 / par + porDibujar.size() * 0.05);
+        if (!drawFigs(mainDir, job, mainName, porDibujar, g, normalErrors)) {
             if (g != gen) return;
             setFigState(mainDir, false, key, figFail.isEmpty() ? "no se pudieron dibujar las figuras" : figFail);
             return;
         }
         long t = System.currentTimeMillis();
+        fondoPaso("Guardando figuras", 88, 100, P * 0.35);
         r = mainWithFigs(mainDir, job, mainName);
         if (g != gen || r.timedOut) return;
         writeMs(new File(mainDir, FIG + "-ms.txt"), System.currentTimeMillis() - t);
@@ -1402,6 +1424,7 @@ public class MotorPlugin extends Plugin {
                                 "-interaction=nonstopmode", "-file-line-error", "-synctex=1", "-recorder", "-jobname=" + job, mainArg(mainDir, mainName)),
                                 mainDir, 10 * 60 * 1000);
                         if (firstRunMs < 0) firstRunMs = System.currentTimeMillis() - tRun;
+                        if (!useFigs && !usePre) pasadaMs = System.currentTimeMillis() - tRun;
                         p++; passes++;
                         pasos.add("pasada " + passes + (useFigs && usePre ? " (preámbulo y figuras guardados)" : useFigs ? " (figuras guardadas)" : usePre ? " (preámbulo guardado)" : "") + ": " + secs(System.currentTimeMillis() - tRun));
                         output.append(r.out);

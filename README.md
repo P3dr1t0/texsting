@@ -7,7 +7,7 @@
 Editor LaTeX libre para Android, inspirado en la forma de trabajar de TeXstudio.
 Compila **en tu propio teléfono** con TeX Live, **sin instalar nada más**: el motor viene dentro de la app (pdfLaTeX, XeLaTeX, LuaLaTeX, BibTeX y makeindex). Gratis, sin internet tras la primera descarga de paquetes y sin límite de tiempo.
 
-> **Estado:** Fase 2 — Beta con motor integrado (Termux ya es opcional). Novedades de cada versión en [CHANGELOG.md](CHANGELOG.md); pendientes en [Issues](https://github.com/P3dr1t0/texsting/issues).
+> **Estado:** Fase 2 — Beta con motor integrado (sin Termux). Novedades de cada versión en [CHANGELOG.md](CHANGELOG.md); pendientes en [Issues](https://github.com/P3dr1t0/texsting/issues).
 
 > TeXsting no usa código, nombre ni logo de TeXstudio; solo toma ideas de su flujo de trabajo.
 > Licencia: GPL-3.0-or-later.
@@ -39,37 +39,24 @@ Compila **en tu propio teléfono** con TeX Live, **sin instalar nada más**: el 
 
 Cada vez que se cambie el código, se genera un APK nuevo que se instala encima del anterior sin perder tus proyectos.
 
-## Termux (opcional)
+## Servidor de pruebas (solo para desarrollo)
 
-No hace falta para compilar: el motor integrado viene en la app. Queda como respaldo (TeX Live completo); para instalarlo, en la app: **Ajustes → Instalar o reparar TeX en Termux** y sigue los 4 pasos:
-
-1. Instala **Termux** desde F-Droid o GitHub.
-2. Toca **Copiar comando**.
-3. Abre Termux, pega (mantén presionado → Pegar) y presiona Enter. Elige:
-   - **Recomendada (~2 GB)**: lo usual en ingeniería (amsmath, TikZ, circuitikz, siunitx, pgfplots, español, bibliografía…). Lo que falte se instala solo.
-   - **Completa (~6 GB)**: todo CTAN, como un MiKTeX completo.
-4. Vuelve a TeXsting y toca **Probar conexión**.
-
-Qué instala: un Debian dentro de Termux (`proot-distro`) con el **TeX Live oficial**. Se usa Debian porque el TeX Live nativo de Termux se rompe cada vez que cambia el año de TeX Live.
-
-Comandos en Termux: `texsting` (iniciar), `texsting-stop` (detener), `texsting-setup` (reparar o cambiar la instalación).
-El servidor arranca solo cada vez que abres Termux, y solo escucha dentro del teléfono (127.0.0.1) con un token.
-
-**Si Android cierra Termux:** quítale la optimización de batería y, en Android 14+, activa en Opciones de desarrollador «Desactivar restricciones de procesos secundarios».
+Desde la versión 0.6.3 la app del teléfono y la tablet **no usa Termux**: compila siempre con su motor integrado.
+La carpeta `termux/` queda solo para probar la versión web en una PC: `TEXSTING_TOKEN=abc123 python3 termux/server.py` sirve de compilador para las pruebas automáticas (`tests/e2e.mjs`). Las opciones de Termux ya no aparecen en la app.
 
 ## Estructura del código
 
 ```
 src/               app (JavaScript sin framework)
-  screens/         inicio, editor, ajustes/Termux
+  screens/         inicio, editor, ajustes
   editor/cm.js     editor CodeMirror 6 (app real)
   editor/basic.js  editor simple (solo para pruebas en navegador)
   pdfview.js       visor pdf.js
-  compiler.js      elige motor: integrado (motor.js) o el servidor de Termux
+  compiler.js      elige el motor (pdfLaTeX, XeLaTeX o LuaLaTeX) y compila con el integrado (motor.js)
   logparser.js     lectura del log y traducción de errores
   structure.js     estructura, etiquetas y claves bib
-termux/server.py   servidor de compilación (Python, sin dependencias)
-termux/setup.sh    instalador para Termux
+termux/server.py   servidor de compilación para pruebas en PC (Python, sin dependencias)
+termux/setup.sh    instalador antiguo para Termux (ya no lo usa la app)
 www/               HTML y CSS
 scripts/           ajustes al proyecto Android
 .github/workflows  compilación automática del APK

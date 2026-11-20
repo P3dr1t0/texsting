@@ -71,9 +71,26 @@ export async function renderSettings(root, _p, navigate) {
   const url = el('input', { class: 'input', value: s.serverUrl, autocapitalize: 'off', onchange: (e) => setSettings({ serverUrl: e.target.value.trim() || 'http://127.0.0.1:8765' }) });
   const token = el('input', { class: 'input mono', value: ensureToken(), autocapitalize: 'off', onchange: (e) => setSettings({ token: e.target.value.trim() }) });
   const result = el('p', { class: 'muted' });
-  const compilador = el('select', { class: 'input small', onchange: (e) => setSettings({ compilador: e.target.value }) },
-    ...[['auto', 'Automático'], ['motor', 'Solo motor integrado'], ['termux', 'Solo Termux']].map(([v, t]) => el('option', { value: v, selected: s.compilador === v }, t)));
   const motorResult = el('div', { class: 'muted motor-result' });
+  // Solo en la versión web de pruebas (sin motor integrado): el servidor de TeX de la PC. En el teléfono y la
+  // tablet no aparece: TeXsting compila siempre con su propio motor.
+  const servidorPruebas = el('div', {});
+  motorEstado().then((st) => {
+    if (st) return;
+    servidorPruebas.append(
+      el('h3', { class: 'section-title' }, 'Servidor de pruebas (solo versión web)'),
+      el('button', { class: 'btn', html: icon('terminal') + '<span>Instrucciones del servidor</span>', onclick: () => navigate('termux') }),
+      row('Dirección del servidor', url),
+      row('Token', token),
+      el('button', { class: 'btn', onclick: async () => {
+        result.textContent = 'Probando…';
+        try {
+          const i = await ping();
+          result.innerHTML = `✔ Conectado. ${esc(i.tex || '')}<br>Motores: ${esc(i.engines.join(', '))} · latexmk: ${i.latexmk ? 'sí' : 'no'} · paquetes al vuelo: ${i.tlmgr ? 'sí' : 'no'}`;
+        } catch (e) { result.textContent = '✘ ' + e.message; }
+      } }, 'Probar conexión'),
+      result);
+  }).catch(() => {});
   const seg = (ms) => (ms / 1000).toFixed(1).replace('.', ',') + ' s';
   async function probarMotor() {
     motorResult.textContent = 'Comprobando…';
@@ -107,26 +124,13 @@ export async function renderSettings(root, _p, navigate) {
     header('Ajustes', navigate),
     el('div', { class: 'settings-body' },
       el('h3', { class: 'section-title' }, 'Compilación'),
-      row('Compilar con', compilador, 'Automático: el motor integrado de TeXsting (pdfLaTeX, XeLaTeX y LuaLaTeX); Termux queda solo como respaldo'),
       row('Motor para proyectos nuevos', engine, 'Cada proyecto puede cambiarlo en ⋮ → Motor'),
       row('Instalar paquetes faltantes', toggle('autoinstall'), 'Si falta un paquete, se descarga solo al compilar (necesita internet esa vez)'),
       row('Compilar al guardar (Ctrl+S)', toggle('compileOnSave')),
       el('p', { class: 'muted' }, 'El motor integrado compila dentro de TeXsting, sin instalar nada más: pdfLaTeX, XeLaTeX y LuaLaTeX (fuentes OpenType con fontspec, incluso las del teléfono como Roboto o Noto), BibTeX y makeindex. Los paquetes que falten (TikZ, pgfplots, circuitikz…) se descargan solos de CTAN la primera vez que los uses.'),
       el('button', { class: 'btn', onclick: probarMotor }, 'Probar motor integrado'),
       motorResult,
-      el('h3', { class: 'section-title' }, 'Termux (opcional)'),
-      el('p', { class: 'muted' }, 'Ya no hace falta para compilar: el motor integrado trae pdfLaTeX, XeLaTeX y LuaLaTeX. Termux queda como respaldo opcional, con TeX Live completo y sin descargas al vuelo.'),
-      el('button', { class: 'btn', html: icon('terminal') + '<span>Instalar o reparar TeX en Termux</span>', onclick: () => navigate('termux') }),
-      row('Dirección del servidor', url),
-      row('Token', token, 'Debe coincidir con el de Termux'),
-      el('button', { class: 'btn', onclick: async () => {
-        result.textContent = 'Probando…';
-        try {
-          const i = await ping();
-          result.innerHTML = `✔ Conectado. ${esc(i.tex || '')}<br>Motores: ${esc(i.engines.join(', '))} · latexmk: ${i.latexmk ? 'sí' : 'no'} · paquetes al vuelo: ${i.tlmgr ? 'sí' : 'no'}`;
-        } catch (e) { result.textContent = '✘ ' + e.message; }
-      } }, 'Probar conexión'),
-      result,
+      servidorPruebas,
       el('h3', { class: 'section-title' }, 'Apariencia'),
       appearance(),
       el('h3', { class: 'section-title' }, 'Editor'),

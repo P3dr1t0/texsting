@@ -187,7 +187,7 @@ const DEFAULTS = {
   autoinstall: true,
   defaultEngine: 'pdflatex',
   compileOnSave: false,
-  // 'auto': motor integrado para pdfLaTeX y Termux solo si el documento necesita XeLaTeX/LuaLaTeX.
+  // Ya no se usa en el teléfono ni la tablet (siempre el motor integrado); queda para la versión web de pruebas.
   compilador: 'auto',
   splitRatio: 0.5,
 };

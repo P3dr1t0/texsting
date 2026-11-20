@@ -8,12 +8,32 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 | Fase | Nombre | Estado |
 |---|---|---|
 | 0 | Prototipo: editor, compilación y PDF funcionando | ✅ Terminada (11 nov. 2026) |
-| 1 | Beta con Termux: pulir la app con uso real en celular y tablet | 🔄 En curso |
-| 2 | Motor integrado: sin Termux, instalación básica/completa dentro de la app ([#1](https://github.com/P3dr1t0/texsting/issues/1)) | Pendiente |
+| 1 | Beta con Termux: pulir la app con uso real en celular y tablet | ✅ Terminada |
+| 2 | Motor integrado: sin Termux, instalación básica/completa dentro de la app ([#1](https://github.com/P3dr1t0/texsting/issues/1)) | 🔄 En curso |
 | 3 | Prueba cerrada en Google Play: 12 testers durante 14 días | Pendiente |
 | 4 | Lanzamiento 1.0 | Pendiente |
 
 **Objetivo transversal (todas las fases):** optimización de velocidad, fluidez, memoria y batería ([#8](https://github.com/P3dr1t0/texsting/issues/8)); requisito antes del lanzamiento.
+
+---
+
+## [0.6.3] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 76
+
+### Cambiado
+- **El progreso se muestra en porcentaje.** La barra dice «Pasada 1 · 45 %» y el botón de compilar muestra el mismo porcentaje, en lugar de los segundos.
+  - Si la app todavía no sabe cuánto tarda ese tipo de compilación (por ejemplo, la primera con ⚡), la barra se mueve sin número en vez de mostrar un porcentaje equivocado.
+- **El trabajo en segundo plano también tiene porcentaje:** «Guardando figuras · 40 %» o «Guardando el preámbulo · 70 %».
+  - El motor avisa en qué etapa va (revisar el documento, dibujar las figuras, comprobar el resultado) y cuánto debería tardar cada una según lo que demoró la compilación normal.
+- **TeXsting ya no usa Termux.** En el teléfono y la tablet compila siempre con el motor integrado (pdfLaTeX, XeLaTeX y LuaLaTeX).
+  - Se quitaron de Ajustes «Compilar con» y la sección de Termux.
+  - También se quitaron los avisos «Abrir Termux» y el chip de Termux de la pantalla de inicio.
+  - Lo único que solo estaba en Termux era **biber**: los documentos con `biblatex` se compilan con BibTeX, que sirve para los estilos estándar. Estilos como `ieee` necesitan biber y quedan pendientes ([#1](https://github.com/P3dr1t0/texsting/issues/1)).
+
+### Pruebas
+- Tres documentos para probar LuaLaTeX en `tools/diag/lua/`:
+  - cálculos en Lua y unicode-math;
+  - gráficas con datos calculados en Lua, pgfplots y MetaPost (luamplib);
+  - tipografía: fuentes OpenType, microtype y lua-ul.
 
 ---
 

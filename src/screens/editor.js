@@ -15,7 +15,6 @@ import { shareBytes } from '../share.js';
 import { createZip } from '../zip.js';
 import { debounce, readFileAsBytes, slug, extOf, IMAGE_EXT } from '../util.js';
 import { appearance } from './settings.js';
-import { openTermux } from '../termux.js';
 import { saveAsTemplate } from './newproject.js';
 
 const enc = new TextEncoder();
@@ -626,21 +625,39 @@ export async function renderEditor(root, { id }, navigate) {
   }
 
   // ---------- Trabajo en segundo plano ----------
+  // El motor manda tramos { desde, hasta, segundos }: la barra avanza dentro del tramo según el tiempo esperado.
   let fondoTexto = '';
+  let tramo = null;
+  let fondoTick = null;
+  function fondoPct() {
+    if (!tramo) return null;
+    const t = (Date.now() - tramo.t0) / 1000;
+    const g = t <= tramo.seg ? 0.9 * t / tramo.seg : 0.9 + 0.08 * (1 - Math.exp(-(t - tramo.seg) / tramo.seg));
+    return Math.round(tramo.desde + (tramo.hasta - tramo.desde) * g);
+  }
   function mostrarFondo() {
     if (compiling) return;
-    if (!fondoTexto) { progress.hidden = true; return; }
+    if (!fondoTexto) { progress.hidden = true; clearInterval(fondoTick); fondoTick = null; return; }
     progress.hidden = false;
-    progress.className = 'compile-progress fondo';
-    progBar.style.width = '';
-    progTxt.textContent = fondoTexto;
+    const pct = fondoPct();
+    progress.className = 'compile-progress fondo' + (pct == null ? '' : ' det');
+    progBar.style.width = pct == null ? '' : pct + '%';
+    progTxt.textContent = pct == null ? fondoTexto : `${fondoTexto.replace(/…$/, '')} · ${pct} %`;
+    if (!fondoTick) fondoTick = setInterval(mostrarFondo, 500);
   }
   let stopFondo = () => {};
-  motorAlFondo((e) => { fondoTexto = e.activo ? (e.texto || 'Trabajando en segundo plano…') : ''; mostrarFondo(); }).then((f) => { stopFondo = f; });
+  motorAlFondo((e) => {
+    fondoTexto = e.activo ? (e.texto || 'Trabajando en segundo plano') : '';
+    tramo = e.activo && e.hasta != null ? { desde: e.desde, hasta: e.hasta, seg: e.segundos || 10, t0: Date.now() } : (e.activo ? tramo : null);
+    mostrarFondo();
+  }).then((f) => { stopFondo = f; });
 
   async function compile() {
     if (compiling) return;
     fondoTexto = '';
+    tramo = null;
+    clearInterval(fondoTick);
+    fondoTick = null;
     compiling = true;
     saveSoon.flush();
     await saveCurrent();
@@ -655,18 +672,19 @@ export async function renderEditor(root, { id }, navigate) {
     let paso = 'Compilando';
     const pintar = () => {
       const s = (Date.now() - t0) / 1000;
-      setCompileState('busy', Math.round(s) + ' s');
       progress.hidden = false;
       progress.className = 'compile-progress ' + (est ? 'det' : 'indet');
-      // Hasta el tiempo estimado avanza parejo; si se pasa, se acerca a 95 % sin llegar.
-      const f = est ? (s <= est ? 0.9 * s / est : 0.9 + 0.05 * (1 - Math.exp(-(s - est) / Math.max(5, est / 3)))) : 0;
-      progBar.style.width = est ? Math.round(f * 100) + '%' : '';
-      progTxt.textContent = `${paso} · ${Math.round(s)} s${est ? ' de ~' + Math.round(est) + ' s' : ''}`;
+      // Porcentaje estimado: hasta el tiempo esperado avanza parejo; si se pasa, se acerca a 97 % sin llegar.
+      const f = est ? (s <= est ? 0.9 * s / est : 0.9 + 0.07 * (1 - Math.exp(-(s - est) / Math.max(5, est / 3)))) : 0;
+      const pct = Math.round(f * 100);
+      progBar.style.width = est ? pct + '%' : '';
+      setCompileState('busy', est ? pct + ' %' : 'Compilando');
+      progTxt.textContent = est ? `${paso} · ${pct} %` : paso;
     };
     pintar();
     const tick = setInterval(pintar, 500);
     // Motor integrado: el paso actual y los avisos (p. ej. «Descargando el paquete…») van en el indicador.
-    const integ = getSettings().compilador !== 'termux';
+    const integ = true;  // sin motor (versión web) escuchar no hace nada
     const stopProgress = integ ? await motorAlProgresar((t) => { if (t) { paso = t.replace(/…$/, ''); pintar(); } }) : () => {};
     const stopPaso = integ ? await motorAlPaso((t) => {
       if (!t) return;
@@ -674,7 +692,8 @@ export async function renderEditor(root, { id }, navigate) {
         const rapido = t.includes('⚡');
         // Lo que ya pasó (preparar, descargar) se suma a lo que suele tardar este tipo de compilación.
         const e = leer(keyT + (rapido ? '.rapido' : '.normal'));
-        if (e) est = (Date.now() - t0) / 1000 + e;
+        // Sin dato de este tipo de compilación, mejor sin porcentaje que con uno equivocado.
+        est = e ? (Date.now() - t0) / 1000 + e : 0;
         paso = t.replace(' ⚡', '');
       } else paso = t;
       pintar();
@@ -761,10 +780,8 @@ export async function renderEditor(root, { id }, navigate) {
         if (r.missing && r.missing.length && !WIDE.matches) toast('No se encontró: ' + r.missing.join(', '), { kind: 'error', ms: 7000 });
       }
     } catch (e) {
-      if (e instanceof CompileError && e.kind === 'offline') {
-        toast(e.message, { kind: 'error', action: 'Abrir Termux', ms: 9000, onAction: async () => { if (!(await openTermux())) navigate('termux'); } });
-      } else if (e instanceof CompileError && e.kind === 'auth') {
-        toast(e.message, { kind: 'error', action: 'Configurar', ms: 8000, onAction: () => navigate('termux') });
+      if (e instanceof CompileError && (e.kind === 'offline' || e.kind === 'auth')) {
+        toast(e.message, { kind: 'error', action: 'Ajustes', ms: 8000, onAction: () => navigate('settings') });
       } else {
         toast('Error: ' + e.message, { kind: 'error', ms: 6000 });
       }
@@ -986,6 +1003,7 @@ export async function renderEditor(root, { id }, navigate) {
       document.removeEventListener('visibilitychange', onHide);
       window.removeEventListener('resize', onResize);
       stopFondo();
+      clearInterval(fondoTick);
       viewer.clear();
     },
   };

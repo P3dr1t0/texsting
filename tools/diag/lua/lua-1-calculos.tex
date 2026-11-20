@@ -1,0 +1,104 @@
+% !TEX program = lualatex
+% Prueba 1 de LuaLaTeX en TeXsting: Lua haciendo cálculos dentro del documento.
+\documentclass[11pt,a4paper]{article}
+\usepackage[spanish]{babel}
+\usepackage{fontspec}
+\usepackage{unicode-math}
+\setmainfont{Latin Modern Roman}
+\setmathfont{Latin Modern Math}
+\usepackage{luacode}
+\usepackage{booktabs}
+\usepackage[margin=2.2cm]{geometry}
+
+\begin{luacode*}
+  -- Funciones en Lua que el documento usa más abajo
+  function primos(n)
+    local lista, es = {}, {}
+    for i = 2, n do es[i] = true end
+    for i = 2, n do
+      if es[i] then
+        lista[#lista + 1] = i
+        for j = i * i, n, i do es[j] = false end
+      end
+    end
+    tex.sprint(table.concat(lista, ", "))
+  end
+
+  function fibonacci(n)
+    local a, b, t = 0, 1, {}
+    for i = 1, n do t[#t + 1] = a; a, b = b, a + b end
+    tex.sprint(table.concat(t, ", "))
+  end
+
+  function tabla_trig()
+    for g = 0, 90, 15 do
+      local r = math.rad(g)
+      local tg = (g == 90) and "---" or string.format("%.4f", math.tan(r))
+      tex.sprint(string.format("%d° & %.4f & %.4f & %s \\\\", g, math.sin(r), math.cos(r), tg))
+    end
+  end
+
+  -- Datos del motor y números grandes (con % no se puede escribir dentro de \directlua)
+  function version_motor()
+    tex.sprint(string.format("%s, motor %s %.2f", _VERSION, status.luatex_engine or "LuaTeX", status.luatex_version / 100))
+  end
+  function grandes()
+    tex.sprint(string.format("$2^{64} = %.0f$ y $\\pi \\approx %.12f$", 2^64, math.pi))
+  end
+
+  -- Resistencias: serie, paralelo y divisor de tensión
+  function circuito(vin, r1, r2)
+    local par = r1 * r2 / (r1 + r2)
+    tex.sprint(string.format(
+      "Con $V_{in} = %g\\,\\mathrm{V}$, $R_1 = %g\\,\\Omega$ y $R_2 = %g\\,\\Omega$: "
+      .. "serie $= %g\\,\\Omega$, paralelo $\\approx %.2f\\,\\Omega$ y "
+      .. "$V_{out} = V_{in}\\,\\frac{R_2}{R_1 + R_2} \\approx %.3f\\,\\mathrm{V}$.",
+      vin, r1, r2, r1 + r2, par, vin * r2 / (r1 + r2)))
+  end
+\end{luacode*}
+
+\title{Prueba 1: cálculos con Lua}
+\author{TeXsting}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+Este PDF lo calcula Lua mientras compila: si ves números en vez de errores, el motor
+LuaLaTeX funciona. Versión: \directlua{version_motor()}.
+
+\section{Números}
+Primos menores que 200: \directlua{primos(200)}.
+
+\medskip
+Primeros 25 de Fibonacci: \directlua{fibonacci(25)}.
+
+\medskip
+\directlua{grandes()}.
+
+\section{Tabla trigonométrica generada}
+\begin{center}
+\begin{tabular}{rccc}
+  \toprule
+  Ángulo & $\sin$ & $\cos$ & $\tan$ \\
+  \midrule
+  \directlua{tabla_trig()}
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\section{Un circuito}
+\directlua{circuito(12, 1000, 2200)}
+
+\section{Matemática con unicode-math}
+Se escribe directo con símbolos Unicode:
+\[
+  ∫_0^∞ e^{-x^2}\,dx = \frac{\sqrt{π}}{2}, \qquad
+  ∑_{n=1}^{∞} \frac{1}{n^2} = \frac{π^2}{6}, \qquad
+  ∀ε>0\ ∃δ>0 : |x - a| < δ ⇒ |f(x) - f(a)| < ε .
+\]
+Y en negrita: $\symbf{F} = m\,\symbf{a}$, $∇ × \symbf{E} = -\frac{∂\symbf{B}}{∂t}$.
+
+\section{Texto en español}
+Acentos, eñes y signos: ¿Qué tal? ¡Muy bien! Pingüino, cigüeña, año, corazón.
+\end{document}

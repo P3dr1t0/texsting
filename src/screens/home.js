@@ -12,7 +12,7 @@ const dec = new TextDecoder();
 const enc = new TextEncoder();
 
 export async function renderHome(root, _params, navigate) {
-  const status = el('button', { class: 'server-chip checking', onclick: () => navigate('termux') }, 'Comprobando el compilador…');
+  const status = el('button', { class: 'server-chip checking', onclick: () => navigate('settings') }, 'Comprobando el motor…');
   const list = el('div', { class: 'project-list' });
   const RECENT_MAX = 8;
   let tab = getSettings().homeTab === 'all' ? 'all' : 'recent';
@@ -315,7 +315,7 @@ export async function renderHome(root, _params, navigate) {
 
   async function checkServer() {
     // Con el motor integrado no hace falta Termux: el aviso dice que está listo y lleva a Ajustes.
-    const mst = (getSettings().compilador || 'auto') !== 'termux' ? await motorEstado() : null;
+    const mst = await motorEstado();
     if (mst && !mst.listo) {
       status.className = 'server-chip';
       status.onclick = () => navigate('settings');

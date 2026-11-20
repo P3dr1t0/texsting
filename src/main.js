@@ -39,6 +39,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', app
 applyTheme();
 navigate('home').then(() => initOpenWith(navigate));
 // El motor integrado se prepara solo al abrir la app (solo trabaja la primera vez tras instalar o actualizar).
-if ((getSettings().compilador || 'auto') !== 'termux') motorCalentar().catch(() => {});
+motorCalentar().catch(() => {});
 // Cuando termina de guardar figuras o el preámbulo en segundo plano, se avisa: ya conviene volver a compilar.
 motorAlTerminarFondo((texto) => texto && toast(texto, { ms: 4500 }));

@@ -1,4 +1,5 @@
-// Compilación: motor integrado (dentro del APK) y, como respaldo opcional, el servidor de Termux.
+// Compilación: motor integrado (dentro del APK). El servidor de Termux solo se usa donde no hay motor
+// (la versión web de pruebas): en el teléfono y la tablet TeXsting ya no depende de Termux.
 import { getSettings } from './store.js';
 import { bytesToBase64, base64ToBytes } from './util.js';
 import { motorCompilar, motorEstado } from './motor.js';
@@ -188,9 +189,8 @@ export function engineExplanation(ch, main) {
  * Devuelve { status, pdf: Uint8Array|null, synctex, log, output, installed, missing, elapsed }.
  */
 export async function compileProject(project, files) {
-  const mode = getSettings().compilador || 'auto';
   const chosen = chooseEngine(project, files);
-  const st = mode !== 'termux' ? await motorEstado() : null;
+  const st = await motorEstado();
   if (st) {
     const motores = st.motores || ['pdflatex'];
     let eng = chosen.engine;
@@ -212,12 +212,7 @@ export async function compileProject(project, files) {
     }
     const tiene = motores.map((m) => ENGINE_LABEL[m]).join(' y ');
     const porque = chosen.need ? ` (usa ${chosen.need.what})` : '';
-    if (mode === 'motor') {
-      throw new CompileError(`Este documento necesita ${ENGINE_LABEL[chosen.engine]}${porque} y el motor integrado trae ${tiene}. En Ajustes → Compilar con, elige «Automático» para usar Termux en estos casos.`, 'server');
-    }
-    if (!(await quickCheck())) {
-      throw new CompileError(`Este documento necesita ${ENGINE_LABEL[chosen.engine]}${porque}, que por ahora solo está en Termux: ábrelo un momento y vuelve a compilar.`, 'offline');
-    }
+    throw new CompileError(`Este documento necesita ${ENGINE_LABEL[chosen.engine]}${porque} y esta versión del motor trae ${tiene}. Actualiza TeXsting.`, 'server');
   }
   if (!(await quickCheck())) {
     throw new CompileError('Termux no está abierto: ábrelo un momento para iniciar el servidor y vuelve a compilar.', 'offline');

@@ -1,0 +1,105 @@
+% !TEX program = lualatex
+% Prueba 2 de LuaLaTeX en TeXsting: gráficas con datos que calcula Lua, TikZ y MetaPost (luamplib).
+\documentclass[11pt,a4paper]{article}
+\usepackage[spanish]{babel}
+\usepackage{fontspec}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{luamplib}
+\usepackage[margin=2.2cm]{geometry}
+
+% Lua genera los puntos de una respuesta RLC subamortiguada: v(t) = e^{-a t} cos(w t)
+\usepackage{luacode}
+\begin{luacode*}
+  function puntos_rlc(a, w, tmax, n)
+    local t = {}
+    for i = 0, n do
+      local x = tmax * i / n
+      t[#t + 1] = string.format("(%.4f,%.4f)", x, math.exp(-a * x) * math.cos(w * x))
+    end
+    tex.sprint("\\addplot[blue, thick] coordinates {" .. table.concat(t, " ") .. "};")
+  end
+  function histograma(semilla, n)
+    math.randomseed(semilla)
+    local c = {}
+    for i = 1, 10 do c[i] = 0 end
+    for i = 1, n do
+      local s = 0
+      for k = 1, 6 do s = s + math.random() end
+      local b = math.floor(s / 6 * 10) + 1
+      if b > 10 then b = 10 end
+      c[b] = c[b] + 1
+    end
+    local t = {}
+    for i = 1, 10 do t[#t + 1] = string.format("(%d,%d)", i, c[i]) end
+    tex.sprint("\\addplot[fill=teal!60] coordinates {" .. table.concat(t, " ") .. "};")
+  end
+\end{luacode*}
+
+\title{Prueba 2: gráficas}
+\author{TeXsting}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Respuesta de un circuito RLC (puntos calculados en Lua)}
+\begin{center}
+\begin{tikzpicture}
+  \begin{axis}[width=0.85\linewidth, height=6cm, xlabel={$t$ (ms)}, ylabel={$v(t)$ (V)},
+               grid=major, legend pos=north east]
+    \directlua{puntos_rlc(0.5, 6, 6, 150)}
+    \addlegendentry{subamortiguado}
+    \addplot[red, dashed, domain=0:6, samples=60] {exp(-0.5*x)};
+    \addlegendentry{envolvente}
+  \end{axis}
+\end{tikzpicture}
+\end{center}
+
+\section{Histograma (1000 sumas aleatorias en Lua)}
+\begin{center}
+\begin{tikzpicture}
+  \begin{axis}[ybar, width=0.75\linewidth, height=5.5cm, bar width=12pt,
+               xlabel={intervalo}, ylabel={frecuencia}, ymin=0]
+    \directlua{histograma(42, 1000)}
+  \end{axis}
+\end{tikzpicture}
+\end{center}
+
+\section{Superficie 3D (pgfplots)}
+\begin{center}
+\begin{tikzpicture}
+  \begin{axis}[view={50}{35}, width=9cm, colormap/viridis]
+    \addplot3[surf, domain=-2:2, samples=25] {exp(-x^2-y^2)*cos(deg(2*x))};
+  \end{axis}
+\end{tikzpicture}
+\end{center}
+
+\section{TikZ con bucles}
+\begin{center}
+\begin{tikzpicture}
+  \foreach \i in {0,...,11} {
+    \draw[fill={hsb,\i/12,0.7,0.95}] (\i*30:2) circle (0.35);
+    \node at (\i*30:2) {\scriptsize \i};
+  }
+  \draw[thick,->] (0,0) -- (60:1.5);
+  \draw[thick,->] (0,0) -- (0:1.2);
+\end{tikzpicture}
+\end{center}
+
+\section{MetaPost dentro del documento (solo LuaLaTeX)}
+\begin{center}
+\begin{mplibcode}
+beginfig(1);
+  u := 1.2cm;
+  for i = 0 upto 7:
+    draw fullcircle scaled ((i+1)*0.4u) withcolor (i/8)[red, blue];
+  endfor;
+  path p;
+  p := (0,0) for t = 1 upto 120: .. (t/40*u, 0.8u*sind(t*9)) endfor;
+  draw p shifted (3.5u, 0) withpen pencircle scaled 1.2pt withcolor 0.2[green, black];
+  label.bot("sen(x) en MetaPost", (5u, -1u));
+endfig;
+\end{mplibcode}
+\end{center}
+\end{document}

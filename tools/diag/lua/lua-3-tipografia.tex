@@ -1,0 +1,63 @@
+% !TEX program = lualatex
+% Prueba 3 de LuaLaTeX en TeXsting: fuentes OpenType, microtipografía y paquetes que solo existen en LuaLaTeX.
+\documentclass[11pt,a4paper]{article}
+\usepackage[spanish]{babel}
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Pagella}
+\setsansfont{TeX Gyre Heros}
+\setmonofont{TeX Gyre Cursor}
+\newfontfamily\termes{TeX Gyre Termes}
+\usepackage[expansion=true,protrusion=true]{microtype}
+\usepackage{lua-ul}
+\usepackage{xcolor}
+\usepackage{luacode}
+\usepackage{lipsum}
+\usepackage[margin=2.4cm]{geometry}
+
+\title{Prueba 3: tipografía}
+\author{TeXsting}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Fuentes OpenType}
+Texto en TeX Gyre Pagella. \textsf{Esto en Heros (sin serifa).} \texttt{Esto en Cursor (monoespaciada).}
+{\termes Y esto en Termes, parecida a Times.}
+
+\medskip
+Versalitas: \textsc{Universidad Nacional de Ingeniería}.
+Números de estilo antiguo: {\addfontfeatures{Numbers=OldStyle} 0123456789}
+frente a los normales 0123456789.
+Ligaduras: ffi, fl, ff \quad sin ligaduras: {\addfontfeatures{Ligatures=NoCommon} ffi, fl, ff}.
+
+\section{Subrayados que cortan línea (lua-ul)}
+\underLine{Este subrayado lo hace Lua y puede cruzar varias líneas sin romperse, algo que
+con pdfLaTeX necesita trucos.} \strikeThrough{Texto tachado.} \highLight[yellow]{Texto resaltado
+con marcador amarillo que también puede seguir en la línea siguiente sin problema.}
+
+\section{Texto que Lua transforma}
+\begin{luacode*}
+  function al_reves(s)
+    local t = {}
+    for _, c in utf8.codes(s) do table.insert(t, 1, utf8.char(c)) end
+    return table.concat(t)
+  end
+  function letras(p)
+    tex.sprint(string.format("La palabra «%s» tiene %d letras.", p, utf8.len(p)))
+  end
+\end{luacode*}
+«Anita lava la tina» al revés es «\directlua{tex.sprint(al_reves("Anita lava la tina"))}», y
+«ñandú» es «\directlua{tex.sprint(al_reves("ñandú"))}».
+\directlua{letras("electrónica")}
+
+\section{Microtipografía}
+Con \texttt{microtype} (expansión y protrusión de caracteres) los párrafos justificados
+quedan más parejos:
+
+\lipsum[1-2]
+
+\section{Colores}
+\textcolor{red!70!black}{Rojo oscuro}, \textcolor{blue!60}{azul},
+\colorbox{green!15}{fondo verde claro}.
+\end{document}
