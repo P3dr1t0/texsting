@@ -17,6 +17,24 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.7.3] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 83
+
+### Nuevo
+- **Avisos cuando una carpeta cambia desde fuera** (desde Archivos, la PC u otra app). Los proyectos nunca se borran de TeXsting por esto.
+  - **Se borró `Projects_LaTeX`, se movió o se le cambió el nombre:** en el inicio aparece «No se encuentra la carpeta…», con dos opciones.
+    - **Volver a crearla:** se crea en el mismo lugar con todos los proyectos.
+    - **Buscarla:** si la renombraste o la moviste, la eliges y cada proyecto vuelve a encontrar su carpeta.
+  - **Se borró la carpeta de un proyecto:** aviso «Se eliminó la carpeta de "Informe"», con **Volver a crearla** o **Dejar solo en la app**.
+  - **Se le cambió el nombre a la carpeta de un proyecto:** TeXsting la reconoce por sus archivos y sigue usándola. El proyecto toma el nuevo nombre, y un aviso lo dice.
+  - Si abres un proyecto cuya carpeta ya no está, también se avisa.
+  - Mientras la carpeta falta, TeXsting no intenta escribir en ella (antes salía «No se pudo guardar en la carpeta»).
+- Antes, si se borraba la carpeta de un proyecto, la app la volvía a crear sin decir nada. Ahora pregunta.
+
+### Pruebas
+- `tests/carpetas.mjs` agrega estos casos: carpeta de proyecto renombrada y borrada, `Projects_LaTeX` borrada y renombrada, y escribir después de todo.
+
+---
+
 ## [0.7.2] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 82
 
 ### Cambiado

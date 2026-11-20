@@ -4,7 +4,7 @@
 // La app sigue trabajando con su copia interna (rápida, sin permisos); cada cambio se escribe también en la carpeta
 // y, al abrir un proyecto, se traen los cambios hechos desde fuera (la PC, otra app).
 import { Capacitor, registerPlugin } from '@capacitor/core';
-import { setEspejo, listFiles, putFile, deleteFile, createProject, getSettings, setSettings, isTextPath, listProjects } from './store.js';
+import { setEspejo, listFiles, putFile, deleteFile, createProject, getSettings, setSettings, isTextPath, listProjects, getProject, saveProject } from './store.js';
 import { bytesToBase64, base64ToBytes, sanitizeName } from './util.js';
 
 // Las pruebas automáticas (tests/carpetas.mjs) ponen una carpeta falsa en memoria en window.__carpetasPrueba.
@@ -40,6 +40,10 @@ function marcar(id, path, mtime) {
 }
 
 export function raiz() { return getSettings().carpetaRaiz || null; }
+/** El vínculo, solo si su carpeta está (si se borró o se renombró desde fuera, no se intenta escribir en ella). */
+function activo(id) { const v = vinculo(id); return v && !v.falta ? v : null; }
+/** ¿La carpeta de este proyecto desapareció? (se borró, se movió o se le cambió el nombre desde fuera) */
+export function carpetaFalta(id) { const v = vinculo(id); return !!(v && v.falta); }
 
 /** Dónde está el proyecto, para mostrarlo («Documents/Projects_LaTeX/Tarea 3»). */
 export function dondeEsta(id) {
@@ -101,16 +105,16 @@ setEspejo({
     enCola(p.id, () => exportar(p, files)).catch(falla);
   },
   archivo(id, f) {
-    if (!vinculo(id)) return;
+    if (!activo(id)) return;
     enCola(id, () => escribir(id, f)).catch(falla);
   },
   borrado(id, path) {
-    const v = vinculo(id);
+    const v = activo(id);
     if (!v) return;
     enCola(id, async () => { await Carpetas.borrar({ tree: v.tree, doc: v.doc, path }); marcar(id, path, null); }).catch(falla);
   },
   renombrado(id, from, to, f) {
-    const v = vinculo(id);
+    const v = activo(id);
     if (!v) return;
     enCola(id, async () => {
       if (f) await escribir(id, { ...f, path: to });
@@ -120,7 +124,7 @@ setEspejo({
   },
   guardado(p) {
     // Renombrar el proyecto renombra su carpeta (solo las de Projects_LaTeX; una carpeta abierta de otro lugar no se toca).
-    const v = vinculo(p.id);
+    const v = activo(p.id);
     if (!v || v.externa) return;
     const nuevo = sanitizeName(p.name).replace(/[\\/:*?"<>|]/g, '-').trim();
     if (!nuevo || nuevo === v.nombre) return;
@@ -135,7 +139,7 @@ setEspejo({
     if (!v) return;
     setVinculo(p.id, null);
     // Una carpeta abierta desde otro lugar es del usuario: solo se desvincula. La de Projects_LaTeX se borra.
-    if (!v.externa) Carpetas.borrar({ tree: v.tree, doc: v.doc }).catch(falla);
+    if (!v.externa && !v.falta) Carpetas.borrar({ tree: v.tree, doc: v.doc }).catch(falla);
   },
 });
 
@@ -147,19 +151,22 @@ setEspejo({
 export async function sincronizar(id) {
   const v = vinculo(id);
   if (!v || !disponible()) return [];
+  if (v.falta) { const err = new Error(`La carpeta «${v.ruta || v.nombre}» ya no está. Tus archivos siguen en TeXsting; en el inicio puedes volver a crearla.`); err.code = 'FALTA'; throw err; }
   return enCola(id, async () => {
     let items;
     try {
       ({ items } = await Carpetas.listar({ tree: v.tree, doc: v.doc, recursivo: true }));
     } catch (e) {
       const a = await Carpetas.acceso({ tree: v.tree, doc: v.doc }).catch(() => ({}));
-      if (a.permiso && !a.existe && !v.externa && raiz()) {
-        // La carpeta se borró desde fuera: se vuelve a crear con lo que tiene la app.
-        setVinculo(id, null);
-        await exportar({ id, name: v.nombre });
-        return [];
+      if (a.permiso === false) throw new Error('TeXsting ya no tiene permiso para la carpeta «' + (v.ruta || v.nombre) + '»');
+      if (!a.existe) {
+        // Se borró, se movió o se le cambió el nombre: se avisa (no se vuelve a crear sin preguntar).
+        setVinculo(id, { ...v, falta: true });
+        const err = new Error(`La carpeta «${v.ruta || v.nombre}» ya no está: se eliminó, se movió o se le cambió el nombre. Tus archivos siguen en TeXsting.`);
+        err.code = 'FALTA';
+        throw err;
       }
-      throw new Error(a.permiso === false ? 'TeXsting ya no tiene permiso para la carpeta «' + v.nombre + '»' : (e.message || String(e)));
+      throw new Error(e.message || String(e));
     }
     const sinc = { ...(v.sinc || {}) };
     const enApp = new Map((await listFiles(id)).map((f) => [f.path, f]));
@@ -283,23 +290,145 @@ export async function abrirCarpeta() {
   return { id: p.id };
 }
 
-/** Carpetas nuevas en Projects_LaTeX (copiadas desde la PC, por ejemplo) aparecen como proyectos. */
+/** ¿Está este vínculo dentro de la carpeta propia? */
+const enRaiz = (v, r) => v && !v.externa && r && v.ruta && v.ruta.startsWith(r.ruta + '/');
+
+/**
+ * Revisa la carpeta propia al volver al inicio:
+ * - si la carpeta Projects_LaTeX ya no está → { raizFalta: true };
+ * - carpetas nuevas (copiadas desde la PC) → proyectos nuevos;
+ * - una carpeta de proyecto a la que le cambiaron el nombre → se sigue usando (y el proyecto toma ese nombre);
+ * - carpetas de proyectos que desaparecieron → { faltan: [...] } para avisar.
+ */
 export async function revisarRaiz() {
   const r = raiz();
-  if (!r || !disponible()) return [];
-  const { items } = await Carpetas.listar({ tree: r.tree, doc: r.doc });
-  const conocidas = new Set(Object.values(vinculos()).map((v) => v.doc));
+  const res = { nuevos: [], renombrados: [], faltan: [], raizFalta: false };
+  if (!r || !disponible()) return res;
+  let items;
+  try { ({ items } = await Carpetas.listar({ tree: r.tree, doc: r.doc })); } catch (e) {
+    const a = await Carpetas.acceso({ tree: r.tree, doc: r.doc }).catch(() => ({}));
+    if (a.existe === false || a.permiso === false) { res.raizFalta = true; return res; }
+    throw e;
+  }
+  const todos = vinculos();
+  const docs = new Set(items.filter((i) => i.dir).map((i) => i.doc));
+  // Proyectos de esta carpeta cuya carpeta ya no aparece.
+  const perdidos = Object.entries(todos).filter(([, v]) => enRaiz(v, r) && !docs.has(v.doc)).map(([id, v]) => ({ id, v }));
+  const conocidas = new Set(Object.values(todos).map((v) => v.doc));
   // Carpetas sin ningún .tex: no son proyectos; se recuerdan para no leerlas cada vez.
   let sinTex = {};
   try { sinTex = JSON.parse(localStorage.getItem(VINC_KEY + '.sintex') || '{}'); } catch { /* vacío */ }
-  const nuevos = [];
   for (const it of items) {
     if (!it.dir || conocidas.has(it.doc) || sinTex[it.doc] === it.mtime) continue;
-    try { nuevos.push(await importar({ tree: r.tree, doc: it.doc, nombre: it.path, ruta: r.ruta + '/' + it.path, externa: false })); }
+    // ¿Es la carpeta de un proyecto perdido con otro nombre? Se compara qué archivos tiene.
+    if (perdidos.length) {
+      const { items: dentro } = await Carpetas.listar({ tree: r.tree, doc: it.doc, recursivo: true }).catch(() => ({ items: [] }));
+      const rutas = new Set(dentro.filter((d) => !d.dir).map((d) => d.path));
+      let mejor = null;
+      let puntaje = 0;
+      for (const per of perdidos) {
+        const propios = (await listFiles(per.id)).map((f) => f.path);
+        if (!propios.length) continue;
+        const comunes = propios.filter((f) => rutas.has(f)).length;
+        const pts = comunes / Math.max(propios.length, 1);
+        if (pts > puntaje) { puntaje = pts; mejor = per; }
+      }
+      if (mejor && puntaje >= 0.5) {
+        const nombre = it.path;
+        setVinculo(mejor.id, { ...mejor.v, doc: it.doc, nombre, ruta: r.ruta + '/' + nombre, falta: false });
+        const p = await getProject(mejor.id);
+        const antes = p ? p.name : mejor.v.nombre;
+        if (p && p.name !== nombre) { p.name = nombre; await saveProject(p); }
+        res.renombrados.push({ id: mejor.id, de: mejor.v.nombre, a: nombre, antes });
+        perdidos.splice(perdidos.indexOf(mejor), 1);
+        continue;
+      }
+    }
+    try { res.nuevos.push(await importar({ tree: r.tree, doc: it.doc, nombre: it.path, ruta: r.ruta + '/' + it.path, externa: false })); }
     catch (e) { sinTex[it.doc] = it.mtime; console.warn('carpetas: no se importó', it.path, e); }
   }
   try { localStorage.setItem(VINC_KEY + '.sintex', JSON.stringify(sinTex)); } catch { /* sin espacio */ }
-  return nuevos;
+  // Los que siguen sin carpeta: se marcan (no se escribe en ellas) y se avisa.
+  const actual = vinculos();
+  for (const { id, v } of perdidos) {
+    if (!(await getProject(id))) { delete actual[id]; continue; }
+    actual[id] = { ...v, falta: true };
+    res.faltan.push({ id, nombre: v.nombre, ruta: v.ruta });
+  }
+  guardarVinculos(actual);
+  return res;
+}
+
+/** Vuelve a crear las carpetas de estos proyectos dentro de la carpeta propia, con lo que tiene la app. */
+export async function reponer(ids) {
+  const r = raiz();
+  for (const id of ids) {
+    const v = vinculo(id);
+    if (!v || !r) continue;
+    await enCola(id, async () => {
+      const { doc } = await Carpetas.carpeta({ tree: r.tree, doc: r.doc, nombre: v.nombre });
+      setVinculo(id, { ...v, tree: r.tree, doc, ruta: r.ruta + '/' + v.nombre, falta: false, sinc: {} });
+      for (const f of await listFiles(id)) await escribir(id, f);
+    });
+  }
+}
+
+/** Deja estos proyectos solo en la app (sin carpeta). */
+export function desvincular(ids) { for (const id of ids) setVinculo(id, null); }
+
+/** «tree» de Android → id de la carpeta elegida («content://…/tree/primary%3ADocuments» → «primary:Documents»). */
+function docDelTree(tree) {
+  const m = String(tree).match(/\/tree\/([^/]+)/);
+  if (m) return decodeURIComponent(m[1]);
+  return String(tree).replace(/^tree:/, '');
+}
+
+/**
+ * La carpeta propia desapareció y el usuario pide «Volver a crearla»: se crea de nuevo en el mismo lugar
+ * (sin preguntar si Android lo permite; si no, con el selector) y se vuelven a escribir todos los proyectos.
+ */
+export async function recrearRaiz() {
+  const r = raiz();
+  if (!r) return false;
+  const nombre = r.ruta.split('/').pop();
+  const padre = docDelTree(r.tree);
+  let nueva = null;
+  if (padre !== r.doc) {
+    // Se eligió una carpeta (p. ej. Documentos) y Projects_LaTeX está adentro: se crea de nuevo ahí.
+    try { const { doc } = await Carpetas.carpeta({ tree: r.tree, doc: padre, nombre }); nueva = { ...r, doc }; } catch { /* sigue */ }
+  }
+  if (!nueva && /^Documents\//.test(r.ruta)) {
+    // La carpeta elegida era Projects_LaTeX misma: se crea en el mismo lugar y el permiso de antes vuelve a servir.
+    const c = await Carpetas.crearEnDocumentos({ nombre: r.ruta.slice('Documents/'.length) }).catch(() => ({}));
+    if (c && c.ok) { const a = await Carpetas.acceso({ tree: r.tree, doc: r.doc }).catch(() => ({})); if (a.existe) nueva = r; }
+  }
+  if (!nueva) { await elegirRaiz('crear'); nueva = raiz(); }
+  setSettings({ carpetaRaiz: nueva });
+  await recolocar(r, nueva);
+  return true;
+}
+
+/**
+ * La carpeta propia se renombró o se movió y el usuario la vuelve a elegir: cada proyecto busca su carpeta
+ * (por nombre) en la nueva ubicación; los que no la encuentran la vuelven a crear.
+ */
+export async function buscarRaiz() {
+  const vieja = raiz();
+  await elegirRaiz('otra');
+  await recolocar(vieja, raiz());
+}
+
+async function recolocar(vieja, nueva) {
+  const { items } = await Carpetas.listar({ tree: nueva.tree, doc: nueva.doc });
+  const porNombre = new Map(items.filter((i) => i.dir).map((i) => [i.path, i.doc]));
+  const faltan = [];
+  for (const [id, v] of Object.entries(vinculos())) {
+    if (!enRaiz(v, vieja)) continue;
+    const doc = porNombre.get(v.nombre);
+    if (doc) setVinculo(id, { ...v, tree: nueva.tree, doc, ruta: nueva.ruta + '/' + v.nombre, falta: false });
+    else { setVinculo(id, { ...v, tree: nueva.tree, ruta: nueva.ruta + '/' + v.nombre }); faltan.push(id); }
+  }
+  await reponer(faltan);
 }
 
 /**

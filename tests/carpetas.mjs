@@ -109,5 +109,40 @@ console.log('tras eliminar:', (await fsKeys()).filter((k) => /Projects_LaTeX\/[^
 await page.locator('.project-card:has-text("Tesis") [aria-label="Opciones"]').click(); await page.click('.sheet-item:has-text("Eliminar")');
 await page.waitForTimeout(300);
 console.log('mensaje externa:', await page.textContent('.dialog'));
+await page.click('.dialog >> button:has-text("Cancelar")');
+const mover = (de, a) => page.evaluate(([de, a]) => { const fs = window.__fs.load(); for (const k of Object.keys(fs)) if (k === de || k.startsWith(de + '/')) { fs[a + k.slice(de.length)] = fs[k]; delete fs[k]; } window.__fs.save(fs); }, [de, a]);
+const borrar = (de) => page.evaluate((de) => { const fs = window.__fs.load(); for (const k of Object.keys(fs)) if (k === de || k.startsWith(de + '/')) delete fs[k]; window.__fs.save(fs); }, de);
+const R = 'primary:Documents/Projects_LaTeX';
+const aviso = async () => (await page.isVisible('.home-aviso.alerta')) ? (await page.textContent('.home-aviso.alerta strong')) : '(sin aviso)';
+// 8) Cambiar el nombre de la carpeta de un proyecto desde fuera
+await mover(R + '/Práctica 1', R + '/Práctica Uno');
+await page.goto('http://127.0.0.1:8080/index.html'); await page.waitForTimeout(1500);
+console.log('8 renombrada →', await page.$$eval('.project-meta strong', (a) => a.map((x) => x.textContent)), '| aviso:', await aviso(), '| toast:', await page.textContent('.toast').catch(() => ''));
+// 9) Borrar la carpeta de un proyecto desde fuera
+await borrar(R + '/Práctica Uno');
+await page.goto('http://127.0.0.1:8080/index.html'); await page.waitForTimeout(1500);
+console.log('9 borrada → aviso:', await aviso());
+await page.screenshot({ path: `${OUT}/carpetas-06-falta.png` });
+await page.click('.home-aviso.alerta button:has-text("Volver a crearla")'); await page.waitForTimeout(1200);
+console.log('9 tras volver a crear:', (await fsKeys()).filter((k) => k.includes('Práctica')), '| aviso:', await aviso());
+// 10) Borrar toda la carpeta Projects_LaTeX
+await borrar(R);
+await page.goto('http://127.0.0.1:8080/index.html'); await page.waitForTimeout(1500);
+console.log('10 raíz borrada → aviso:', await aviso());
+await page.screenshot({ path: `${OUT}/carpetas-07-raiz.png` });
+await page.click('.home-aviso.alerta button:has-text("Volver a crearla")'); await page.waitForTimeout(1500);
+console.log('10 tras volver a crear:', (await fsKeys()).filter((k) => /Projects_LaTeX(\/[^/]+)?$/.test(k)), '| aviso:', await aviso());
+// 11) Cambiar el nombre de Projects_LaTeX y volver a elegirla
+await mover(R, 'primary:Documents/MisTex');
+await page.goto('http://127.0.0.1:8080/index.html'); await page.waitForTimeout(1500);
+console.log('11 raíz renombrada → aviso:', await aviso());
+await page.evaluate(() => { window.__elegir = 'primary:Documents/MisTex'; });
+await page.click('.home-aviso.alerta button:has-text("Buscarla")'); await page.waitForTimeout(1500);
+console.log('11 tras elegirla:', (await fsKeys()).filter((k) => /MisTex(\/[^/]+)?$/.test(k)), '| aviso:', await aviso());
+// Editar después de todo: ¿se escribe en la carpeta nueva?
+await page.click('.project-card:has-text("Práctica") .project-open'); await page.waitForSelector('.editor-screen');
+await page.focus('.basic-editor'); await page.keyboard.press('Control+End'); await page.keyboard.type('\n% tras renombrar');
+await page.waitForTimeout(2500);
+console.log('11 escritura:', await page.evaluate(() => { const fs = window.__fs.load(); const k = Object.keys(fs).find((k) => k.startsWith('primary:Documents/MisTex/Práctica') && k.endsWith('.tex')); return k ? atob(fs[k].data).slice(-20) : 'NO'; }));
 console.log('ERRORES:', errors.length ? errors : 'ninguno');
 await b.close();

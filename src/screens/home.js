@@ -7,7 +7,7 @@ import { motorEstado, motorCalentar } from '../motor.js';
 import { createZip, readZip } from '../zip.js';
 import { shareBytes } from '../share.js';
 import { timeAgo, sanitizeName, slug, readFileAsBytes } from '../util.js';
-import { disponible as hayCarpetas, raiz, vinculo, dondeEsta, elegirRaiz, exportarTodos, abrirCarpeta, revisarRaiz } from '../carpetas.js';
+import { disponible as hayCarpetas, raiz, vinculo, dondeEsta, elegirRaiz, exportarTodos, abrirCarpeta, revisarRaiz, reponer, desvincular, recrearRaiz, buscarRaiz } from '../carpetas.js';
 
 const dec = new TextDecoder();
 const enc = new TextEncoder();
@@ -90,15 +90,45 @@ export async function renderHome(root, _params, navigate) {
     }
   }
 
-  // Carpetas copiadas a Projects_LaTeX desde fuera aparecen como proyectos.
+  // Revisa la carpeta propia: proyectos nuevos copiados desde fuera, carpetas renombradas y carpetas que desaparecieron.
+  const avisoProblema = el('div', { class: 'home-aviso alerta', hidden: true });
+  let cerradoEnEstaSesion = false;
   async function revisar() {
-    try {
-      const nuevos = await revisarRaiz();
-      if (nuevos.length) {
-        toast(nuevos.length === 1 ? `Nuevo proyecto desde la carpeta: «${nuevos[0].name}»` : `${nuevos.length} proyectos nuevos desde la carpeta`, { ms: 4500 });
-        refresh();
-      }
-    } catch (e) { console.warn(e); }
+    if (!hayCarpetas() || !raiz()) return;
+    let r;
+    try { r = await revisarRaiz(); } catch (e) { console.warn(e); return; }
+    if (r.nuevos.length) toast(r.nuevos.length === 1 ? `Nuevo proyecto desde la carpeta: «${r.nuevos[0].name}»` : `${r.nuevos.length} proyectos nuevos desde la carpeta`, { ms: 4500 });
+    for (const x of r.renombrados) toast(`Se cambió el nombre de la carpeta «${x.de}» a «${x.a}»: el proyecto ahora se llama «${x.a}».`, { ms: 6000 });
+    if (r.nuevos.length || r.renombrados.length) refresh();
+    if (cerradoEnEstaSesion) return;
+    if (r.raizFalta) return mostrarProblema(
+      `No se encuentra la carpeta «${raiz().ruta}»`,
+      'Se eliminó, se movió o se le cambió el nombre. Tus proyectos siguen completos en TeXsting. Si la renombraste o la moviste, toca «Buscarla» y elígela.',
+      [['Volver a crearla', async () => { await recrearRaiz(); toast(`Listo: ${raiz().ruta} tiene otra vez tus proyectos`, { kind: 'ok', ms: 5000 }); }, true],
+        ['Buscarla', async () => { await buscarRaiz(); toast(`Listo: TeXsting ahora usa ${raiz().ruta}`, { kind: 'ok', ms: 5000 }); }]]);
+    if (r.faltan.length) {
+      const ids = r.faltan.map((f) => f.id);
+      const quien = r.faltan.length === 1 ? `la carpeta «${r.faltan[0].ruta}»` : `las carpetas de ${r.faltan.length} proyectos (${r.faltan.slice(0, 3).map((f) => '«' + f.nombre + '»').join(', ')}${r.faltan.length > 3 ? '…' : ''})`;
+      return mostrarProblema(
+        r.faltan.length === 1 ? `Se eliminó la carpeta de «${r.faltan[0].nombre}»` : `Se eliminaron ${r.faltan.length} carpetas de proyectos`,
+        `No se encuentra ${quien}: se eliminó, se movió o se le cambió el nombre. ${r.faltan.length === 1 ? 'El proyecto sigue completo' : 'Los proyectos siguen completos'} en TeXsting.`,
+        [['Volver a crearla' + (r.faltan.length === 1 ? '' : 's'), async () => { await reponer(ids); toast('Listo: carpeta' + (ids.length === 1 ? '' : 's') + ' creada' + (ids.length === 1 ? '' : 's') + ' de nuevo', { kind: 'ok' }); }, true],
+          ['Dejar solo en la app', async () => { desvincular(ids); toast(ids.length === 1 ? 'El proyecto queda solo en la app' : 'Los proyectos quedan solo en la app'); refresh(); }]]);
+    }
+    avisoProblema.hidden = true;
+  }
+
+  function mostrarProblema(titulo, texto, acciones) {
+    avisoProblema.replaceChildren(
+      el('div', { html: `${icon('log')}<span><strong>${esc(titulo)}</strong><small>${esc(texto)}</small></span>` }),
+      el('div', { class: 'home-aviso-btns' },
+        el('button', { class: 'btn small ghost', onclick: () => { cerradoEnEstaSesion = true; avisoProblema.hidden = true; } }, 'Ahora no'),
+        ...acciones.map(([t, fn, primario]) => el('button', { class: 'btn small' + (primario ? ' primary' : ''), onclick: async () => {
+          try { await fn(); avisoProblema.hidden = true; revisar(); } catch (e) {
+            if (e.code !== 'CANCELADO' && !/cancelado/.test(e.message)) toast('No se pudo: ' + (e.message || e), { kind: 'error', ms: 6000 });
+          }
+        } }, t))));
+    avisoProblema.hidden = false;
   }
 
   /** Qué pasa con la carpeta al eliminar el proyecto (para el mensaje de confirmación). */
@@ -117,6 +147,7 @@ export async function renderHome(root, _params, navigate) {
       el('button', { class: 'btn primary big', html: icon('plus') + '<span>Nuevo proyecto</span>', onclick: () => navigate('new') }),
       el('button', { class: 'btn big', html: icon('upload') + '<span>Abrir</span>', onclick: abrirMenu })),
     avisoCarpeta,
+    avisoProblema,
     tabsRow,
     selBar,
     list,
@@ -409,7 +440,7 @@ export async function renderHome(root, _params, navigate) {
   await refresh();
   checkServer();
   revisar();
-  const onVis = () => { if (!document.hidden) checkServer(); };
+  const onVis = () => { if (!document.hidden) { checkServer(); revisar(); } };
   document.addEventListener('visibilitychange', onVis);
   return { cleanup: () => document.removeEventListener('visibilitychange', onVis) };
 }

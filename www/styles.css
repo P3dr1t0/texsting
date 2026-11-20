@@ -541,3 +541,5 @@ span.lic-chip { border-color: var(--border); color: var(--muted); cursor: defaul
 .home-aviso-btns .primary { grid-column: 1 / -1; order: -1; }
 @media (min-width: 700px) { .home-aviso-btns { display: flex; justify-content: flex-end; } .home-aviso-btns .primary { order: 0; } }
 .home-aviso[hidden] { display: none; }
+.home-aviso.alerta { border-color: var(--danger, #c0392b); }
+.home-aviso.alerta > div:first-child svg { color: var(--danger, #c0392b); }

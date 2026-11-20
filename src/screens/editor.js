@@ -31,7 +31,7 @@ export async function renderEditor(root, { id }, navigate) {
     try {
       const cambios = await sincronizar(id);
       if (cambios.length) toast(`Actualizado desde la carpeta: ${cambios.length === 1 ? cambios[0] : cambios.length + ' archivos'}`, { ms: 4000 });
-    } catch (e) { toast('No se pudo leer la carpeta del proyecto: ' + (e.message || e), { kind: 'error', ms: 7000 }); }
+    } catch (e) { toast(e.code === 'FALTA' ? e.message : 'No se pudo leer la carpeta del proyecto: ' + (e.message || e), { kind: 'error', ms: 8000 }); }
   }
   let files = await listFiles(id);
   let currentPath = project.current && files.some((f) => f.path === project.current && f.kind === 'text') ? project.current : project.main;
@@ -991,11 +991,16 @@ export async function renderEditor(root, { id }, navigate) {
   const onWide = () => { if (WIDE.matches && !getSettings().sidebarHidden) screen.classList.add('show-sidebar'); showPanel(WIDE.matches ? 'code' : screen.dataset.tab); };
   WIDE.addEventListener('change', onWide);
   // Al volver a la app (por ejemplo, después de editar en la PC o en otra app): se revisa la carpeta del proyecto.
+  let avisoFalta = false;
   async function alVolver() {
     if (!vinculo(project.id) || compiling) return;
     await saveCurrent();
     let cambios = [];
-    try { cambios = await sincronizar(project.id); } catch { return; }
+    try { cambios = await sincronizar(project.id); } catch (e) {
+      // La carpeta desapareció mientras el proyecto estaba abierto: se avisa una vez.
+      if (e.code === 'FALTA' && !avisoFalta) { avisoFalta = true; toast(e.message, { kind: 'error', ms: 8000 }); }
+      return;
+    }
     if (!cambios.length) return;
     files = await listFiles(project.id);
     const f = files.find((x) => x.path === currentPath);
