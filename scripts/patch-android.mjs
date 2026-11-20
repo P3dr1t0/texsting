@@ -103,6 +103,8 @@ public class OpenedFilePlugin extends Plugin {
 // Complemento nativo «Motor»: compila con pdfLaTeX dentro de la app, sin Termux (#1, experimental).
 // Los programas vienen en jniLibs (tools/motor/empaquetar.py) y los datos de TeX en assets/motor/tl.zip.
 copyFileSync(path.join(root, 'android-config', 'java', 'MotorPlugin.java'), path.join(javaDir, 'MotorPlugin.java'));
+// Complemento nativo «Carpetas»: carpeta propia Documentos/Projects_LaTeX y carpetas de proyectos existentes (#4, #7).
+copyFileSync(path.join(root, 'android-config', 'java', 'CarpetasPlugin.java'), path.join(javaDir, 'CarpetasPlugin.java'));
 writeFileSync(path.join(javaDir, 'MainActivity.java'), `package io.github.texsting;
 
 import android.os.Bundle;
@@ -113,6 +115,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(OpenedFilePlugin.class);
         registerPlugin(MotorPlugin.class);
+        registerPlugin(CarpetasPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

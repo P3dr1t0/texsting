@@ -39,6 +39,14 @@ function tx(stores, mode, fn) {
 
 const reqP = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
 
+// Espejo en carpeta (carpetas.js): lo que se guarda aquí también se escribe en la carpeta real del proyecto.
+let espejo = null;
+export function setEspejo(e) { espejo = e; }
+function avisar(fn, ...args) {
+  if (!espejo || !espejo[fn]) return;
+  try { espejo[fn](...args); } catch (e) { console.error(e); }
+}
+
 export function newId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -62,6 +70,7 @@ export async function getProject(id) {
 export async function saveProject(p) {
   p.updated = Date.now();
   await tx(['projects'], 'readwrite', (t) => t.objectStore('projects').put(p));
+  avisar('guardado', p);
   return p;
 }
 
@@ -74,7 +83,7 @@ export async function touchProject(id, patch = {}) {
   });
 }
 
-export async function createProject({ name, files, main = 'main.tex', engine, source }) {
+export async function createProject({ name, files, main = 'main.tex', engine, source, sinEspejo = false }) {
   engine = engine || getSettings().defaultEngine || 'pdflatex';
   const now = Date.now();
   const p = { id: newId(), name, main, engine, created: now, updated: now, openFiles: [main], current: main };
@@ -84,6 +93,7 @@ export async function createProject({ name, files, main = 'main.tex', engine, so
     const fs = t.objectStore('files');
     for (const f of files) fs.put(normalizeFile(p.id, f));
   });
+  if (!sinEspejo) avisar('creado', p, files.map((f) => normalizeFile(p.id, f)));
   return p;
 }
 
@@ -108,18 +118,20 @@ export async function getFile(projectId, path) {
   return tx(['files'], 'readonly', (t) => reqP(t.objectStore('files').get([projectId, path])));
 }
 
-export async function putFile(projectId, f) {
+export async function putFile(projectId, f, { sinEspejo = false } = {}) {
   const rec = normalizeFile(projectId, f);
   await tx(['files', 'projects'], 'readwrite', async (t) => {
     t.objectStore('files').put(rec);
     const p = await reqP(t.objectStore('projects').get(projectId));
     if (p) { p.updated = Date.now(); t.objectStore('projects').put(p); }
   });
+  if (!sinEspejo) avisar('archivo', projectId, rec);
   return rec;
 }
 
-export async function deleteFile(projectId, path) {
+export async function deleteFile(projectId, path, { sinEspejo = false } = {}) {
   await tx(['files'], 'readwrite', (t) => t.objectStore('files').delete([projectId, path]));
+  if (!sinEspejo) avisar('borrado', projectId, path);
 }
 
 export async function renameFile(projectId, from, to) {
@@ -130,15 +142,18 @@ export async function renameFile(projectId, from, to) {
     s.delete([projectId, from]);
     s.put({ ...f, path: to, updated: Date.now() });
   });
+  avisar('renombrado', projectId, from, to, f);
 }
 
 export async function deleteProject(id) {
+  const p = await getProject(id);
   const files = await listFiles(id);
   await tx(['projects', 'files', 'outputs'], 'readwrite', (t) => {
     t.objectStore('projects').delete(id);
     for (const f of files) t.objectStore('files').delete([id, f.path]);
     t.objectStore('outputs').delete(id);
   });
+  if (p) avisar('eliminado', p);
 }
 
 export async function duplicateProject(id, name) {

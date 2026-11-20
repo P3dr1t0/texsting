@@ -6,6 +6,7 @@ import { ping, serverOutdated } from '../compiler.js';
 import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA, MOTOR_PRUEBA_LUA } from '../motor.js';
 import { bootstrapCommand, openTermux, TERMUX_FDROID, TERMUX_GITHUB } from '../termux.js';
 import { ENGINES } from '../latex-data.js';
+import { disponible as hayCarpetas, raiz, elegirRaiz, exportarTodos } from '../carpetas.js';
 import { applyTheme, THEMES, ACCENTS, resolvedTheme } from '../theme.js';
 
 function header(title, navigate, back = 'home') {
@@ -72,6 +73,22 @@ export async function renderSettings(root, _p, navigate) {
   const token = el('input', { class: 'input mono', value: ensureToken(), autocapitalize: 'off', onchange: (e) => setSettings({ token: e.target.value.trim() }) });
   const result = el('p', { class: 'muted' });
   const motorResult = el('div', { class: 'muted motor-result' });
+  const carpetaTxt = el('p', { class: 'muted' });
+  const pintarCarpeta = () => {
+    const r = raiz();
+    carpetaTxt.innerHTML = r
+      ? `Tus proyectos se guardan en <strong>${esc(r.ruta)}</strong>: cada uno es una carpeta que puedes abrir desde Archivos o la PC. Lo que cambies ahí aparece en TeXsting al abrir el proyecto.`
+      : 'Por ahora tus proyectos están solo dentro de la app. Elige una carpeta (por ejemplo Documentos) y TeXsting creará <strong>Projects_LaTeX</strong> con un proyecto por carpeta, visible desde Archivos o la PC.';
+  };
+  pintarCarpeta();
+  async function cambiarCarpeta() {
+    try { await elegirRaiz(); } catch (e) { if (e.code !== 'CANCELADO' && !/cancelado/.test(e.message)) toast('No se pudo usar esa carpeta: ' + e.message, { kind: 'error' }); return; }
+    pintarCarpeta();
+    carpetaTxt.innerHTML += '<br>Copiando tus proyectos…';
+    const n = await exportarTodos();
+    pintarCarpeta();
+    toast(n ? `Listo: ${n} proyecto${n === 1 ? '' : 's'} copiados a ${raiz().ruta}` : 'Listo', { kind: 'ok', ms: 5000 });
+  }
   // Solo en la versión web de pruebas (sin motor integrado): el servidor de TeX de la PC. En el teléfono y la
   // tablet no aparece: TeXsting compila siempre con su propio motor.
   const servidorPruebas = el('div', {});
@@ -131,6 +148,11 @@ export async function renderSettings(root, _p, navigate) {
       el('button', { class: 'btn', onclick: probarMotor }, 'Probar motor integrado'),
       motorResult,
       servidorPruebas,
+      ...(hayCarpetas() ? [
+        el('h3', { class: 'section-title' }, 'Carpeta de proyectos'),
+        carpetaTxt,
+        el('button', { class: 'btn', html: icon('files') + `<span>${raiz() ? 'Cambiar carpeta' : 'Elegir carpeta'}</span>`, onclick: cambiarCarpeta }),
+      ] : []),
       el('h3', { class: 'section-title' }, 'Apariencia'),
       appearance(),
       el('h3', { class: 'section-title' }, 'Editor'),

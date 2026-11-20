@@ -1,6 +1,7 @@
 // Pantalla del editor: código + PDF lado a lado (tablet) o en pestañas (teléfono),
 // con archivos, estructura, símbolos, mensajes de compilación y asistentes.
 import { createEditor } from '#editor-impl';
+import { sincronizar, guardarPdf, vinculo } from '../carpetas.js';
 import { getProject, saveProject, touchProject, listFiles, putFile, deleteFile, renameFile, getOutput, saveOutput, getSettings, setSettings, isTextPath } from '../store.js';
 import { el, icon, toast, sheet, panel, promptText, confirmDialog, dialog, pickFiles, esc } from '../ui.js';
 import { createPdfViewer } from '../pdfview.js';
@@ -25,6 +26,13 @@ export async function renderEditor(root, { id }, navigate) {
   if (!project) { navigate('home'); return {}; }
   project.opened = Date.now();
   touchProject(id, { opened: project.opened }).catch(() => {});
+  // Proyecto en una carpeta del teléfono: antes de mostrarlo se traen los cambios hechos desde fuera (PC, otra app).
+  if (vinculo(id)) {
+    try {
+      const cambios = await sincronizar(id);
+      if (cambios.length) toast(`Actualizado desde la carpeta: ${cambios.length === 1 ? cambios[0] : cambios.length + ' archivos'}`, { ms: 4000 });
+    } catch (e) { toast('No se pudo leer la carpeta del proyecto: ' + (e.message || e), { kind: 'error', ms: 7000 }); }
+  }
   let files = await listFiles(id);
   let currentPath = project.current && files.some((f) => f.path === project.current && f.kind === 'text') ? project.current : project.main;
   let lastResult = null;
@@ -723,6 +731,7 @@ export async function renderEditor(root, { id }, navigate) {
         await viewer.load(r.pdf);
         syncBytes = r.synctex || null; syncData = null;
         await saveOutput(project.id, { pdf: r.pdf, log: r.log, status: r.status, synctex: syncBytes });
+        guardarPdf(project.id, project.main, r.pdf);
       }
       const sm = summarize(messages);
       // Aviso de motor: la primera vez que se cambia solo, y siempre que la línea «% !TEX program» pide uno que no sirve.
@@ -981,7 +990,20 @@ export async function renderEditor(root, { id }, navigate) {
   }
   const onWide = () => { if (WIDE.matches && !getSettings().sidebarHidden) screen.classList.add('show-sidebar'); showPanel(WIDE.matches ? 'code' : screen.dataset.tab); };
   WIDE.addEventListener('change', onWide);
-  const onHide = () => { if (document.hidden) saveSoon.flush(); };
+  // Al volver a la app (por ejemplo, después de editar en la PC o en otra app): se revisa la carpeta del proyecto.
+  async function alVolver() {
+    if (!vinculo(project.id) || compiling) return;
+    await saveCurrent();
+    let cambios = [];
+    try { cambios = await sincronizar(project.id); } catch { return; }
+    if (!cambios.length) return;
+    files = await listFiles(project.id);
+    const f = files.find((x) => x.path === currentPath);
+    if (cambios.includes(currentPath) && f && f.kind === 'text' && !dirty) editor.open(currentPath, f.text);
+    renderFiles();
+    toast(`Actualizado desde la carpeta: ${cambios.length === 1 ? cambios[0] : cambios.length + ' archivos'}`, { ms: 4000 });
+  }
+  const onHide = () => { if (document.hidden) saveSoon.flush(); else alVolver(); };
   document.addEventListener('visibilitychange', onHide);
   // Oculta la barra inferior cuando el teclado del teléfono está abierto.
   let maxH = window.innerHeight;

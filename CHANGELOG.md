@@ -17,6 +17,26 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.7.0] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 79
+
+### Nuevo
+- **Carpeta propia: Documentos/Projects_LaTeX** ([#4](https://github.com/P3dr1t0/texsting/issues/4)).
+  - En el inicio aparece «Guarda tus proyectos en una carpeta del teléfono». Con «Elegir carpeta» se elige Documentos, TeXsting crea `Projects_LaTeX` y copia ahí todos los proyectos, uno por carpeta. También se puede hacer o cambiar en Ajustes → Carpeta de proyectos.
+  - Desde ese momento cada cambio se guarda también en la carpeta: se ve desde Archivos o la PC y no se pierde si desinstalas la app.
+  - Lo que cambies desde fuera (la PC, otra app) aparece al abrir el proyecto o al volver a TeXsting, con el aviso «Actualizado desde la carpeta».
+  - Una carpeta nueva copiada a `Projects_LaTeX` (por ejemplo, desde la PC) aparece sola como proyecto.
+  - Al compilar se guarda el PDF junto al `.tex`.
+  - Renombrar un proyecto renombra su carpeta. Eliminarlo borra su carpeta, y el mensaje de confirmación lo dice.
+- **Abrir una carpeta que ya existe** ([#7](https://github.com/P3dr1t0/texsting/issues/7)). El botón «Importar» ahora se llama «Abrir» y ofrece:
+  - **Carpeta del teléfono:** un proyecto que ya tienes. TeXsting detecta el archivo principal (el `.tex` con `\documentclass` y `\begin{document}`) y trabaja sobre esa carpeta, en su lugar. Si lo quitas de TeXsting, la carpeta queda intacta.
+  - **Archivos .tex o .zip:** como antes, se copian a la app.
+- En **Licencias y créditos** se reconoce la ayuda de Claude (Anthropic) como asistente de programación.
+
+### Pruebas
+- `tests/carpetas.mjs` prueba todo el recorrido con una carpeta simulada: elegir la carpeta, editar desde fuera, escribir en la app, abrir una carpeta existente, carpetas nuevas, renombrar y eliminar.
+
+---
+
 ## [0.6.5] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 78
 
 ### Nuevo

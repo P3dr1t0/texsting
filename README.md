@@ -12,7 +12,7 @@ Compila **en tu propio teléfono** con TeX Live, **sin instalar nada más**: el 
 > TeXsting no usa código, nombre ni logo de TeXstudio; solo toma ideas de su flujo de trabajo.
 > Licencia: GPL-3.0-or-later.
 
-## Qué hace (versión 0.1)
+## Qué hace
 
 - **Editor** con resaltado LaTeX, números de línea, plegado, buscar/reemplazar, deshacer/rehacer y ajuste de línea.
 - **Autocompletado** de comandos, entornos (`\begin{...}` → cierra solo), `\ref{}` con tus etiquetas y `\cite{}` con las claves de tus `.bib`.
@@ -24,6 +24,7 @@ Compila **en tu propio teléfono** con TeX Live, **sin instalar nada más**: el 
 - **Paquetes al vuelo**, como MiKTeX: si un paquete falta, se descarga e instala automáticamente al compilar.
 - **Mensajes** de error en español con la línea exacta; tocando el error, vas al código. También el log completo.
 - **Visor PDF** con zoom (pellizco, doble toque, botones), conserva la posición al recompilar.
+- **Tus proyectos son carpetas reales** en `Documentos/Projects_LaTeX/<proyecto>/`: los ves desde Archivos o la PC, y lo que cambies ahí aparece en la app. También abre carpetas de proyectos que ya tienes en el teléfono y las edita en su lugar.
 - **Compartir el PDF** (WhatsApp, Drive, correo…) y exportar/importar proyectos `.zip` (compatible con Overleaf).
 - **Teléfono**: pestañas Archivos · Estructura · Código · PDF · Mensajes. **Tablet**: código y PDF lado a lado con división ajustable y panel lateral.
 - Tema claro/oscuro, proyectos con varios archivos, imágenes y archivo principal.
@@ -80,6 +81,7 @@ Compilar en una computadora (opcional): `npm install && npm run build && npm run
 ## Licencia, nombre y créditos
 
 - **Código de TeXsting:** GPL-3.0-or-later (ver `LICENSE`). Puedes estudiarlo, modificarlo y compartirlo; si publicas una versión modificada, debe seguir siendo GPL, con su código abierto y los créditos originales.
+- **Autor:** Pedro de la Cruz Castillo, con Claude (Anthropic) como asistente de programación.
 - **Nombre y logo:** «TeXsting» y su ícono identifican la app oficial de Pedro de la Cruz Castillo. Las versiones modificadas deben usar otro nombre y otro ícono para no confundirse con la oficial.
 - **Componentes de terceros** (cada uno con su propia licencia; la lista completa, con los textos de las licencias, está en la app: Ajustes → Licencias y créditos):
   - Motor integrado: pdfTeX, XeTeX, xdvipdfmx, LuaHBTeX, BibTeX, makeindex y paquetes de [TeX Live](https://tug.org/texlive/) (GPL, LPPL y otras licencias libres), compilados por [Termux](https://github.com/termux/termux-packages); los paquetes extra se descargan de [CTAN](https://ctan.org/).

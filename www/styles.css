@@ -530,3 +530,12 @@ span.lic-chip { border-color: var(--border); color: var(--muted); cursor: defaul
 .lic-visor { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--bg); padding-top: var(--safe-top, 0px); }
 .lic-visor-top { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 8px 16px; border-bottom: 1px solid var(--border); }
 .lic-texto { flex: 1; overflow: auto; margin: 0 auto; width: 100%; max-width: 780px; box-sizing: border-box; padding: 14px 16px calc(24px + var(--safe-bottom, 0px)); font-size: 12px; line-height: 1.45; white-space: pre-wrap; }
+
+/* Aviso de la carpeta propia (inicio) */
+.home-aviso { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--accent); background: var(--surface); }
+.home-aviso > div:first-child { display: flex; gap: 10px; align-items: flex-start; }
+.home-aviso > div:first-child svg { flex: none; width: 22px; height: 22px; color: var(--accent); margin-top: 2px; }
+.home-aviso span { display: flex; flex-direction: column; gap: 3px; line-height: 1.4; }
+.home-aviso small { color: var(--muted); font-size: 13px; }
+.home-aviso-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.home-aviso[hidden] { display: none; }

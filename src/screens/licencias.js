@@ -94,6 +94,7 @@ export async function renderLicencias(root, _p, navigate) {
         el('div', { class: 'lic-nombre' }, `TeXsting ${__VERSION__}`),
         el('div', {}, 'Creado por ', el('strong', {}, 'Pedro de la Cruz Castillo'), '.'),
         el('div', { class: 'muted' }, 'Editor LaTeX libre y gratuito para Android.'),
+        el('div', { class: 'muted' }, 'Desarrollado con la ayuda de Claude (Anthropic), asistente de inteligencia artificial, en la programación.'),
         el('div', { class: 'lic-chips' }, chip('GPL-3.0')),
         el('div', { class: 'muted small' }, '© 2026 Pedro de la Cruz Castillo. Puedes usar, estudiar, modificar y compartir el código según la GPL-3.0 o posterior. ' +
           'El nombre «TeXsting» y su ícono identifican la app oficial: las versiones modificadas deben usar otro nombre y otro ícono.'),

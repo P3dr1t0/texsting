@@ -7,6 +7,7 @@ import { motorEstado, motorCalentar } from '../motor.js';
 import { createZip, readZip } from '../zip.js';
 import { shareBytes } from '../share.js';
 import { timeAgo, sanitizeName, slug, readFileAsBytes } from '../util.js';
+import { disponible as hayCarpetas, raiz, vinculo, dondeEsta, elegirRaiz, exportarTodos, abrirCarpeta, revisarRaiz } from '../carpetas.js';
 
 const dec = new TextDecoder();
 const enc = new TextEncoder();
@@ -53,6 +54,59 @@ export async function renderHome(root, _params, navigate) {
       el('button', { class: 'btn small', html: icon('download') + '<span>Exportar</span>', title: 'Exportar en un .zip', 'aria-label': 'Exportar', onclick: () => exportSelected() }),
       el('button', { class: 'btn small danger', html: icon('trash') + '<span>Eliminar</span>', title: 'Eliminar', 'aria-label': 'Eliminar', onclick: () => deleteSelected() })));
 
+  // Carpeta propia (#4): mientras no se elija, una tarjeta lo propone (se puede cerrar).
+  const avisoCarpeta = el('div', { class: 'home-aviso', hidden: !(hayCarpetas() && !raiz() && !getSettings().carpetaAvisoCerrado) },
+    el('div', { html: `${icon('files')}<span><strong>Guarda tus proyectos en una carpeta del teléfono</strong><small>En Documentos/Projects_LaTeX: los ves desde Archivos o la PC y no se pierden si desinstalas la app.</small></span>` }),
+    el('div', { class: 'home-aviso-btns' },
+      el('button', { class: 'btn small ghost', onclick: () => { setSettings({ carpetaAvisoCerrado: true }); avisoCarpeta.hidden = true; } }, 'Ahora no'),
+      el('button', { class: 'btn small primary', onclick: () => usarCarpeta() }, 'Elegir carpeta')));
+
+  async function usarCarpeta() {
+    try { await elegirRaiz(); } catch (e) { if (e.code !== 'CANCELADO' && !/cancelado/.test(e.message)) toast('No se pudo usar esa carpeta: ' + e.message, { kind: 'error' }); return; }
+    avisoCarpeta.hidden = true;
+    const n = await exportarTodos((i, total) => { status.innerHTML = `${icon('files')}<span>Copiando proyectos a la carpeta… ${i} de ${total}</span>`; });
+    toast(n ? `Listo: ${n} proyecto${n === 1 ? '' : 's'} en ${raiz().ruta}` : `Tus proyectos nuevos se guardarán en ${raiz().ruta}`, { kind: 'ok', ms: 5000 });
+    checkServer();
+    revisar();
+  }
+
+  // «Abrir»: archivos o .zip (se copian a la app) o una carpeta del teléfono (se edita en su lugar).
+  async function abrirMenu() {
+    if (!hayCarpetas()) return importProject();
+    const c = await sheet('Abrir proyecto', [
+      { label: 'Carpeta del teléfono', icon: 'files', value: 'carpeta', hint: 'Un proyecto que ya tienes: se edita ahí mismo' },
+      { label: 'Archivos .tex o .zip', icon: 'upload', value: 'archivos', hint: 'Por ejemplo, descargado de Overleaf: se copia' },
+    ]);
+    if (c === 'archivos') return importProject();
+    if (c !== 'carpeta') return;
+    try {
+      toast('Leyendo la carpeta…', { ms: 1500 });
+      const r = await abrirCarpeta();
+      if (r.existente) toast('Esa carpeta ya está en tus proyectos');
+      navigate('editor', { id: r.id });
+    } catch (e) {
+      if (e.code !== 'CANCELADO' && !/cancelado/.test(e.message)) toast('No se pudo abrir la carpeta: ' + e.message, { kind: 'error', ms: 6000 });
+    }
+  }
+
+  // Carpetas copiadas a Projects_LaTeX desde fuera aparecen como proyectos.
+  async function revisar() {
+    try {
+      const nuevos = await revisarRaiz();
+      if (nuevos.length) {
+        toast(nuevos.length === 1 ? `Nuevo proyecto desde la carpeta: «${nuevos[0].name}»` : `${nuevos.length} proyectos nuevos desde la carpeta`, { ms: 4500 });
+        refresh();
+      }
+    } catch (e) { console.warn(e); }
+  }
+
+  /** Qué pasa con la carpeta al eliminar el proyecto (para el mensaje de confirmación). */
+  const alBorrar = (p) => {
+    const v = vinculo(p.id);
+    if (!v) return 'y todos sus archivos de este teléfono';
+    return v.externa ? `de TeXsting (su carpeta «${v.ruta || v.nombre}» queda intacta)` : `y su carpeta «${v.ruta}» con todos sus archivos`;
+  };
+
   const screen = el('div', { class: 'screen home' },
     el('header', { class: 'home-head' },
       el('div', { class: 'brand', html: logoSvg(36) + brandName() }),
@@ -60,11 +114,12 @@ export async function renderHome(root, _params, navigate) {
     status,
     el('div', { class: 'home-actions' },
       el('button', { class: 'btn primary big', html: icon('plus') + '<span>Nuevo proyecto</span>', onclick: () => navigate('new') }),
-      el('button', { class: 'btn big', html: icon('upload') + '<span>Importar</span>', onclick: importProject })),
+      el('button', { class: 'btn big', html: icon('upload') + '<span>Abrir</span>', onclick: abrirMenu })),
+    avisoCarpeta,
     tabsRow,
     selBar,
     list,
-    el('p', { class: 'home-foot' }, `TeXsting ${__VERSION__} · Fase 1: Beta · software libre (GPL-3.0)`));
+    el('p', { class: 'home-foot' }, `TeXsting ${__VERSION__} · Fase 2: Beta · software libre (GPL-3.0)`));
   root.append(screen);
 
   const lastUse = (p) => Math.max(p.opened || 0, p.updated || 0);
@@ -107,7 +162,7 @@ export async function renderHome(root, _params, navigate) {
     const when = tab === 'recent' && p.opened && p.opened > (p.updated || 0) ? 'abierto ' + timeAgo(p.opened) : timeAgo(p.updated);
     const isSel = selected.has(p.id);
     const openBtn = el('button', { class: 'project-open' },
-      el('span', { class: 'project-ico', html: selected.size ? icon(isSel ? 'check2' : 'circle') : icon('file') }),
+      el('span', { class: 'project-ico', html: selected.size ? icon(isSel ? 'check2' : 'circle') : icon(vinculo(p.id) ? 'files' : 'file') }),
       el('span', { class: 'project-meta', html: `<strong>${esc(p.name)}</strong><small>${esc(p.main)} · ${ENGINE_LABEL[p.lastEngine || p.engine] || esc(p.engine)} · ${when}</small>` }));
     longPress(openBtn, () => toggleSelect(p.id), () => (selected.size ? toggleSelect(p.id) : navigate('editor', { id: p.id })));
     return el('div', { class: 'project-card' + (p.pinned ? ' pinned' : '') + (isSel ? ' selected' : '') + (selected.size ? ' selecting' : ''), dataset: { id: p.id } },
@@ -191,7 +246,8 @@ export async function renderHome(root, _params, navigate) {
     if (!sel.length) return;
     const names = sel.slice(0, 6).map((p) => '«' + p.name + '»').join(', ') + (sel.length > 6 ? ` y ${sel.length - 6} más` : '');
     const pinned = sel.filter((p) => p.pinned).length;
-    const msg = `Se borrarán ${sel.length === 1 ? 'este proyecto' : `estos ${sel.length} proyectos`} y todos sus archivos de este teléfono: ${names}.` +
+    const conCarpeta = sel.some((p) => vinculo(p.id) && !vinculo(p.id).externa);
+    const msg = `Se borrarán ${sel.length === 1 ? 'este proyecto' : `estos ${sel.length} proyectos`} y todos sus archivos${conCarpeta ? ' (también sus carpetas en ' + raiz().ruta + ')' : ' de este teléfono'}: ${names}.` +
       (pinned ? ` (${pinned} ${pinned === 1 ? 'está fijado' : 'están fijados'}).` : '') + ' No se puede deshacer.';
     if (!(await confirmDialog(sel.length === 1 ? 'Eliminar proyecto' : `Eliminar ${sel.length} proyectos`, msg, { ok: 'Eliminar', danger: true }))) return;
     for (const p of sel) await deleteProject(p.id);
@@ -247,7 +303,7 @@ export async function renderHome(root, _params, navigate) {
   async function projectMenu(p) {
     const out = await getOutput(p.id);
     const choice = await sheet(p.name, [
-      { label: 'Abrir', icon: 'edit', value: 'open' },
+      { label: 'Abrir', icon: 'edit', value: 'open', hint: dondeEsta(p.id) ? 'Carpeta: ' + dondeEsta(p.id) : null },
       { label: p.pinned ? 'Desfijar' : 'Fijar arriba', icon: 'pin', value: 'pin', hint: p.pinned ? null : 'Queda primero en Recientes y en Todos, con cualquier orden' },
       out && out.pdf ? { label: 'Compartir último PDF', icon: 'share', value: 'pdf' } : null,
       { label: 'Exportar proyecto (.zip)', icon: 'download', value: 'zip' },
@@ -272,7 +328,7 @@ export async function renderHome(root, _params, navigate) {
     if (choice === 'tpl') await saveAsTemplate(p);
     if (choice === 'dup') { await duplicateProject(p.id, p.name + ' (copia)'); refresh(); }
     if (choice === 'delete') {
-      if (await confirmDialog('Eliminar proyecto', `Se borrará «${p.name}» y todos sus archivos de este teléfono. No se puede deshacer.`, { ok: 'Eliminar', danger: true })) {
+      if (await confirmDialog('Eliminar proyecto', `Se borrará «${p.name}» ${alBorrar(p)}.${vinculo(p.id) && vinculo(p.id).externa ? '' : ' No se puede deshacer.'}`, { ok: vinculo(p.id) && vinculo(p.id).externa ? 'Quitar' : 'Eliminar', danger: true })) {
         await deleteProject(p.id);
         toast('Proyecto eliminado');
         refresh();
@@ -351,6 +407,7 @@ export async function renderHome(root, _params, navigate) {
 
   await refresh();
   checkServer();
+  revisar();
   const onVis = () => { if (!document.hidden) checkServer(); };
   document.addEventListener('visibilitychange', onVis);
   return { cleanup: () => document.removeEventListener('visibilitychange', onVis) };
