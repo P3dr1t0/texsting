@@ -32,5 +32,8 @@
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^7.0.0",
     "esbuild": "^0.25.0"
+  },
+  "overrides": {
+    "@lezer/common": ">=1.2.0 <1.5.6"
   }
 }
