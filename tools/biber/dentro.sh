@@ -8,7 +8,11 @@ yes | pkg install -y perl clang make pkg-config libxml2 libxslt openssl libiconv
 perl -v | head -2
 curl -fsSL https://cpanmin.us | perl - App::cpanminus || exit 1
 # Biber con la misma versión que el biblatex de TeX Live (si no, rechaza el .bcf).
-cpanm --notest --quiet "PLS/Biber-$VER.tar.gz" || cpanm --notest "Biber@$VER" || cpanm --notest Biber || { tail -100 ~/.cpanm/build.log; exit 1; }
+# Biber no está en CPAN: se baja su código de GitHub (misma versión que TeX Live) y se instalan sus dependencias.
+cd ~ && curl -fsSL "https://github.com/plk/biber/archive/refs/tags/v$VER.tar.gz" -o biber.tgz && tar xzf biber.tgz && cd "biber-$VER" || exit 1
+cpanm --notest Module::Build Config::AutoConf ExtUtils::LibBuilder || { tail -60 ~/.cpanm/build.log; exit 1; }
+cpanm --notest --installdeps . || { tail -150 ~/.cpanm/build.log; exit 1; }
+perl Build.PL && ./Build && ./Build install || exit 1
 which biber && biber --version
 cd /prueba && biber b && grep -c 'entry{' b.bbl || true; head -40 b.bbl
 P=$PREFIX
