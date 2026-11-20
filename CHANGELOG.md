@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.17] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 104
+
+### Mensajes
+- **Arreglado (tablet):** si girabas la tablet a vertical con el panel de mensajes abierto, el panel se quedaba encima de todo y no había cómo cerrarlo. Ahora los mensajes pasan a su pestaña (Archivos… Mensajes) y el panel se cierra.
+  - Al revés también: si estabas en la pestaña Mensajes y giras a horizontal, se abre el panel de mensajes.
+- **Celular: el encabezado de Mensajes queda ordenado.**
+  - Arriba van «Mensajes» con los conteos, y el botón Copiar a la derecha.
+  - Abajo, centrados, los filtros y «Log completo».
+  - Antes, Copiar quedaba solo en una fila, pegado a la izquierda.
+
 ## [0.9.16] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 103
 
 ### Escribir con el celular en horizontal

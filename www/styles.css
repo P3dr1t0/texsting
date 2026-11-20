@@ -208,6 +208,8 @@ a { color: inherit; }
 .msg-counts { font-size: 12px; display: flex; gap: 8px; }
 .c-err { color: var(--danger); } .c-warn { color: var(--warn); } .c-box { color: var(--muted); }
 .msg-filters { display: flex; gap: 4px; margin-left: auto; }
+/* Tablet: título, filtros y botones en una sola fila (los grupos no cuentan como cajas propias). */
+.msg-titulo, .msg-herramientas { display: contents; }
 .msg-list { overflow-y: auto; flex: 1; }
 .msg { display: flex; flex-direction: column; gap: 5px; width: 100%; padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; cursor: pointer; }
 .msg:active { background: var(--surface-2); }
@@ -250,6 +252,12 @@ a { color: inherit; }
 
 @media (max-width: 899px) {
   .wide-only { display: none !important; }
+  /* Celular: arriba «Mensajes» con los conteos y Copiar a la derecha; abajo los filtros y Log completo, centrados. */
+  .msg-head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 8px; }
+  .msg-titulo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; grid-column: 1; grid-row: 1; min-width: 0; }
+  .msg-copiar { grid-column: 2; grid-row: 1; }
+  .msg-herramientas { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; grid-column: 1 / -1; grid-row: 2; }
+  .msg-herramientas .msg-filters { margin-left: 0; }
   .workspace > * { position: absolute; inset: 0; width: auto !important; display: none; }
   .editor-screen[data-tab="code"] .editor-pane,
   .editor-screen[data-tab="pdf"] .pdf-pane,

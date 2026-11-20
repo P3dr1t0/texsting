@@ -123,9 +123,11 @@ export async function renderEditor(root, { id }, navigate) {
   }
   const messagesPane = el('section', { class: 'messages' },
     el('div', { class: 'msg-head' },
-      el('strong', {}, 'Mensajes'), msgCounts, filterBtns,
-      el('button', { class: 'btn ghost sm', onclick: () => { rawLog.hidden = !rawLog.hidden; msgList.hidden = !rawLog.hidden; } }, 'Log completo'),
-      el('button', { class: 'icon-btn sm', title: 'Copiar los mensajes como texto', 'aria-label': 'Copiar mensajes', html: icon('copy'), onclick: () => copiarMensajes() }),
+      // En el celular: arriba el título con los conteos y Copiar a la derecha; abajo los filtros centrados.
+      el('div', { class: 'msg-titulo' }, el('strong', {}, 'Mensajes'), msgCounts),
+      el('div', { class: 'msg-herramientas' }, filterBtns,
+        el('button', { class: 'btn ghost sm', onclick: () => { rawLog.hidden = !rawLog.hidden; msgList.hidden = !rawLog.hidden; } }, 'Log completo')),
+      el('button', { class: 'icon-btn sm msg-copiar', title: 'Copiar los mensajes como texto', 'aria-label': 'Copiar mensajes', html: icon('copy'), onclick: () => copiarMensajes() }),
       maxBtn,
       el('button', { class: 'icon-btn sm wide-only', 'aria-label': 'Cerrar mensajes', html: icon('close'), onclick: () => screen.classList.remove('show-messages') })),
     msgList, rawLog);
@@ -1023,7 +1025,26 @@ export async function renderEditor(root, { id }, navigate) {
     if (prev.status === 'errors') setPdfBanner('errors', summarize(messages).errors);
     rawLog.textContent = prev.log || '';
   }
-  const onWide = () => { if (WIDE.matches && !getSettings().sidebarHidden) screen.classList.add('show-sidebar'); showPanel(WIDE.matches ? 'code' : screen.dataset.tab); };
+  const onWide = () => {
+    if (WIDE.matches) {
+      if (!getSettings().sidebarHidden) screen.classList.add('show-sidebar');
+      // Venía de la pestaña Mensajes (celular o tablet en vertical): se abre el panel de mensajes.
+      if (screen.dataset.tab === 'messages') screen.classList.add('show-messages');
+      showPanel('code');
+      return;
+    }
+    // Tablet que pasa a vertical con el panel de mensajes abierto: ese panel no existe en el diseño angosto
+    // (no tiene cómo cerrarse) y quedaba encima de todo. Los mensajes pasan a su pestaña.
+    if (screen.classList.contains('show-messages')) {
+      screen.classList.remove('show-messages', 'messages-max');
+      maxBtn.innerHTML = icon('expand');
+      maxBtn.title = 'Agrandar el panel';
+      maxBtn.setAttribute('aria-label', 'Agrandar el panel de mensajes');
+      showPanel('messages');
+      return;
+    }
+    showPanel(screen.dataset.tab);
+  };
   WIDE.addEventListener('change', onWide);
   // Al volver a la app (por ejemplo, después de editar en la PC o en otra app): se revisa la carpeta del proyecto.
   let avisoFalta = false;
