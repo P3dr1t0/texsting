@@ -1,0 +1,34 @@
+name: Biber para Android (manual)
+on:
+  workflow_dispatch:
+jobs:
+  biber:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: TeX Live 2026 (para el biblatex y el .bcf de prueba)
+        run: |
+          cd /tmp && for m in https://mirror.ctan.org https://mirrors.mit.edu/CTAN https://mirrors.rit.edu/CTAN; do curl -sfL $m/systems/texlive/tlnet/install-tl-unx.tar.gz -o itl.tgz && tar xzf itl.tgz && break; sleep 5; done; cd install-tl-2*
+          printf "selected_scheme scheme-basic\nTEXDIR /tmp/tl\nTEXMFLOCAL /tmp/tl/texmf-local\nTEXMFSYSVAR /tmp/tl/texmf-var\nTEXMFSYSCONFIG /tmp/tl/texmf-config\nTEXMFVAR /tmp/tl/texmf-var\nTEXMFHOME /tmp/tl/home\nbinary_aarch64-linux 1\ninstopt_adjustpath 0\ntlpdbopt_install_docfiles 0\ntlpdbopt_install_srcfiles 0\n" > p.txt
+          ./install-tl -profile p.txt -no-interaction > /dev/null
+          /tmp/tl/bin/aarch64-linux/tlmgr install biblatex biblatex-ieee biber logreq etoolbox kvoptions pdftexcmds xstring > /dev/null
+          /tmp/tl/bin/aarch64-linux/biber --version
+      - name: .bcf de prueba (y .bbl de referencia con el biber oficial)
+        run: |
+          export PATH=/tmp/tl/bin/aarch64-linux:$PATH
+          mkdir -p /tmp/prueba && cp tools/biber/prueba.tex /tmp/prueba/b.tex && cp tools/biber/refs.bib /tmp/prueba/
+          cd /tmp/prueba && pdflatex -interaction=nonstopmode b > /dev/null; ls
+          mkdir ref && cp b.bcf refs.bib ref/ && (cd ref && biber b > /dev/null && grep -c bibitem b.bbl)
+          biber --version | grep -o '[0-9][0-9.]*' | head -1 > /tmp/biber-ver; cat /tmp/biber-ver
+      - name: Biber en Termux (aarch64)
+        run: |
+          VER=$(cat /tmp/biber-ver)
+          mkdir -p /tmp/salida && chmod 777 /tmp/salida /tmp/prueba
+          docker run --rm --privileged -v $PWD/tools/biber:/scripts -v /tmp/prueba:/prueba -v /tmp/salida:/salida termux/termux-docker:aarch64 \
+            bash /scripts/dentro.sh "$VER" 2>&1 | tail -150
+          ls -la /tmp/salida; cat /tmp/salida/needed.txt /tmp/salida/tamanos.txt || true
+          diff <(grep -v '^%' /tmp/prueba/ref/b.bbl) <(grep -v '^%' /tmp/prueba/b.bbl) && echo "BBL IGUAL AL OFICIAL" || echo "BBL DISTINTO"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: biber-termux
+          path: /tmp/salida
