@@ -12,8 +12,14 @@ jobs:
         run: |
           cd /tmp && for m in https://mirror.ctan.org https://mirrors.mit.edu/CTAN https://mirrors.rit.edu/CTAN; do curl -sfL $m/systems/texlive/tlnet/install-tl-unx.tar.gz -o itl.tgz && tar xzf itl.tgz && break; sleep 5; done; cd install-tl-2*
           printf "selected_scheme scheme-basic\nTEXDIR /tmp/tl\nTEXMFLOCAL /tmp/tl/texmf-local\nTEXMFSYSVAR /tmp/tl/texmf-var\nTEXMFSYSCONFIG /tmp/tl/texmf-config\nTEXMFVAR /tmp/tl/texmf-var\nTEXMFHOME /tmp/tl/home\nbinary_x86_64-linux 1\ninstopt_adjustpath 0\ntlpdbopt_install_docfiles 0\ntlpdbopt_install_srcfiles 0\n" > p.txt
-          ./install-tl -profile p.txt -no-interaction > /dev/null
+          ok=0
+          for m in https://mirrors.mit.edu/CTAN https://mirrors.rit.edu/CTAN https://ctan.math.utah.edu/ctan/tex-archive https://mirror.ctan.org; do
+            if ./install-tl -profile p.txt -no-interaction -repository $m/systems/texlive/tlnet > /dev/null; then ok=1; REPO=$m/systems/texlive/tlnet; break; fi
+            rm -rf /tmp/tl; sleep 5
+          done
+          [ $ok = 1 ] || exit 1
           export PATH=/tmp/tl/bin/x86_64-linux:$PATH
+          tlmgr option repository $REPO
           tlmgr install collection-latexrecommended collection-fontsrecommended collection-langspanish collection-langenglish collection-pictures collection-latexextra collection-mathscience collection-publishers latexmk > /dev/null 2>&1 || true
           echo /tmp/tl/bin/x86_64-linux >> $GITHUB_PATH
       - name: Armar y compilar
