@@ -1464,6 +1464,9 @@ public class MotorPlugin extends Plugin {
     }
 
     // ───────────── BibTeX y makeindex (vienen en el APK junto a pdfTeX) ─────────────
+    /** Qué pasó con biber en esta compilación (para el resumen del «Log completo»). */
+    private volatile String biberEstado = "";
+
     private boolean auxTools(File mainDir, String job, StringBuilder output, boolean autoinstall) {
         boolean ran = false;
         try {
@@ -1549,11 +1552,14 @@ public class MotorPlugin extends Plugin {
                 while (m.find()) { String t = readText(new File(mainDir, m.group(1).trim())); if (t != null) k.append('\u0000').append(t); }
                 String key = sha1(k.toString());
                 File stamp = new File(mainDir, job + ".texsting-biber");
-                if (!key.equals(String.valueOf(readText(stamp)).trim()) || !new File(mainDir, job + ".bbl").exists()) {
+                if (key.equals(String.valueOf(readText(stamp)).trim()) && new File(mainDir, job + ".bbl").exists()) {
+                    if (biberEstado.isEmpty()) biberEstado = "no hizo falta correr biber (las citas y el .bib no cambiaron)";
+                } else {
                     preparePerl();
                     progress("Armando la bibliografía (biber)…");
                     Run br = run(Arrays.asList(new File(libDir(), "libtx_perl.so").getAbsolutePath(), new File(perlDir(), "biber").getAbsolutePath(), job), mainDir, 3 * 60 * 1000);
                     output.append(br.out);
+                    biberEstado = br.code == 0 ? "biber armó la bibliografía" : "biber terminó con error (código " + br.code + "): mira sus mensajes en este registro";
                     if (br.code == 0) try (OutputStream o = new FileOutputStream(stamp)) { o.write(key.getBytes(StandardCharsets.UTF_8)); }
                     ran = true;
                 }
@@ -1561,6 +1567,7 @@ public class MotorPlugin extends Plugin {
                 output.append("\nbiber: command not found (este APK no trae biber; usa \\usepackage[backend=bibtex]{biblatex})\n");
         } catch (Exception e) {
             output.append("\n[TeXsting] biber: ").append(e).append('\n');
+            biberEstado = "biber no pudo correr: " + e;
         }
         return ran;
     }
@@ -1651,6 +1658,7 @@ public class MotorPlugin extends Plugin {
                 }
                 StringBuilder output = new StringBuilder();
                 Run r = null;
+                biberEstado = "";
                 int passes = 0, rounds = 0;
                 Set<String> firmasIntentadas = new HashSet<>();
                 boolean timedOut = false;
@@ -1879,7 +1887,7 @@ public class MotorPlugin extends Plugin {
                 if (t1 - t0 >= 500) rs.append("  preparar el motor: ").append(secs(t1 - t0)).append('\n');
                 if (formatoMs >= 500) rs.append("  preparar ").append(eng.equals("xelatex") ? "XeLaTeX" : "LuaLaTeX").append(" (solo la primera vez): ").append(secs(formatoMs)).append('\n');
                 if (!installedNow.isEmpty()) rs.append("  paquetes descargados: ").append(String.join(", ", installedNow)).append('\n');
-                if (biblatex) rs.append("  biblatex: ").append(hayBiber() ? "con biber" : "con BibTeX (este APK no trae biber)").append('\n');
+                if (biblatex) rs.append("  biblatex: ").append(hayBiber() ? "con biber · " + (biberEstado.isEmpty() ? "biber no se corrió en esta compilación" : biberEstado) : "con BibTeX (este APK no trae biber)").append('\n');
                 for (String ps : pasos) rs.append("  ").append(ps).append('\n');
                 if (usesTikz) {
                     int nf = figList(mainDir, job).size();

@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.5] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 91
+
+### Corregido
+- **Jefe 1: la bibliografía salía vacía («Citation … undefined», «Please (re)run Biber»).** En la nube, el biber de la app procesa bien el `.bcf` de la tesis (7 citas, 0,6 s), así que el problema estaba en cuándo la app decide correrlo. Se corrigieron dos causas posibles:
+  - Si en el registro quedaba algo «faltante» que ya se había intentado bajar (o un aviso que no se va), la app cortaba cada pasada para buscar paquetes y nunca llegaba a correr biber, glosarios ni índices. Ahora solo corta si hay algo **nuevo** que intentar.
+  - BibTeX, makeindex (índices, glosarios, nomenclatura) y biber tienen cada uno su propio manejo de errores: si uno falla, los demás igual se corren.
+- El «Log completo» dice qué pasó con biber en esa compilación: si armó la bibliografía, si terminó con error, o si no hizo falta correrlo.
+
+---
+
 ## [0.9.4] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 90
 
 ### Corregido
