@@ -1,0 +1,187 @@
+% JEFE 3 — Figuras sin piedad: muchas figuras TikZ distintas (para probar «Guardando figuras» y ⚡),
+% figuras dentro de cajas, figuras generadas en bucles y desde macros con argumentos, una figura
+% que dibuja sobre la página (remember picture, overlay), pgfplots en grupo, 3D, polar, rellenos,
+% circuitos, diagramas de tiempo, árboles, diagramas conmutativos y una lupa (spy).
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\usetikzlibrary{babel,arrows.meta,calc,positioning,decorations.pathmorphing,decorations.markings,
+  shadows,patterns,matrix,spy,intersections,shapes.geometric,fit,backgrounds}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots,fillbetween,polar,colormaps}
+\usepackage[european,siunitx]{circuitikz}
+\usepackage{siunitx}
+\usepackage{tikz-timing}
+\usepackage{tikz-cd}
+\usepackage{forest}
+\usepackage[most]{tcolorbox}
+\usepackage{subcaption}
+\usepackage{wrapfig}
+\usepackage{lipsum}
+
+% Una figura «pic» con parámetros y una macro que dibuja con argumentos (#1, #2).
+\tikzset{
+  resorte/.pic = {\draw[decorate, decoration={coil, aspect=0.4, segment length=4pt, amplitude=5pt}] (0,0) -- (2,0);},
+  nodo/.style = {circle, draw, fill=#1!20, minimum size=8mm},
+}
+\newcommand{\poligono}[2]{%
+  \begin{tikzpicture}
+    \node[regular polygon, regular polygon sides=#1, draw, thick, fill=#2!25, minimum size=1.6cm] {#1};
+  \end{tikzpicture}}
+
+\begin{document}
+% Marco de página dibujado encima de todo (no se puede guardar aparte: se dibuja en cada compilación).
+\begin{tikzpicture}[remember picture, overlay]
+  \draw[line width=2pt, blue!50!black, rounded corners=8pt]
+    ($(current page.north west)+(1cm,-1cm)$) rectangle ($(current page.south east)+(-1cm,1cm)$);
+\end{tikzpicture}
+
+\section*{1. Figuras generadas en un bucle y desde una macro}
+\foreach \n/\c in {3/red, 4/orange, 5/yellow, 6/green, 8/blue} {\poligono{\n}{\c}\ }
+
+\begin{center}
+\begin{tikzpicture}
+  \foreach \i in {1,...,6} {
+    \node[nodo=teal] (n\i) at ({60*\i}:2) {\i};
+  }
+  \foreach \i/\j in {1/3,1/4,2/5,3/6,4/6,5/1,2/6} { \draw[-{Stealth}] (n\i) -- (n\j); }
+  \pic at (-1,-3) {resorte};
+  \node[right] at (1.2,-3) {\small resorte con \texttt{pic}};
+\end{tikzpicture}
+\end{center}
+
+\section*{2. TikZ dentro de cajas}
+\begin{tcolorbox}[enhanced, breakable, title={Sistema masa–resorte–amortiguador}, colback=yellow!5]
+\centering
+\begin{tikzpicture}[scale=1.1]
+  \fill[pattern=north east lines] (-0.3,-1) rectangle (0,1);
+  \draw[thick] (0,-1) -- (0,1);
+  \draw[decorate, decoration={coil, aspect=0.4, segment length=5pt, amplitude=6pt}] (0,0.5) -- (3,0.5) node[midway, above=6pt] {$k$};
+  \draw (0,-0.5) -- (1.2,-0.5) (1.2,-0.8) rectangle (1.8,-0.2) (1.5,-0.5) -- (3,-0.5) node[pos=0, below=10pt] {$b$};
+  \node[draw, thick, fill=gray!20, minimum size=1.6cm, drop shadow] (m) at (3.8,0) {$m$};
+  \draw[-{Latex}, red, thick] (m.east) -- ++(1.2,0) node[right] {$F(t)$};
+\end{tikzpicture}
+\tcblower
+Ecuación: $m\ddot x + b\dot x + kx = F(t)$.
+\end{tcolorbox}
+
+\section*{3. pgfplots en grupo (2×2)}
+\begin{center}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 2, horizontal sep=1.6cm, vertical sep=1.6cm},
+    width=0.45\textwidth, height=4.5cm, grid=major]
+  \nextgroupplot[title={Seno amortiguado}]
+    \addplot[blue, thick, domain=0:10, samples=150] {exp(-0.3*x)*sin(deg(3*x))};
+  \nextgroupplot[title={Área entre curvas}]
+    \addplot[name path=f, red, domain=0:3] {x^2};
+    \addplot[name path=g, blue, domain=0:3] {3*x};
+    \addplot[orange!40] fill between[of=f and g, soft clip={domain=0:3}];
+  \nextgroupplot[title={Barras}, ybar, symbolic x coords={A,B,C,D}, xtick=data]
+    \addplot coordinates {(A,3) (B,5) (C,2) (D,4)};
+    \addplot coordinates {(A,2) (B,4) (C,3) (D,5)};
+  \nextgroupplot[title={Dispersión}, only marks]
+    \addplot+[mark=*, samples=40, domain=0:10] {x + 2*rand};
+\end{groupplot}
+\end{tikzpicture}
+\end{center}
+
+\section*{4. Superficie 3D y gráfica polar}
+\begin{figure}[h]
+  \begin{subfigure}{0.55\textwidth}
+    \begin{tikzpicture}
+      \begin{axis}[view={55}{30}, colormap/viridis, width=\linewidth, xlabel=$x$, ylabel=$y$]
+        \addplot3[surf, shader=interp, domain=-2:2, samples=30] {x*exp(-x^2-y^2)};
+      \end{axis}
+    \end{tikzpicture}
+    \caption{$z = x e^{-x^2-y^2}$.}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.4\textwidth}
+    \begin{tikzpicture}
+      \begin{polaraxis}[width=\linewidth]
+        \addplot[domain=0:360, samples=200, red, thick] {abs(cos(3*x))};
+      \end{polaraxis}
+    \end{tikzpicture}
+    \caption{Rosa de tres pétalos.}
+  \end{subfigure}
+  \caption{Dos figuras en una (\texttt{subcaption}).}
+\end{figure}
+
+\section*{5. Circuito con unidades y diagrama de tiempos}
+\begin{center}
+\begin{circuitikz}
+  \draw (0,0) to[V, v=\SI{12}{\volt}] (0,3)
+        to[R=\SI{2.2}{\kilo\ohm}, i>^=$i_1$] (3,3)
+        to[C=\SI{47}{\micro\farad}] (3,0) -- (0,0);
+  \draw (3,3) -- (5,3) to[L=\SI{10}{\milli\henry}, *-*] (5,0) -- (3,0);
+  \draw (5,3) -- (6.5,3) to[D*, l=LED] (6.5,0) -- (5,0);
+\end{circuitikz}
+\qquad
+\begin{tikztimingtable}
+  Reloj & 10{c} \\
+  Datos & 2D{A} 2D{B} 2U 2D{C} \\
+  Salida & L 3H 2L 2H L\\
+\end{tikztimingtable}
+\end{center}
+
+\section*{6. Árbol y diagrama conmutativo}
+\begin{center}
+\begin{forest}
+  for tree={draw, rounded corners, fill=green!10, edge={-{Stealth}}, l sep=8mm, s sep=4mm}
+  [Circuitos
+    [Resistivos [Serie] [Paralelo]]
+    [Reactivos [RC] [RL] [RLC [Serie] [Paralelo]]]
+  ]
+\end{forest}
+\qquad
+\begin{tikzcd}[column sep=large, row sep=large]
+  V \arrow[r, "f"] \arrow[d, "g"'] & W \arrow[d, "h"]\\
+  X \arrow[r, "k"'] \arrow[ur, dashed, "\phi"] & Y
+\end{tikzcd}
+\end{center}
+
+\section*{7. Lupa (spy), intersecciones y capas de fondo}
+\begin{center}
+\begin{tikzpicture}[spy using outlines={circle, magnification=4, size=2.5cm, connect spies}]
+  \draw[help lines, step=0.5] (0,0) grid (6,3);
+  \draw[name path=a, blue, thick] plot[smooth, domain=0:6] (\x, {1.5+sin(\x r)});
+  \draw[name path=b, red, thick] (0,0.5) -- (6,2.6);
+  \path[name intersections={of=a and b, by={p1,p2}}];
+  \fill (p1) circle (2pt) node[above left] {$P_1$} (p2) circle (2pt) node[below right] {$P_2$};
+  \begin{scope}[on background layer]
+    \node[fit=(p1)(p2), fill=yellow!20, rounded corners, inner sep=6pt] {};
+  \end{scope}
+  \spy[green!50!black] on (p1) in node at (8.5,1.5);
+\end{tikzpicture}
+\end{center}
+
+\section*{8. Figura al lado del texto (wrapfig)}
+\begin{wrapfigure}{r}{0.35\textwidth}
+  \centering
+  \begin{tikzpicture}
+    \draw[thick, ->] (0,0) -- (2.5,0) node[right] {$\Re$};
+    \draw[thick, ->] (0,0) -- (0,2.5) node[above] {$\Im$};
+    \draw[very thick, -{Latex}, purple] (0,0) -- (2,1.5) node[midway, above left] {$\vec{V}$};
+    \draw (0.6,0) arc (0:36.87:0.6) node[midway, right] {$\theta$};
+  \end{tikzpicture}
+  \caption{Un fasor.}
+\end{wrapfigure}
+\lipsum[1-2]
+
+\section*{9. Matriz de nodos y decoraciones}
+\begin{center}
+\begin{tikzpicture}
+  \matrix (m) [matrix of math nodes, row sep=8mm, column sep=12mm, nodes={draw, rounded corners, minimum width=1.2cm}] {
+    x(t) & H(s) & y(t)\\
+    X(s) & \cdot & Y(s)\\
+  };
+  \draw[-{Stealth}] (m-1-1) -- (m-1-2); \draw[-{Stealth}] (m-1-2) -- (m-1-3);
+  \draw[-{Stealth}, decorate, decoration={snake, amplitude=1mm, post length=2mm}] (m-1-1) -- node[left] {$\mathcal{L}$} (m-2-1);
+  \draw[-{Stealth}, postaction={decorate}, decoration={markings, mark=at position 0.5 with {\arrow{>}}}] (m-2-3) -- node[right] {$\mathcal{L}^{-1}$} (m-1-3);
+\end{tikzpicture}
+\end{center}
+\end{document}

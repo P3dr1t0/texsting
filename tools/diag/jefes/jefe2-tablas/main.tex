@@ -1,0 +1,224 @@
+% JEFE 2 — Tablas infernales: tabularray, celdas combinadas en filas y columnas, colores alternados,
+% columnas decimales, diagonales, tablas largas en hoja horizontal, tablas generadas desde datos
+% y tablas dentro de cajas. Todo lo que suele romperse al pasar de Overleaf a otro editor.
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands,es-tabla]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2cm]{geometry}
+\usepackage{amsmath}
+\usepackage[table]{xcolor}
+\usepackage{array,booktabs,multirow,makecell,tabularx,longtable,hhline,diagbox,threeparttable}
+\usepackage{tabularray}
+\UseTblrLibrary{booktabs,siunitx}
+\usepackage{siunitx}
+\sisetup{output-decimal-marker={,}}
+\usepackage{pdflscape,rotating}
+\usepackage{pgfplotstable}
+\pgfplotsset{compat=1.18}
+\usepackage[most]{tcolorbox}
+\usepackage{caption}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}
+\newcolumntype{Y}{>{\raggedleft\arraybackslash}X}
+
+\begin{document}
+\section*{1. Celdas combinadas en las dos direcciones}
+\begin{table}[h]
+\centering
+\caption{\texttt{multirow} + \texttt{multicolumn} + colores + \texttt{hhline}.}
+\begin{tabular}{|c|c|c|c|c|}
+  \hhline{|-|-|-|-|-|}
+  \rowcolor{blue!15}
+  \multirow{2}{*}{\diagbox{Material}{Ensayo}} & \multicolumn{2}{c|}{Tracción} & \multicolumn{2}{c|}{Compresión}\\
+  \hhline{|~|-|-|-|-|}
+  \rowcolor{blue!15}
+   & Máx. & Mín. & Máx. & Mín.\\
+  \hhline{|=|=|=|=|=|}
+  Acero & 400 & 250 & \multicolumn{2}{c|}{\cellcolor{red!20}no aplica}\\ \hline
+  \multirow{3}{*}{\makecell{Concreto\\(3 mezclas)}} & 3,1 & 2,0 & 35 & 28\\ \cline{2-5}
+   & 3,4 & 2,2 & \multirow{2}{*}{\cellcolor{green!15}38} & 30\\ \cline{2-3}\cline{5-5}
+   & 3,0 & 1,9 & & 27\\ \hline
+\end{tabular}
+\end{table}
+
+\section*{2. tabularray con todo}
+\begin{table}[h]
+\centering
+\caption{\texttt{tblr}: combinadas con \texttt{SetCell}, columnas \texttt{si}, filas alternadas.}
+\begin{tblr}{
+  colspec = {l Q[si={table-format=3.2},c] Q[si={table-format=2.1},c] X[c]},
+  row{1} = {font=\bfseries, bg=teal!20},
+  row{even[2]} = {bg=gray!8},
+  hline{1,Z} = {1pt}, hline{2} = {0.6pt},
+  cell{2}{4} = {r=3}{c, bg=yellow!20},
+  cell{6}{1} = {c=2}{l},
+  width = 0.9\linewidth,
+}
+Componente & {{{Precio (S/)}}} & {{{Cantidad}}} & Observación\\
+Resistencia & 0.50 & 20.0 & Compradas juntas en la librería, mismo proveedor y mismo día\\
+Capacitor & 1.20 & 10.0 & \\
+Inductor & 12.75 & 2.0 & \\
+Placa & 25.00 & 1.0 & Perforada\\
+Total (con IGV incluido) & & 3.5 & {Texto largo que se\\parte en dos líneas}\\
+\end{tblr}
+\end{table}
+
+\section*{3. Tabla generada desde datos (pgfplotstable)}
+\pgfplotstableread[col sep=comma]{
+n,x,cuadrado,raiz
+1,0.5,0.25,0.7071
+2,1.0,1.00,1.0000
+3,1.5,2.25,1.2247
+4,2.0,4.00,1.4142
+5,2.5,6.25,1.5811
+6,3.0,9.00,1.7321
+}\datos
+\begin{center}
+\pgfplotstabletypeset[
+  columns={n,x,cuadrado,raiz},
+  columns/n/.style={column name={$n$}, int detect},
+  columns/x/.style={column name={$x$}, fixed, precision=1, zerofill},
+  columns/cuadrado/.style={column name={$x^2$}, fixed, precision=2, zerofill},
+  columns/raiz/.style={column name={$\sqrt{x}$}, fixed, precision=4, zerofill},
+  create on use/suma/.style={create col/expr={\thisrow{x}+\thisrow{cuadrado}}},
+  columns/suma/.style={column name={$x+x^2$}, fixed, precision=2},
+  columns={n,x,cuadrado,raiz,suma},
+  every head row/.style={before row=\toprule, after row=\midrule},
+  every last row/.style={after row=\bottomrule},
+  every even row/.style={before row={\rowcolor{orange!10}}},
+  use comma, 1000 sep={\,}
+]\datos
+\end{center}
+
+\section*{4. Tabla dentro de una caja que se parte entre páginas}
+\begin{tcolorbox}[breakable, enhanced, colback=blue!3, colframe=blue!50!black,
+  title={Caja con tabla \texttt{tabularx} y fórmulas}]
+\begin{tabularx}{\linewidth}{>{\bfseries}l X Y}
+  \toprule
+  Ley & Enunciado & Fórmula\\
+  \midrule
+  Ohm & La corriente es proporcional al voltaje. & $V = IR$\\
+  Kirchhoff (corrientes) & La suma de corrientes en un nodo es cero. & $\sum_k i_k = 0$\\
+  Kirchhoff (voltajes) & La suma de voltajes en una malla es cero. & $\sum_k v_k = 0$\\
+  Faraday & El voltaje inducido es la derivada del flujo, con signo menos. & $\varepsilon = -\dfrac{d\Phi}{dt}$\\
+  \bottomrule
+\end{tabularx}
+\end{tcolorbox}
+
+\section*{5. Tablas anidadas y celdas con varias líneas}
+\begin{center}
+\begin{tabular}{|C{3cm}|C{5cm}|}
+  \hline
+  \thead{Exterior\\(encabezado)} & \thead{Tabla interna}\\ \hline
+  Celda simple &
+  \begin{tabular}{@{}cc@{}} a & b\\ c & \begin{tabular}{|c|}\hline d\\ \hline\end{tabular}\end{tabular}\\ \hline
+  \makecell{Una\\dos\\tres} & $\begin{pmatrix} 1 & 2\\ 3 & 4 \end{pmatrix}$ \\ \hline
+\end{tabular}
+\end{center}
+
+\begin{landscape}
+\section*{6. Tabla larga en hoja horizontal}
+\begin{longtable}{>{\bfseries}c *{8}{S[table-format=3.1]}}
+  \caption{Temperaturas (\si{\celsius}) — 60 filas en hoja horizontal.}\\
+  \toprule
+  Día & {Lun} & {Mar} & {Mié} & {Jue} & {Vie} & {Sáb} & {Dom} & {Prom.}\\
+  \midrule\endfirsthead
+  \toprule
+  Día & {Lun} & {Mar} & {Mié} & {Jue} & {Vie} & {Sáb} & {Dom} & {Prom.}\\
+  \midrule\endhead
+  \bottomrule\endlastfoot
+  1 & 19.2 & 21.3 & 23.4 & 22.3 & 24.0 & 25.6 & 23.9 & 22.8\\
+  2 & 20.3 & 22.4 & 24.3 & 23.0 & 24.6 & 25.9 & 24.0 & 23.5\\
+  3 & 21.4 & 23.3 & 25.0 & 23.6 & 24.9 & 26.0 & 23.8 & 24.0\\
+  4 & 22.3 & 24.0 & 25.6 & 23.9 & 25.0 & 25.8 & 23.5 & 24.3\\
+  5 & 23.0 & 24.6 & 25.9 & 24.0 & 24.8 & 25.5 & 22.9 & 24.4\\
+  6 & 23.6 & 24.9 & 26.0 & 23.8 & 24.5 & 24.9 & 22.1 & 24.2\\
+  7 & 23.9 & 25.0 & 25.8 & 23.5 & 23.9 & 24.1 & 21.1 & 23.9\\
+  8 & 24.0 & 24.8 & 25.5 & 22.9 & 23.1 & 23.1 & 20.0 & 23.3\\
+  9 & 23.8 & 24.5 & 24.9 & 22.1 & 22.1 & 22.0 & 18.8 & 22.6\\
+  10 & 23.5 & 23.9 & 24.1 & 21.1 & 21.0 & 20.8 & 17.6 & 21.7\\ \midrule
+  11 & 22.9 & 23.1 & 23.1 & 20.0 & 19.8 & 19.6 & 16.5 & 20.7\\
+  12 & 22.1 & 22.1 & 22.0 & 18.8 & 18.6 & 18.5 & 15.3 & 19.6\\
+  13 & 21.1 & 21.0 & 20.8 & 17.6 & 17.5 & 17.3 & 14.3 & 18.5\\
+  14 & 20.0 & 19.8 & 19.6 & 16.5 & 16.3 & 16.3 & 13.5 & 17.4\\
+  15 & 18.8 & 18.6 & 18.5 & 15.3 & 15.3 & 15.5 & 12.8 & 16.4\\
+  16 & 17.6 & 17.5 & 17.3 & 14.3 & 14.5 & 14.8 & 12.3 & 15.5\\
+  17 & 16.5 & 16.3 & 16.3 & 13.5 & 13.8 & 14.3 & 12.0 & 14.7\\
+  18 & 15.3 & 15.3 & 15.5 & 12.8 & 13.3 & 14.0 & 12.0 & 14.0\\
+  19 & 14.3 & 14.5 & 14.8 & 12.3 & 13.0 & 14.0 & 12.2 & 13.6\\
+  20 & 13.5 & 13.8 & 14.3 & 12.0 & 13.0 & 14.2 & 12.7 & 13.4\\ \midrule
+  21 & 12.8 & 13.3 & 14.0 & 12.0 & 13.2 & 14.7 & 13.4 & 13.3\\
+  22 & 12.3 & 13.0 & 14.0 & 12.2 & 13.7 & 15.4 & 14.2 & 13.6\\
+  23 & 12.0 & 13.0 & 14.2 & 12.7 & 14.4 & 16.2 & 15.2 & 14.0\\
+  24 & 12.0 & 13.2 & 14.7 & 13.4 & 15.2 & 17.2 & 16.3 & 14.6\\
+  25 & 12.2 & 13.7 & 15.4 & 14.2 & 16.2 & 18.3 & 17.5 & 15.4\\
+  26 & 12.7 & 14.4 & 16.2 & 15.2 & 17.3 & 19.5 & 18.7 & 16.3\\
+  27 & 13.4 & 15.2 & 17.2 & 16.3 & 18.5 & 20.7 & 19.9 & 17.3\\
+  28 & 14.2 & 16.2 & 18.3 & 17.5 & 19.7 & 21.9 & 21.0 & 18.4\\
+  29 & 15.2 & 17.3 & 19.5 & 18.7 & 20.9 & 23.0 & 21.9 & 19.5\\
+  30 & 16.3 & 18.5 & 20.7 & 19.9 & 22.0 & 23.9 & 22.8 & 20.6\\ \midrule
+  31 & 17.5 & 19.7 & 21.9 & 21.0 & 22.9 & 24.8 & 23.4 & 21.6\\
+  32 & 18.7 & 20.9 & 23.0 & 21.9 & 23.8 & 25.4 & 23.8 & 22.5\\
+  33 & 19.9 & 22.0 & 23.9 & 22.8 & 24.4 & 25.8 & 24.0 & 23.2\\
+  34 & 21.0 & 22.9 & 24.8 & 23.4 & 24.8 & 26.0 & 23.9 & 23.8\\
+  35 & 21.9 & 23.8 & 25.4 & 23.8 & 25.0 & 25.9 & 23.6 & 24.2\\
+  36 & 22.8 & 24.4 & 25.8 & 24.0 & 24.9 & 25.6 & 23.1 & 24.4\\
+  37 & 23.4 & 24.8 & 26.0 & 23.9 & 24.6 & 25.1 & 22.4 & 24.3\\
+  38 & 23.8 & 25.0 & 25.9 & 23.6 & 24.1 & 24.4 & 21.5 & 24.1\\
+  39 & 24.0 & 24.9 & 25.6 & 23.1 & 23.4 & 23.5 & 20.5 & 23.6\\
+  40 & 23.9 & 24.6 & 25.1 & 22.4 & 22.5 & 22.5 & 19.3 & 22.9\\ \midrule
+  41 & 23.6 & 24.1 & 24.4 & 21.5 & 21.5 & 21.3 & 18.1 & 22.1\\
+  42 & 23.1 & 23.4 & 23.5 & 20.5 & 20.3 & 20.1 & 17.0 & 21.1\\
+  43 & 22.4 & 22.5 & 22.5 & 19.3 & 19.1 & 19.0 & 15.8 & 20.1\\
+  44 & 21.5 & 21.5 & 21.3 & 18.1 & 18.0 & 17.8 & 14.7 & 19.0\\
+  45 & 20.5 & 20.3 & 20.1 & 17.0 & 16.8 & 16.7 & 13.8 & 17.9\\
+  46 & 19.3 & 19.1 & 19.0 & 15.8 & 15.7 & 15.8 & 13.0 & 16.8\\
+  47 & 18.1 & 18.0 & 17.8 & 14.7 & 14.8 & 15.0 & 12.5 & 15.8\\
+  48 & 17.0 & 16.8 & 16.7 & 13.8 & 14.0 & 14.5 & 12.1 & 15.0\\
+  49 & 15.8 & 15.7 & 15.8 & 13.0 & 13.5 & 14.1 & 12.0 & 14.3\\
+  50 & 14.7 & 14.8 & 15.0 & 12.5 & 13.1 & 14.0 & 12.1 & 13.8\\ \midrule
+  51 & 13.8 & 14.0 & 14.5 & 12.1 & 13.0 & 14.1 & 12.5 & 13.4\\
+  52 & 13.0 & 13.5 & 14.1 & 12.0 & 13.1 & 14.5 & 13.1 & 13.3\\
+  53 & 12.5 & 13.1 & 14.0 & 12.1 & 13.5 & 15.1 & 13.8 & 13.4\\
+  54 & 12.1 & 13.0 & 14.1 & 12.5 & 14.1 & 15.8 & 14.8 & 13.8\\
+  55 & 12.0 & 13.1 & 14.5 & 13.1 & 14.8 & 16.8 & 15.9 & 14.3\\
+  56 & 12.1 & 13.5 & 15.1 & 13.8 & 15.8 & 17.9 & 17.0 & 15.0\\
+  57 & 12.5 & 14.1 & 15.8 & 14.8 & 16.9 & 19.0 & 18.2 & 15.9\\
+  58 & 13.1 & 14.8 & 16.8 & 15.9 & 18.0 & 20.2 & 19.4 & 16.9\\
+  59 & 13.8 & 15.8 & 17.9 & 17.0 & 19.2 & 21.4 & 20.5 & 17.9\\
+  60 & 14.8 & 16.9 & 19.0 & 18.2 & 20.4 & 22.5 & 21.6 & 19.0\\ \midrule
+\end{longtable}
+\end{landscape}
+
+\section*{7. Tabla girada con notas}
+\begin{sidewaystable}
+\centering
+\begin{threeparttable}
+\caption{Tabla girada 90° con \texttt{rotating} y notas.}
+\begin{tabular}{lrrrrrr}
+  \toprule
+  & \multicolumn{3}{c}{Grupo A\tnote{1}} & \multicolumn{3}{c}{Grupo B\tnote{2}}\\
+  \cmidrule(lr){2-4}\cmidrule(lr){5-7}
+  Variable & Media & DE & $n$ & Media & DE & $n$\\
+  \midrule
+  Edad & 21,4 & 2,1 & 30 & 22,0 & 1,8 & 28\\
+  Nota final & 13,2 & 3,4 & 30 & 11,9 & 4,0 & 28\\
+  Horas de estudio & 9,5 & 3,0 & 30 & 7,1 & 2,6 & 28\\
+  \bottomrule
+\end{tabular}
+\begin{tablenotes}\small
+  \item[1] Turno mañana. \item[2] Turno noche.
+\end{tablenotes}
+\end{threeparttable}
+\end{sidewaystable}
+
+\section*{8. Tabla de 10 columnas que no cabe (se reduce sola)}
+\noindent\resizebox{\linewidth}{!}{%
+\begin{tabular}{*{10}{c}}
+  \toprule
+  $x_1$ & $x_2$ & $x_3$ & $x_4$ & $x_5$ & $x_6$ & $x_7$ & $x_8$ & $x_9$ & $x_{10}$\\
+  \midrule
+  $\frac{1}{2}$ & $\sqrt{2}$ & $e^{i\pi}$ & $\int_0^1 x\,dx$ & $\sum_{k=1}^{n} k$ & $\lim_{x\to0}\frac{\sin x}{x}$ & $\binom{n}{k}$ & $\nabla\cdot\vec E$ & $\oint_C \vec B\cdot d\vec l$ & $\aleph_0$\\
+  \bottomrule
+\end{tabular}}
+\end{document}

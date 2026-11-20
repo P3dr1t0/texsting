@@ -1,0 +1,29 @@
+\chapter{Introducción}\label{cap:intro}
+Un circuito \gls{rlc} es el ejemplo clásico de sistema de segundo orden~\parencite{alexander2013,nilsson2015}.
+Su respuesta en \gls{ca} se estudia con \glspl{fasor} y con la \gls{impedancia}; el análisis en
+frecuencia moderno usa la \gls{fft}~\parencite{cooley1965}. Como resume \textcite{ogata2010},
+\enquote{todo sistema lineal se entiende mejor en el dominio de la frecuencia}.
+\index{circuito RLC}\index{fasor}\index[autores]{Alexander, C.}\index[autores]{Cooley, J. W.}
+
+La frecuencia de \gls{resonancia} es
+\begin{equation}\label{eq:resonancia}
+  \omega_0 = \frac{1}{\sqrt{LC}}, \qquad f_0 = \frac{1}{2\pi\sqrt{LC}},
+\end{equation}
+\nomenclature{$\omega_0$}{Frecuencia angular de resonancia \nomunit{\si{\radian\per\second}}}%
+\nomenclature{$L$}{Inductancia \nomunit{\si{\henry}}}%
+\nomenclature{$C$}{Capacitancia \nomunit{\si{\farad}}}%
+\nomenclature{$R$}{Resistencia \nomunit{\si{\ohm}}}%
+y el factor de calidad $Q = \frac{1}{R}\sqrt{L/C}$. En el \cref{cap:mediciones} se mide $f_0$ y en el
+\cref{cap:resultados} se compara con la \cref{eq:resonancia}. Los datos crudos están en el
+\cref{ap:codigo}.\index{resonancia|textbf}
+
+\section{Objetivos}
+\begin{enumerate}
+  \item Medir la respuesta en frecuencia (ver \cref{tab:mediciones}).
+  \item Verificar la \cref{eq:resonancia} con un error menor a \SI{5}{\percent}.\todo{¿5 \% es suficiente?}
+  \item Comparar con la simulación de \textcite[cap.~14]{nilsson2015} y con la norma~\parencite{ieee1057}.
+\end{enumerate}
+
+\section{Antecedentes}
+Trabajos previos~\parencite{tesisperez,datasheet} muestran que el modelo ideal falla por encima de
+\SI{1}{\mega\hertz}.\index[autores]{Pérez, M.}\index{modelo ideal}

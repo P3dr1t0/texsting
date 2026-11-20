@@ -1,0 +1,15 @@
+\chapter{Código del análisis}\label{ap:codigo}
+El cálculo se hizo con este programa (con tildes y eñes en los comentarios):
+\begin{lstlisting}[language=Python, caption={Cálculo de la respuesta en frecuencia}]
+import numpy as np
+R, L, C = 47, 10e-3, 100e-9   # valores del montaje (año 2026, señal de prueba)
+f = np.logspace(2, 5.3, 400)
+w = 2*np.pi*f
+H = 1/(1 - w**2*L*C + 1j*w*R*C)
+print("Resonancia:", 1/(2*np.pi*np.sqrt(L*C)), "Hz")
+\end{lstlisting}
+
+Y una salida literal con caracteres especiales:
+\begin{verbatim}
+$ ./medir --rango=100:200000 --paso=1.12 > datos/mediciones.csv   # % & _ { } ~ ^ \
+\end{verbatim}

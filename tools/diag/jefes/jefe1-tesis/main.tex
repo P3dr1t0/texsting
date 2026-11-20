@@ -1,0 +1,65 @@
+% JEFE 1 — Tesis completa: varios archivos y carpetas, biber, glosario, siglas, nomenclatura,
+% dos índices alfabéticos, referencias cruzadas, tablas largas, gráficas desde un .csv e imágenes
+% con espacios y tildes en el nombre. Todo junto, como una tesis real de Overleaf.
+\documentclass[11pt,a4paper,oneside]{report}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{csquotes}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{booktabs,longtable,multirow,threeparttable,array}
+\usepackage[table]{xcolor}
+\usepackage{siunitx}
+\sisetup{output-decimal-marker={,}, group-separator={\,}}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage[american]{circuitikz}
+\usepackage{listings}
+\usepackage[backend=biber,style=authoryear,maxcitenames=2]{biblatex}
+\addbibresource{referencias.bib}
+\usepackage{imakeidx}
+\makeindex[intoc]
+\makeindex[name=autores,title={Índice de autores},intoc]
+\usepackage[intoc,spanish]{nomencl}
+\makenomenclature
+\usepackage{hyperref}
+\hypersetup{colorlinks, linkcolor=blue!50!black, citecolor=green!40!black, urlcolor=teal}
+\usepackage[spanish,capitalise]{cleveref}
+\usepackage[acronym,toc,nonumberlist]{glossaries}
+\makeglossaries
+\input{glosario}
+\usepackage{todonotes}
+
+\lstset{basicstyle=\ttfamily\small, columns=fullflexible, frame=single, breaklines=true,
+  literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1 {Ñ}{{\~N}}1}
+
+\title{Caracterización de un circuito RLC\\[4pt]\large Tesis de prueba para TeXsting}
+\author{Pedro de la Cruz Castillo}
+\date{\today}
+
+\begin{document}
+\maketitle
+\pagenumbering{roman}
+\tableofcontents
+\listoffigures
+\listoftables
+\printglossary[type=\acronymtype, title={Siglas}]
+\printglossary[title={Glosario}]
+\printnomenclature
+\cleardoublepage
+\pagenumbering{arabic}
+
+\include{capitulos/introduccion}
+\include{capitulos/mediciones}
+\include{capitulos/resultados}
+
+\appendix
+\include{apendices/codigo}
+
+\printbibliography[heading=bibintoc, title={Referencias}]
+\printindex
+\printindex[autores]
+\end{document}

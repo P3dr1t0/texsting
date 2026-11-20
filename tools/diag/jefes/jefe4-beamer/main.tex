@@ -1,0 +1,143 @@
+% JEFE 4 — Presentación beamer completa: tema, superposiciones (\pause, \only, \uncover, \alert<2>),
+% TikZ que cambia en cada diapositiva, columnas, bloques, código en diapositivas «fragile»,
+% tcolorbox, biblatex con biber, QR, diapositivas de apéndice y \againframe.
+\documentclass[aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{beaver}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{babel,arrows.meta,positioning,shapes.geometric}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{listings}
+\usepackage[most]{tcolorbox}
+\usepackage{qrcode}
+\usepackage{appendixnumberbeamer}
+\usepackage[backend=biber,style=numeric]{biblatex}
+\addbibresource{refs.bib}
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+\lstset{basicstyle=\ttfamily\footnotesize, keywordstyle=\color{blue}\bfseries, commentstyle=\color{gray}, frame=single}
+\tikzset{visible on/.style={opacity=0, text opacity=0, #1/.style={opacity=1, text opacity=1}}}
+\tikzset{onslide/.code args={<#1>#2}{\only<#1>{\pgfkeysalso{#2}}}}
+
+\title[Control PID]{Controlador PID en un motor DC}
+\subtitle{Presentación de prueba para TeXsting}
+\author[P. de la Cruz]{Pedro de la Cruz Castillo}
+\institute[UNI]{Facultad de Ingeniería Eléctrica y Electrónica}
+\date{\today}
+
+\begin{document}
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Contenido}
+  \tableofcontents
+\end{frame}
+
+\section{Modelo}
+\begin{frame}{Modelo del motor}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}
+        \item<1-> Ecuación eléctrica: $L\dot i + Ri = v - K\omega$
+        \item<2-> Ecuación mecánica: $J\dot\omega + b\omega = Ki$
+        \item<3-> \alert<3>{Función de transferencia}:
+          \[ G(s) = \frac{K}{(Js+b)(Ls+R)+K^2} \]
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{tikzpicture}[node distance=1.4cm, bloque/.style={draw, thick, minimum height=8mm, minimum width=14mm, fill=blue!10}]
+        \node (in) {$r$};
+        \node[circle, draw, right=0.8cm of in] (sum) {$\Sigma$};
+        \node[bloque, right=of sum, onslide=<2->{fill=red!20}] (c) {PID};
+        \node[bloque, right=of c, visible on=<3->] (p) {$G(s)$};
+        \node[right=0.8cm of p, visible on=<3->] (out) {$\omega$};
+        \draw[-{Stealth}] (in) -- (sum); \draw[-{Stealth}] (sum) -- (c);
+        \draw[-{Stealth}, visible on=<3->] (c) -- (p);
+        \draw[-{Stealth}, visible on=<3->] (p) -- (out);
+        \draw[-{Stealth}, visible on=<3->] (p.east) ++(0.4,0) |- ++(0,-1.2) -| (sum.south) node[pos=0.95, right] {$-$};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\section{Controlador}
+\begin{frame}{Acción PID}
+  \begin{block}{Ley de control}
+    \[ u(t) = K_p e(t) + K_i \int_0^t e(\tau)\,d\tau + K_d \frac{de}{dt} \]
+  \end{block}
+  \pause
+  \begin{alertblock}{Cuidado}
+    Un $K_d$ grande amplifica el ruido.
+  \end{alertblock}
+  \pause
+  \begin{exampleblock}{Sintonía de Ziegler–Nichols~\cite{zn1942}}
+    \only<3>{Primero se halla la ganancia crítica $K_u$.}\only<4>{Luego $K_p = 0{,}6K_u$, $T_i = T_u/2$, $T_d = T_u/8$.}
+  \end{exampleblock}
+  \uncover<4>{\centering\small Fuente: \cite{ogata, astrom}}
+\end{frame}
+
+\begin{frame}{Respuesta al escalón}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.8\textwidth, height=5.5cm, xlabel={$t$ (s)}, ylabel={$\omega$ (rad/s)}, grid=major, legend pos=south east]
+      \only<1->{\addplot[blue, thick, domain=0:5, samples=150] {1-exp(-x)}; \addlegendentry{P}}
+      \only<2->{\addplot[red, thick, domain=0:5, samples=150] {1-exp(-2*x)*cos(deg(4*x))}; \addlegendentry{PI}}
+      \only<3->{\addplot[green!50!black, thick, domain=0:5, samples=150] {1-exp(-3*x)*(1+3*x)}; \addlegendentry{PID}}
+    \end{axis}
+  \end{tikzpicture}
+\end{frame}
+
+\section{Implementación}
+\begin{frame}[fragile]{Código en el microcontrolador}
+  \begin{lstlisting}[language=C]
+float pid(float r, float y) {
+    static float integral = 0, e_ant = 0;
+    float e = r - y;                 // error
+    integral += e * DT;
+    float d = (e - e_ant) / DT;
+    e_ant = e;
+    return KP*e + KI*integral + KD*d;   // % & _ # $ funcionan aqui
+}
+  \end{lstlisting}
+  \begin{verbatim}
+gcc -O2 -o pid pid.c && ./pid --kp=1.2 --ki=0.5
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}{Resultados en caja}
+  \begin{tcolorbox}[colback=green!5, colframe=green!40!black, title=Mediciones]
+    \begin{tabular}{lccc}
+      Control & $t_s$ (s) & Sobrepico & Error \\ \hline
+      P & 4,1 & 0\,\% & 8\,\% \\
+      PI & 2,3 & 18\,\% & 0\,\% \\
+      PID & 1,2 & 4\,\% & 0\,\% \\
+    \end{tabular}
+  \end{tcolorbox}
+  \begin{center}
+    \qrcode[height=2cm]{https://github.com/P3dr1t0/texsting}\\
+    \tiny Escanea para ver el código
+  \end{center}
+\end{frame}
+
+\begin{frame}<1>[label=conclusion]{Conclusiones}
+  \begin{enumerate}
+    \item<1-> El PID reduce el tiempo de establecimiento a la tercera parte.
+    \item<2-> El término derivativo necesita filtro.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Referencias}
+  \printbibliography
+\end{frame}
+
+\appendix
+\begin{frame}{Apéndice: deducción}
+  \[ \frac{\Omega(s)}{V(s)} = \frac{K}{JLs^2 + (JR+bL)s + bR + K^2} \]
+\end{frame}
+\againframe<2>{conclusion}
+\end{document}

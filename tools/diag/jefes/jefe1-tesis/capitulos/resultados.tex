@@ -1,0 +1,24 @@
+\chapter{Resultados}\label{cap:resultados}
+La \cref{fig:bode} se dibuja directamente desde \texttt{datos/mediciones.csv}.\index{diagrama de Bode}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{semilogxaxis}[width=0.9\textwidth, height=6cm, grid=both,
+        xlabel={Frecuencia (\si{\hertz})}, ylabel={$|H|$ (\si{\decibel})},
+        legend pos=south west]
+      \addplot[blue, thick] table[x=f, y=db, col sep=semicolon] {datos/mediciones.csv};
+      \addlegendentry{medido}
+      \addplot[red, dashed, domain=100:200000, samples=200]
+        {20*log10(1/sqrt((1-(2*pi*x)^2*1e-9)^2 + (2*pi*x*47*1e-7)^2))};
+      \addlegendentry{teórico}
+      \draw[gray, dotted] (axis cs:5033,-60) -- (axis cs:5033,20) node[above, black, font=\small] {$f_0$};
+    \end{semilogxaxis}
+  \end{tikzpicture}
+  \caption{Diagrama de Bode: medición (archivo \texttt{.csv}) frente a teoría.}\label{fig:bode}
+\end{figure}
+
+\section{Discusión}
+El error de $f_0$ es \SI{0.45}{\percent} (\cref{tab:resumen}), dentro del objetivo. La forma de la
+curva de la \cref{fig:senal} coincide con la respuesta subamortiguada de \textcite{alexander2013}.
+\index{error de medición}\index[autores]{Ogata, K.}
