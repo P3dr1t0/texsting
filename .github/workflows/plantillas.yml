@@ -1,6 +1,8 @@
 name: Plantillas (compilar todas)
 on:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   compilar:
     runs-on: ubuntu-24.04
@@ -35,5 +37,11 @@ jobs:
           done
           echo "Fallas: $fallas"
           mkdir -p /tmp/pdfs; for d in */; do d=${d%/}; [ -f $d/main.pdf ] && cp $d/main.pdf /tmp/pdfs/$d.pdf; grep -E 'LaTeX Warning|Package .* Warning|Overfull|Underfull' $d/main.log | sort | uniq -c | sort -rn | head -6 | sed "s|^|$d: |"; done > /tmp/pdfs/avisos.txt
-      - uses: actions/upload-artifact@v4
-        with: { name: plantillas-pdf, path: /tmp/pdfs }
+      - name: Subir los PDF (versión de prueba «plantillas-prueba»)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd /tmp/pdfs && zip -q -r /tmp/plantillas-pdf.zip .
+          gh release delete plantillas-prueba -y -R ${{ github.repository }} --cleanup-tag || true
+          gh release create plantillas-prueba /tmp/plantillas-pdf.zip -R ${{ github.repository }} --prerelease -t "Prueba de plantillas" -n "PDF de todas las plantillas (prueba automática, no es una versión de la app)."
+
