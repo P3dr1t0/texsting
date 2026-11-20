@@ -1,0 +1,43 @@
+LOS JEFES DE JEFES — prueba de oro de TeXsting antes de publicar
+================================================================
+
+Cada carpeta es un proyecto. Para abrirlo: Abrir → Archivos .tex o .zip → elige el .zip del jefe.
+Los cinco compilan sin errores en TeX Live 2026 de escritorio (latexmk). Si en TeXsting algo falla,
+es un problema de la app, no del documento. La primera compilación de cada uno descarga varios
+paquetes y tarda; la segunda debería ser mucho más rápida (⚡).
+
+JEFE 1 — Tesis completa (pdfLaTeX, 17 páginas)
+  Varios archivos en carpetas (capitulos/, apendices/, datos/, figuras/), \include, biber (authoryear),
+  glosario + siglas (glossaries), nomenclatura (nomencl), DOS índices alfabéticos (imakeidx),
+  cleveref, tabla larga que cruza páginas con columnas decimales, gráfica desde un .csv,
+  imágenes con espacios y tildes en el nombre («foto del laboratorio.png», «señal medida.jpg»),
+  código con tildes en listings.
+  Qué mirar: Siglas, Glosario, Nomenclatura, Referencias, Índice y Índice de autores deben aparecer
+  llenos (no vacíos), y los enlaces de \cref deben decir «Capítulo 2», «Tabla 2.1», etc.
+
+JEFE 2 — Tablas infernales (pdfLaTeX, 6 páginas)
+  multirow + multicolumn + colores + diagbox + hhline, tabularray con celdas combinadas y columnas
+  siunitx, tabla generada con pgfplotstable, tabla dentro de una caja que se parte entre páginas,
+  tablas anidadas, tabla larga en hoja horizontal (60 filas), tabla girada con notas y una tabla
+  ancha reducida con \resizebox.
+
+JEFE 3 — Figuras sin piedad (pdfLaTeX, 4 páginas)
+  Más de 20 figuras TikZ: bucles, macros con argumentos, pics, figuras en tcolorbox, groupplots 2×2,
+  relleno entre curvas, 3D, polar, circuito con unidades, diagrama de tiempos, árbol (forest),
+  diagrama conmutativo, lupa (spy), intersecciones, capas, wrapfig y un marco de página dibujado
+  encima (remember picture, overlay).
+  Qué mirar: «Guardando figuras · %» al compilar y luego ⚡ en la segunda compilación. El marco azul
+  de la página 1 debe verse (esa figura se dibuja siempre, no se guarda aparte).
+
+JEFE 4 — Beamer total (pdfLaTeX, 18 diapositivas)
+  Tema Madrid, superposiciones (\pause, \only, \uncover, \alert<3>), TikZ que cambia en cada
+  diapositiva, gráfica que agrega curvas una por una, código en diapositiva fragile, tcolorbox,
+  código QR, biber, apéndice y \againframe.
+
+JEFE 5 — Unicode y trucos (LuaLaTeX, 2 páginas)
+  Español, alemán, griego y ruso en la misma página (con la fuente FreeSerif), matemática Unicode
+  escrita directo (∇ × 𝐄), química, expl3 (repetir, calcular, ordenar), xparse con argumentos raros,
+  \csname, catcodes cambiados, Lua que genera una tabla, archivos que se escriben al compilar
+  (filecontents) y biber con nombres en griego y cirílico.
+  Avisos normales: «Font shape ... LatinModernMath ... undefined» (no hay negrita en esa fuente
+  matemática) y el año -300 de Euclides en biber.

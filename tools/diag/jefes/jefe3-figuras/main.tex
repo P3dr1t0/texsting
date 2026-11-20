@@ -149,7 +149,7 @@ Ecuación: $m\ddot x + b\dot x + kx = F(t)$.
 \begin{tikzpicture}[spy using outlines={circle, magnification=4, size=2.5cm, connect spies}]
   \draw[help lines, step=0.5] (0,0) grid (6,3);
   \draw[name path=a, blue, thick] plot[smooth, domain=0:6] (\x, {1.5+sin(\x r)});
-  \draw[name path=b, red, thick] (0,0.5) -- (6,2.6);
+  \draw[name path=b, red, thick] (0,2) -- (6,1);
   \path[name intersections={of=a and b, by={p1,p2}}];
   \fill (p1) circle (2pt) node[above left] {$P_1$} (p2) circle (2pt) node[below right] {$P_2$};
   \begin{scope}[on background layer]

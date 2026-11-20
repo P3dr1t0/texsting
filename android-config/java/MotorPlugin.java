@@ -1499,15 +1499,33 @@ public class MotorPlugin extends Plugin {
                     ran = true;
                 }
             }
-            File mk = new File(libDir(), "libtx_makeindex.so"), idx = new File(mainDir, job + ".idx");
-            if (mk.exists() && idx.exists()) {
-                String key = sha1(String.valueOf(readText(idx)));
-                File stamp = new File(mainDir, job + ".texsting-idx");
-                if (!key.equals(String.valueOf(readText(stamp)).trim()) || !new File(mainDir, job + ".ind").exists()) {
-                    progress("Armando el índice alfabético…");
-                    output.append(run(Arrays.asList(mk.getAbsolutePath(), job + ".idx"), mainDir, 60 * 1000).out);
-                    try (OutputStream o = new FileOutputStream(stamp)) { o.write(key.getBytes(StandardCharsets.UTF_8)); }
-                    ran = true;
+            File mk = new File(libDir(), "libtx_makeindex.so");
+            if (mk.exists()) {
+                // Índices alfabéticos: el del documento y los de imakeidx (\makeindex[name=autores] → autores.idx).
+                File[] idxs = mainDir.listFiles((d, n) -> n.endsWith(".idx") && !n.startsWith("texsting-"));
+                if (idxs != null) for (File idx : idxs) {
+                    String stem = idx.getName().substring(0, idx.getName().length() - 4);
+                    ran |= makeindex(mk, mainDir, idx.getName(), stem + ".ind", null, null, stem + ".texsting-idx", "Armando el índice alfabético…", output);
+                }
+                // Nomenclatura (nomencl): main.nlo → main.nls con el estilo nomencl.ist.
+                if (new File(mainDir, job + ".nlo").exists())
+                    ran |= makeindex(mk, mainDir, job + ".nlo", job + ".nls", "nomencl.ist", null, job + ".texsting-nls", "Armando la nomenclatura…", output);
+                // Glosarios y siglas (glossaries), como makeglossaries: cada \@newglossary del .aux es un makeindex.
+                String auxG = String.valueOf(readText(new File(mainDir, job + ".aux")));
+                Matcher ist = Pattern.compile("\\\\@istfilename\\{([^}]+)\\}").matcher(auxG);
+                if (ist.find()) {
+                    String estilo = ist.group(1).trim();
+                    boolean letra = auxG.contains("\\@glsorder{letter}");
+                    Matcher g = Pattern.compile("\\\\@newglossary\\{([^}]*)\\}\\{([^}]*)\\}\\{([^}]*)\\}\\{([^}]*)\\}").matcher(auxG);
+                    while (g.find()) {
+                        String in = job + "." + g.group(4), out = job + "." + g.group(3), log = job + "." + g.group(2);
+                        if (!new File(mainDir, in).exists()) continue;
+                        if (estilo.endsWith(".xdy")) {
+                            output.append("\n[TeXsting] El glosario usa xindy, que el motor integrado no trae: usa \\usepackage[...]{glossaries} sin la opción xindy.\n");
+                            continue;
+                        }
+                        ran |= makeindex(mk, mainDir, in, out, estilo, log, job + ".texsting-" + g.group(1), "Armando el glosario…", output, letra);
+                    }
                 }
             }
             // biblatex con biber (lo normal en biblatex): como latexmk, se corre si cambió el .bcf o algún .bib.
@@ -1533,6 +1551,26 @@ public class MotorPlugin extends Plugin {
             output.append("\n[TeXsting] BibTeX/makeindex: ").append(e.getMessage()).append('\n');
         }
         return ran;
+    }
+
+    private boolean makeindex(File mk, File dir, String in, String out, String estilo, String log, String stampName, String aviso, StringBuilder output) throws Exception {
+        return makeindex(mk, dir, in, out, estilo, log, stampName, aviso, output, false);
+    }
+
+    /** makeindex como latexmk: solo si cambió la entrada (o falta la salida). */
+    private boolean makeindex(File mk, File dir, String in, String out, String estilo, String log, String stampName, String aviso, StringBuilder output, boolean letra) throws Exception {
+        String key = sha1(String.valueOf(readText(new File(dir, in))) + "\u0000" + estilo);
+        File stamp = new File(dir, stampName);
+        if (key.equals(String.valueOf(readText(stamp)).trim()) && new File(dir, out).exists()) return false;
+        progress(aviso);
+        List<String> cmd = new ArrayList<>(Arrays.asList(mk.getAbsolutePath()));
+        if (letra) cmd.add("-l");
+        if (estilo != null) { cmd.add("-s"); cmd.add(estilo); }
+        if (log != null) { cmd.add("-t"); cmd.add(log); }
+        cmd.add("-o"); cmd.add(out); cmd.add(in);
+        output.append(run(cmd, dir, 60 * 1000).out);
+        try (OutputStream o = new FileOutputStream(stamp)) { o.write(key.getBytes(StandardCharsets.UTF_8)); }
+        return true;
     }
 
     @PluginMethod

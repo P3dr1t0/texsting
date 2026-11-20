@@ -17,6 +17,18 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.3] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 89
+
+### Nuevo
+- **Glosarios y siglas** (`glossaries`, `\makeglossaries`): la app hace lo mismo que `makeglossaries` en Overleaf. Cada glosario del documento (principal, siglas…) se arma con makeindex y su estilo, solo cuando cambia.
+- **Nomenclatura** (`nomencl`, `\makenomenclature`): se arma la lista de símbolos con el estilo `nomencl.ist`.
+- **Varios índices alfabéticos** (`imakeidx`, `\makeindex[name=autores]`): se arman todos los `.idx`, no solo el principal.
+
+### Pruebas
+- «Jefes»: cinco proyectos difíciles en `tools/diag/jefes/` (tesis completa, tablas, figuras, beamer y Unicode con LuaLaTeX). Compilan sin errores en TeX Live 2026 de escritorio (`tools/diag/jefes.sh`), así que cualquier falla en la app es de la app.
+
+---
+
 ## [0.9.2] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 88
 
 ### Corregido
