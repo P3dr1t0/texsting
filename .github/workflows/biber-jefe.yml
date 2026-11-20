@@ -1,0 +1,28 @@
+name: Biber con el jefe 1 (manual)
+on:
+  workflow_dispatch:
+jobs:
+  prueba:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: TeX Live 2026 y el .bcf del jefe 1
+        run: |
+          cd /tmp && for m in https://mirror.ctan.org https://mirrors.mit.edu/CTAN https://mirrors.rit.edu/CTAN; do curl -sfL $m/systems/texlive/tlnet/install-tl-unx.tar.gz -o itl.tgz && tar xzf itl.tgz && break; sleep 5; done; cd install-tl-2*
+          printf "selected_scheme scheme-medium\nTEXDIR /tmp/tl\nTEXMFLOCAL /tmp/tl/texmf-local\nTEXMFSYSVAR /tmp/tl/texmf-var\nTEXMFSYSCONFIG /tmp/tl/texmf-config\nTEXMFVAR /tmp/tl/texmf-var\nTEXMFHOME /tmp/tl/home\nbinary_aarch64-linux 1\ninstopt_adjustpath 0\ntlpdbopt_install_docfiles 0\ntlpdbopt_install_srcfiles 0\n" > p.txt
+          ./install-tl -profile p.txt -no-interaction > /dev/null
+          export PATH=/tmp/tl/bin/aarch64-linux:$PATH
+          tlmgr install biblatex biber imakeidx nomencl glossaries glossaries-spanish cleveref todonotes threeparttable siunitx pgfplots circuitikz csquotes mfirstuc xfor datatool tracklang listings > /dev/null 2>&1 || true
+          cp -r tools/diag/jefes/jefe1-tesis /tmp/j1 && cd /tmp/j1 && pdflatex -interaction=nonstopmode main > /dev/null; ls main.*
+          mkdir -p /tmp/ref && cp main.bcf referencias.bib /tmp/ref/ && (cd /tmp/ref && biber main | tail -5)
+      - name: Biber de la app (termux-docker) con ese .bcf
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download biber-android -p biber-android.tar.xz -D /tmp -R ${{ github.repository }}
+          mkdir -p /tmp/app && tar -C /tmp -xJf /tmp/biber-android.tar.xz && cp -r /tmp/jniLibs/arm64-v8a /tmp/app/lib && cp /tmp/assets/motor/perl.zip /tmp/app/
+          sed 's/biber b; grep.*/biber main/' tools/biber/probar_app.sh > /tmp/app/probar.sh
+          mkdir -p /tmp/prueba && cp /tmp/j1/main.bcf /tmp/j1/referencias.bib /tmp/prueba/ && chmod -R 777 /tmp/app /tmp/prueba
+          cat /tmp/app/probar.sh | tail -3
+          docker run --rm --privileged -v /tmp/app:/app -v /tmp/prueba:/prueba termux/termux-docker:aarch64 bash /app/probar.sh 2>&1 | tail -60
+          ls -la /tmp/prueba; grep -c 'entry{' /tmp/prueba/main.bbl || true
