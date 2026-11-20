@@ -396,12 +396,14 @@ public class MotorPlugin extends Plugin {
         // La fuente tiene métrica (.tfm) pero no está en pdftex.map: pdfTeX busca un mapa de bits y falla
         // («Font esint10 at 657 not found»). Hay que bajar su versión Type 1 (.pfb), que trae el .map.
         Pattern.compile("\\(file ([A-Za-z0-9_\\-]+)\\): Font \\1 at \\d+ not found"),
+        // MetaPost dentro de LuaLaTeX (luamplib): «I can't open file `plain.mp'».
+        Pattern.compile("I can't open file `([^']+\\.mp)'"),
     };
     // «Font shape `OT1/ptm/m/n' undefined»: LaTeX no encontró la descripción de la fuente (ot1ptm.fd)
     // y usó otra sin error. Pasa con IEEEtran (Times): hay que bajar el .fd y sus fuentes.
     private static final Pattern SHAPE = Pattern.compile("Font shape `([A-Za-z0-9]+)/([^/']+)/[^']*' undefined");
     private static final String[] INSTALLABLE = { ".sty", ".cls", ".def", ".fd", ".cfg", ".clo", ".ldf", ".tfm", ".bbx", ".cbx",
-        ".lbx", ".dbx", ".code.tex", ".tex", ".pfb", ".map", ".enc", ".vf", ".otf", ".ttf", ".lua", ".bst" };
+        ".lbx", ".dbx", ".code.tex", ".tex", ".pfb", ".map", ".enc", ".vf", ".otf", ".ttf", ".lua", ".bst", ".mp" };
     private Map<String, String> index;
     private Set<String> bundled;
 
@@ -457,6 +459,16 @@ public class MotorPlugin extends Plugin {
             }
         }
         index = idx; sizes = sz; deps = dp;
+    }
+
+    /**
+     * Paquete de TeX Live que trae un archivo. El índice del APK no incluye los .mp de MetaPost: los de
+     * metafun empiezan con «mp-» o se llaman metafun; el resto (plain.mp, boxes.mp, graph.mp…) es de «metapost».
+     */
+    private String pkgOf(String file) {
+        String pkg = index.get(file);
+        if (pkg != null || !file.endsWith(".mp")) return pkg;
+        return file.startsWith("mp-") || file.startsWith("metafun") ? "metafun" : "metapost";
     }
 
     /** TeX corta las líneas del registro a 79 caracteres: se vuelven a unir para buscar los mensajes. */
@@ -1417,7 +1429,8 @@ public class MotorPlugin extends Plugin {
                     int p = 0;
                     while (p < 4) {
                         String before = digest(dir, stem);
-                        paso((passes == 0 ? "Pasada 1" : "Pasada " + (passes + 1) + " (índice y referencias)") + (useFigs || usePre ? " ⚡" : ""));
+                        // Tras bajar paquetes la pasada se repite por eso, no por el índice: el texto lo dice.
+                        paso((passes == 0 ? "Pasada 1" : "Pasada " + (passes + 1) + (rounds > 0 && p == 0 ? " (con los paquetes nuevos)" : " (índice y referencias)")) + (useFigs || usePre ? " ⚡" : ""));
                         long tRun = System.currentTimeMillis();
                         r = useFigs ? mainWithFigs(mainDir, job, mainName, usePre)
                                 : run(tex(eng, usePre ? PRE : null,
@@ -1464,7 +1477,7 @@ public class MotorPlugin extends Plugin {
                     }
                     if (all.contains("Type 1 font file")) for (String f : fontsNeeded(dir, stem)) if (!miss.contains(f) && !failed.contains(f)) miss.add(f);
                     for (String m : miss) {
-                        String pkg = index.get(m);
+                        String pkg = pkgOf(m);
                         if (pkg != null && SINGLE.containsKey(pkg)) {
                             if (downloadSingle(pkg, m)) progressed = true; else failed.add(m);
                             continue;

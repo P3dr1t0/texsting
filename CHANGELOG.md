@@ -17,6 +17,14 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.6.4] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 77
+
+### Corregido
+- **MetaPost en LuaLaTeX (`luamplib`, `mplibcode`) fallaba con «I can't open file `plain.mp'».** Los archivos base de MetaPost no venían en el motor y la app no sabía qué paquete bajar. Ahora los descarga solos la primera vez (paquete `metapost`, o `metafun` para los que empiezan con `mp-`).
+- **La barra decía «Pasada 5 (índice y referencias)» cuando en realidad repetía por los paquetes que acababa de descargar.** Ahora esa pasada dice «(con los paquetes nuevos)».
+
+---
+
 ## [0.6.3] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 76
 
 ### Cambiado
