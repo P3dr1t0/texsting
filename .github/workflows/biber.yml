@@ -1,6 +1,8 @@
 name: Biber para Android (manual)
 on:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   biber:
     runs-on: ubuntu-24.04-arm
@@ -30,6 +32,27 @@ jobs:
           grep -n "FAIL\|Can't locate\|exit 1" /tmp/salida/dentro.log | head -30
           ls -la /tmp/salida; cat /tmp/salida/needed.txt /tmp/salida/tamanos.txt || true
           diff <(grep -v '^%' /tmp/prueba/ref/b.bbl) <(grep -v '^%' /tmp/prueba/b.bbl) && echo "BBL IGUAL AL OFICIAL" || echo "BBL DISTINTO"
+      - name: Empaquetar para el APK y probarlo como en el teléfono
+        run: |
+          sudo apt-get install -y -qq patchelf > /dev/null
+          python3 tools/biber/empaquetar.py /tmp/salida /tmp/biber-apk
+          ls -la /tmp/biber-apk/jniLibs/arm64-v8a | head -20; ls /tmp/biber-apk/jniLibs/arm64-v8a | wc -l
+          tar -C /tmp/biber-apk -cJf /tmp/biber-android.tar.xz jniLibs assets
+          ls -la /tmp/biber-android.tar.xz
+      - name: Prueba como en la app (sin la carpeta de Termux, con los nombres de jniLibs)
+        run: |
+          mkdir -p /tmp/app && cp -r /tmp/biber-apk/jniLibs/arm64-v8a /tmp/app/lib && cp /tmp/biber-apk/assets/motor/perl.zip /tmp/app/
+          chmod -R 777 /tmp/app; cp tools/biber/probar_app.sh /tmp/app/
+          rm -f /tmp/prueba/b.bbl
+          docker run --rm --privileged -v /tmp/app:/app -v /tmp/prueba:/prueba termux/termux-docker:aarch64 bash /app/probar_app.sh 2>&1 | tail -40
+          diff <(grep -v '^%' /tmp/prueba/ref/b.bbl) <(grep -v '^%' /tmp/prueba/b.bbl) && echo "APP: BBL IGUAL AL OFICIAL" || echo "APP: BBL DISTINTO"
+      - name: Publicar (release biber-android)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER=$(cat /tmp/biber-ver)
+          gh release view biber-android -R ${{ github.repository }} > /dev/null 2>&1 || gh release create biber-android -R ${{ github.repository }} --title "Biber para el motor integrado" --notes "Biber $VER compilado con el Perl de Termux (aarch64), listo para el APK. Lo arma .github/workflows/biber.yml." --prerelease
+          gh release upload biber-android /tmp/biber-android.tar.xz --clobber -R ${{ github.repository }}
       - uses: actions/upload-artifact@v4
         with:
           name: biber-termux

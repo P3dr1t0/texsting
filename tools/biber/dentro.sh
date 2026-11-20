@@ -24,10 +24,31 @@ set +x
 P=$PREFIX
 mkdir -p /salida
 cp $PREFIX/bin/biber /salida/biber
-tar -C $P -cJf /salida/perl-termux.tar.xz bin/perl lib/perl5 lib/libperl.so 2>/dev/null || tar -C $P -cJf /salida/perl-termux.tar.xz bin/perl lib/perl5
-# Bibliotecas que piden los módulos compilados (XML::LibXML, Net::SSLeay…).
-find $P/lib/perl5 -name '*.so' | while read f; do readelf -d "$f" | grep NEEDED; done | sort | uniq -c | sort -rn > /salida/needed.txt
-readelf -d $P/bin/perl | grep -E 'NEEDED|RUNPATH' >> /salida/needed.txt
+# Perl, sus módulos y las bibliotecas que piden (con las que ellas piden, hasta cerrar la lista).
+python3 - <<'PY'
+import os, re, subprocess, shutil
+P = os.environ["PREFIX"]
+SIS = {"libc.so", "libm.so", "libdl.so", "liblog.so"}
+def needed(f):
+    out = subprocess.run(["readelf", "-d", f], capture_output=True, text=True).stdout
+    return re.findall(r"\(NEEDED\).*\[(.+?)\]", out)
+raiz = [P + "/bin/perl"] + [os.path.join(d, f) for d, _, fs in os.walk(P + "/lib/perl5") for f in fs if f.endswith(".so")]
+libs, pila = {}, list(raiz)
+while pila:
+    for n in needed(pila.pop()):
+        if n in SIS or n in libs: continue
+        ruta = os.path.join(P, "lib", n)
+        if not os.path.exists(ruta):
+            ruta = [os.path.join(d, n) for d, _, fs in os.walk(P + "/lib/perl5") if n in fs]
+            ruta = ruta[0] if ruta else None
+        if ruta:
+            libs[n] = os.path.realpath(ruta); pila.append(libs[n])
+        else:
+            print("FALTA", n)
+os.makedirs("/salida/libs", exist_ok=True)
+for n, r in libs.items():
+    shutil.copy(r, "/salida/libs/" + n); print("lib", n, os.path.getsize(r))
+PY
+tar -C $P -cJf /salida/perl-termux.tar.xz bin/perl lib/perl5
 du -sh $P/lib/perl5 > /salida/tamanos.txt; du -sh $P/lib/perl5/* >> /salida/tamanos.txt
-find $P/lib/perl5 -name '*.so' | wc -l >> /salida/tamanos.txt
 echo LISTO
