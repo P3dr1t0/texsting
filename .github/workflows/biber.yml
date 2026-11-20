@@ -25,7 +25,9 @@ jobs:
           VER=$(cat /tmp/biber-ver)
           mkdir -p /tmp/salida && chmod 777 /tmp/salida /tmp/prueba
           docker run --rm --privileged -v $PWD/tools/biber:/scripts -v /tmp/prueba:/prueba -v /tmp/salida:/salida termux/termux-docker:aarch64 \
-            bash /scripts/dentro.sh "$VER" 2>&1 | tail -150
+            bash /scripts/dentro.sh "$VER" > /tmp/salida/dentro.log 2>&1 || true
+          sed -n '/BIBER-INICIO/,/BIBER-FIN/p' /tmp/salida/dentro.log | head -120
+          grep -n "FAIL\|Can't locate\|exit 1" /tmp/salida/dentro.log | head -30
           ls -la /tmp/salida; cat /tmp/salida/needed.txt /tmp/salida/tamanos.txt || true
           diff <(grep -v '^%' /tmp/prueba/ref/b.bbl) <(grep -v '^%' /tmp/prueba/b.bbl) && echo "BBL IGUAL AL OFICIAL" || echo "BBL DISTINTO"
       - uses: actions/upload-artifact@v4
