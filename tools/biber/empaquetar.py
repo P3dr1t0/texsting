@@ -46,14 +46,18 @@ ajustar(perl)
 lib = os.path.join(TMP, "lib", "perl5")
 xs, n_xs = [], 0
 z = zipfile.ZipFile(os.path.join(ASSETS, "perl.zip"), "w", zipfile.ZIP_DEFLATED, compresslevel=9)
-FUERA = re.compile(r"(\.pod$|\.packlist$|perllocal\.pod$|/\.meta/|/CORE/|/pod/|\.h$|\.a$|/man/)")
+FUERA = re.compile(r"(\.pod$|\.packlist$|perllocal\.pod$|/\.meta/|/CORE/|/pod/|\.h$|\.a$|/man/"
+                   # Codificaciones chinas, japonesas y coreanas (≈8 MB): Biber trabaja en UTF-8 y Latin-1.
+                   r"|/Encode/(CN|JP|KR|TW|JIS2K)(/|\.pm$|\.so$)"
+                   # Lo que solo sirve para instalar o probar módulos.
+                   r"|/(CPAN|ExtUtils|TAP|Test2?|Module/Build|App/Cpan|Devel/PPPort|perl5db)\b)")
 total = 0
 for d, _, fs in os.walk(lib):
     for f in fs:
         ruta = os.path.join(d, f)
         rel = os.path.relpath(ruta, os.path.join(TMP, "lib"))  # perl5/…
         if f.endswith(".so"):
-            if "/CORE/" in ruta: continue  # libperl.so ya va como biblioteca
+            if "/CORE/" in ruta or FUERA.search("/" + rel): continue  # libperl.so ya va como biblioteca
             nuevo = "libtx_pl_" + re.sub(r"\W", "_", rel.split("/auto/", 1)[-1][:-3]) + ".so"
             shutil.copy(ruta, os.path.join(JNI, nuevo)); ajustar(os.path.join(JNI, nuevo))
             xs.append(f"{rel}\t{nuevo}"); n_xs += 1
