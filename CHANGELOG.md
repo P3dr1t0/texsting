@@ -17,7 +17,7 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
-## [0.9.1] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 86
+## [0.9.1] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 87
 
 ### Nuevo
 - **biber dentro del motor** ([#1](https://github.com/P3dr1t0/texsting/issues/1)). Los documentos con `biblatex` ahora compilan igual que en Overleaf o TeXstudio, con biber, sin cambiar nada. Antes la app forzaba BibTeX, que no sirve para estilos como `style=ieee` ni para varias opciones de biblatex.
@@ -25,6 +25,7 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
   - En la prueba, en un equipo Android (aarch64), el `.bbl` sale idéntico al del biber oficial y tarda unos 0,6 s.
   - Corre solo cuando hace falta, como latexmk: cuando cambian las citas o el `.bib`.
   - La primera vez descomprime sus módulos (≈40 MB, solo una vez).
+  - Todas las bibliotecas quedan alineadas a 16 KB, como pide Google Play. `libandroid-utimes` se quitó: Android 8 o superior ya trae esas funciones.
   - Lo arma `.github/workflows/biber.yml` (`tools/biber/`) y queda en la release `biber-android`. El APK lo toma de ahí, y si no estuviera, vuelve a usar BibTeX como antes.
 
 ---
