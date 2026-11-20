@@ -290,4 +290,32 @@ export async function revisarRaiz() {
   return nuevos;
 }
 
+/**
+ * «Abrir con» un archivo que está dentro de la carpeta de un proyecto (p. ej. desde Archivos, en
+ * Documentos/Projects_LaTeX/Tarea/main.tex): devuelve ese proyecto y la ruta del archivo, para abrirlo ahí
+ * en vez de importarlo como copia. «ruta» puede venir de Android (relative_path / _data) o de la propia URI.
+ */
+export async function proyectoDeArchivo(uri, { ruta = '', nombre = '' } = {}) {
+  let s = String(uri || '');
+  for (let i = 0; i < 3; i++) { try { const d = decodeURIComponent(s); if (d === s) break; s = d; } catch { break; } }
+  const textos = [s, ruta].filter(Boolean).map((t) => t.replace(/\\/g, '/'));
+  const buscar = () => {
+    for (const [id, v] of Object.entries(vinculos())) {
+      if (!v.ruta) continue;
+      for (const t of textos) {
+        const k = t.indexOf(v.ruta + '/');
+        if (k < 0 || !(k === 0 || /[/:]/.test(t[k - 1]))) continue;
+        let rel = t.slice(k + v.ruta.length + 1).replace(/[?#].*$/, '');
+        if (t === ruta && nombre && !rel.endsWith(nombre)) rel = rel.replace(/\/?$/, '/') + nombre;
+        if (rel) return { id, path: rel.replace(/^\/+/, '') };
+      }
+    }
+    return null;
+  };
+  let r = buscar();
+  // Una carpeta nueva en Projects_LaTeX que todavía no es proyecto: se importa y se busca de nuevo.
+  if (!r && raiz() && textos.some((t) => t.includes(raiz().ruta + '/'))) { await revisarRaiz().catch(() => {}); r = buscar(); }
+  return r;
+}
+
 export { Carpetas };

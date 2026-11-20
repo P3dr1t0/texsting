@@ -89,6 +89,12 @@ public class OpenedFilePlugin extends Plugin {
                         if (i >= 0 && !c.isNull(i)) ret.put("name", c.getString(i));
                         int j = c.getColumnIndex(OpenableColumns.SIZE);
                         if (j >= 0 && !c.isNull(j)) ret.put("size", c.getLong(j));
+                        // Dónde está (para reconocer un archivo de Documentos/Projects_LaTeX): MediaStore da
+                        // relative_path («Documents/Projects_LaTeX/Tarea/») y algunas apps de archivos dan _data.
+                        for (String col : new String[] { "relative_path", "_data" }) {
+                            int k = c.getColumnIndex(col);
+                            if (k >= 0 && !c.isNull(k)) { try { String v = c.getString(k); if (v != null && !v.isEmpty()) { ret.put("ruta", v); break; } } catch (Exception ignored) { } }
+                        }
                     }
                 }
                 ret.put("mime", getContext().getContentResolver().getType(uri));

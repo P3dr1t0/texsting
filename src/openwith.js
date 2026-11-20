@@ -4,8 +4,9 @@ import { App } from '@capacitor/app';
 import { Filesystem } from '@capacitor/filesystem';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { el, dialog, sheet, toast } from './ui.js';
-import { listProjects, createProject, putFile, listFiles, getFile, saveProject, isTextPath } from './store.js';
+import { listProjects, createProject, putFile, listFiles, getFile, saveProject, touchProject, isTextPath } from './store.js';
 import { base64ToBytes, sanitizeName, slug } from './util.js';
+import { proyectoDeArchivo } from './carpetas.js';
 
 const OpenedFile = registerPlugin('OpenedFile');
 
@@ -74,9 +75,12 @@ export function docTitle(text) {
   return m[1].replace(/\\\\|\\newline/g, ' ').replace(/\\[a-zA-Z]+\*?(\[[^\]]*\])?/g, '').replace(/[{}~]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 70);
 }
 
+let lastInfo = {};
 async function realName(url) {
+  lastInfo = {};
   try {
     const info = await OpenedFile.info({ url });
+    lastInfo = info || {};
     if (info && info.name) return String(info.name).split(/[\\/]/).pop();
   } catch { /* sin complemento nativo (navegador) o la app no lo da */ }
   return nameFromUri(url);
@@ -98,6 +102,14 @@ async function importFlow(url, navigate) {
     return;
   }
   const known = await realName(url);
+  // Si el archivo está en la carpeta de un proyecto (Documentos/Projects_LaTeX/…), se abre ese proyecto:
+  // al abrirlo se traen los cambios de la carpeta, así que no hace falta importar nada.
+  const dePro = await proyectoDeArchivo(url, { ruta: lastInfo.ruta || '', nombre: known || '' }).catch(() => null);
+  if (dePro) {
+    await touchProject(dePro.id, { current: dePro.path });
+    await navigate('editor', { id: dePro.id });
+    return;
+  }
   const head = bytes.subarray(0, 4096);
   const binary = head.includes(0) || /^(%PDF|PK\x03\x04|\x89PNG|\xFF\xD8)/.test(String.fromCharCode(...head.subarray(0, 4)));
   const text = binary ? '' : new TextDecoder().decode(bytes);

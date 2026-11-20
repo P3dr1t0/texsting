@@ -17,6 +17,13 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.7.1] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 80
+
+### Corregido
+- **Al abrir con TeXsting un `.tex` de `Projects_LaTeX` (desde Archivos), la app ofrecía importarlo como proyecto nuevo.** Ahora reconoce que el archivo es de uno de tus proyectos y abre ese proyecto en ese archivo, con los cambios de la carpeta ya traídos. Funciona también con carpetas abiertas con «Abrir → Carpeta del teléfono», y con carpetas nuevas en `Projects_LaTeX` que todavía no eran proyecto.
+
+---
+
 ## [0.7.0] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 79
 
 ### Nuevo
