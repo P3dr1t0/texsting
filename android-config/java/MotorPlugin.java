@@ -1652,6 +1652,7 @@ public class MotorPlugin extends Plugin {
                 StringBuilder output = new StringBuilder();
                 Run r = null;
                 int passes = 0, rounds = 0;
+                Set<String> firmasIntentadas = new HashSet<>();
                 boolean timedOut = false;
                 boolean autoinstall = call.getBoolean("autoinstall", true);
                 List<String> installedNow = new ArrayList<>(), failed = new ArrayList<>(), skipped = new ArrayList<>();
@@ -1708,8 +1709,14 @@ public class MotorPlugin extends Plugin {
                         String lg = readText(new File(dir, stem + ".log"));
                         // Se corta para buscar paquetes solo si de verdad falta algo: fontspec/polyglossia escriben
                         // «not found» en mensajes informativos, y eso dejaba a XeLaTeX con una sola pasada.
+                        // Y solo si hay algo NUEVO que intentar: si lo que falta ya se intentó (no existe en CTAN, o es un aviso
+                        // que no se va), se sigue con BibTeX, biber, glosarios e índices en vez de cortar sin armarlos.
                         if (lg != null && (lg.contains("Emergency stop") || lg.contains("not loadable") || lg.contains("cannot open")
-                                || !findMissing(lg).isEmpty() || !fontRequests(lg).isEmpty())) break;
+                                || !findMissing(lg).isEmpty() || !fontRequests(lg).isEmpty())) {
+                            String firma = String.join("|", findMissing(lg)) + "#" + String.join("|", fontRequests(lg))
+                                    + "#" + lg.contains("Emergency stop") + lg.contains("not loadable") + lg.contains("cannot open");
+                            if (autoinstall && rounds < 8 && !firmasIntentadas.contains(firma)) { firmasIntentadas.add(firma); break; }
+                        }
                         // Bibliografía (BibTeX) e índice alfabético (makeindex), como latexmk: si cambiaron, se arman y se repite.
                         if (p < 4 && auxTools(mainDir, job, output, autoinstall)) continue;
                         boolean rerunMsg = lg != null && (lg.contains("Rerun to get") || lg.contains("Label(s) may have changed"));

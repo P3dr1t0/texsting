@@ -22,6 +22,7 @@ for d in jefe*/; do
   echo "=== $d ($eng): pdf=$([ -f main.pdf ] && echo sí || echo NO) páginas=$(pdfinfo main.pdf 2>/dev/null | awk '/Pages/{print $2}') errores=$(grep -cE '^!|^[^ ]+:[0-9]+: ' main.log) indefinidas=$(grep -c 'undefined' main.log) $(( $(date +%s) - t0 )) s"
   grep -A3 -E '^!|^[^ ]+:[0-9]+: ' main.log | head -24
   grep -i "warning.*undefined\|Citation.*undefined" main.log | head -5
+  echo "--- cosas que la app toma como «falta algo»:"; grep -n "cannot open\|not loadable\|Emergency stop\|can't find file\|File \`.*' not found\|or similar\|Style '.*' not found" main.log | head -8
   grep -i "error\|WARN" biber.out 2>/dev/null | head -5
   cd ..
 done
