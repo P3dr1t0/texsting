@@ -26,6 +26,7 @@ def nombre_lib(n):
 # Bibliotecas que piden perl y los módulos: con nombre válido para jniLibs.
 renombre = {n: nombre_lib(n) for n in os.listdir(os.path.join(ORIG, "libs"))}
 def ajustar(f, soname=None):
+    os.chmod(f, 0o755)  # los archivos vienen de solo lectura desde Termux
     out = subprocess.run(["readelf", "-d", f], capture_output=True, text=True).stdout
     for n in re.findall(r"\(NEEDED\).*\[(.+?)\]", out):
         if n in renombre and renombre[n] != n:
