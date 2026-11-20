@@ -36,7 +36,8 @@ jobs:
         run: |
           sudo apt-get install -y -qq patchelf > /dev/null; sudo chmod -R a+rwX /tmp/salida
           python3 tools/biber/empaquetar.py /tmp/salida /tmp/biber-apk
-          ls -laS /tmp/biber-apk/jniLibs/arm64-v8a | head -30; ls /tmp/biber-apk/jniLibs/arm64-v8a | wc -l
+          ls -laS /tmp/biber-apk/jniLibs/arm64-v8a | head -12; ls /tmp/biber-apk/jniLibs/arm64-v8a | wc -l
+          for f in /tmp/biber-apk/jniLibs/arm64-v8a/*.so; do a=$(readelf -lW $f | awk '$1=="LOAD"{print $NF}' | sort -u | tr "\n" " "); case "$a" in *0x1000\ *|*0x2000\ *) echo "NO ALINEADA $(basename $f) $a";; esac; done
           tar -C /tmp/biber-apk -cJf /tmp/biber-android.tar.xz jniLibs assets
           ls -la /tmp/biber-android.tar.xz
       - name: Prueba como en la app (sin la carpeta de Termux, con los nombres de jniLibs)

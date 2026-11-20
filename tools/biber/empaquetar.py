@@ -23,12 +23,18 @@ ok = re.compile(r"^lib[A-Za-z0-9_+\-]+\.so$")
 def nombre_lib(n):
     return n if ok.match(n) else "libtx_" + re.sub(r"\W", "", n.split(".so")[0][3:]) + ".so"
 
+# libandroid-utimes (futimes/lutimes) no está alineada a 16 KB, que exige Google Play, y desde Android 8 (API 26)
+# esas funciones ya vienen en la libc del sistema: se quita la dependencia.
+QUITAR = {"libandroid-utimes.so"}
 # Bibliotecas que piden perl y los módulos: con nombre válido para jniLibs.
-renombre = {n: nombre_lib(n) for n in os.listdir(os.path.join(ORIG, "libs"))}
+renombre = {n: nombre_lib(n) for n in os.listdir(os.path.join(ORIG, "libs")) if n not in QUITAR}
 def ajustar(f, soname=None):
     os.chmod(f, 0o755)  # los archivos vienen de solo lectura desde Termux
     out = subprocess.run(["readelf", "-d", f], capture_output=True, text=True).stdout
     for n in re.findall(r"\(NEEDED\).*\[(.+?)\]", out):
+        if n in QUITAR:
+            subprocess.run(["patchelf", "--remove-needed", n, f], check=True)
+            continue
         if n in renombre and renombre[n] != n:
             subprocess.run(["patchelf", "--replace-needed", n, renombre[n], f], check=True)
     subprocess.run(["patchelf", "--remove-rpath", f], check=True)
