@@ -453,14 +453,33 @@ public class MotorPlugin extends Plugin {
     /** El último espejo que funcionó: se prueba primero (mirror.ctan.org a veces manda a uno caído). */
     private static volatile int espejoBueno = 0;
 
+    /** El espejo al que mandó mirror.ctan.org la última vez (…/systems/texlive/tlnet/archive/): se usa directo,
+     *  sin pasar otra vez por la redirección (una conexión más por cada paquete, ~1 s desde el Perú). */
+    private static volatile String espejoResuelto = null;
+
+    /** Avisa cuántos bytes lleva el intento actual de una descarga (para la barra de «Usar sin internet»). */
+    interface Avance { void bytes(long llevados); }
+
+    private static void bajarDeCtan(String archivo, File dest) throws Exception { bajarDeCtan(archivo, dest, null); }
+
     /** Baja un archivo de tlnet probando los espejos; si no hay internet en ese momento, espera y reintenta una vez. */
-    private static void bajarDeCtan(String archivo, File dest) throws Exception {
+    private static void bajarDeCtan(String archivo, File dest, Avance av) throws Exception {
+        String r = espejoResuelto;
+        if (r != null) {
+            try { download(r + archivo, dest, av); return; }
+            catch (Exception e) { if (r.equals(espejoResuelto)) espejoResuelto = null; }
+        }
         Exception last = null;
         for (int vuelta = 0; vuelta < 2; vuelta++) {
             boolean sinRed = true;
             for (int k = 0; k < CTAN.length; k++) {
                 int i = (espejoBueno + k) % CTAN.length;
-                try { download(CTAN[i] + archivo, dest); espejoBueno = i; return; }
+                try {
+                    String fin = download(CTAN[i] + archivo, dest, av);
+                    espejoBueno = i;
+                    if (fin.endsWith("/" + archivo)) espejoResuelto = fin.substring(0, fin.length() - archivo.length());
+                    return;
+                }
                 catch (Exception e) { last = e; if (!(e instanceof java.net.UnknownHostException)) sinRed = false; }
             }
             if (!sinRed) break;
@@ -665,7 +684,11 @@ public class MotorPlugin extends Plugin {
         notifyListeners("progreso", d);
     }
 
-    private static void download(String url, File dest) throws Exception {
+    private static String download(String url, File dest) throws Exception { return download(url, dest, null); }
+
+    /** Baja una URL siguiendo redirecciones; devuelve la URL de donde llegó el archivo. La conexión no se cierra
+     *  al terminar bien: queda abierta para el siguiente paquete del mismo espejo (sin otro saludo TLS). */
+    private static String download(String url, File dest, Avance av) throws Exception {
         for (int hop = 0; hop < 8; hop++) {
             HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
             c.setInstanceFollowRedirects(false);
@@ -681,11 +704,19 @@ public class MotorPlugin extends Plugin {
                 continue;
             }
             if (code != 200) { c.disconnect(); throw new IOException("CTAN respondió " + code); }
+            boolean ok = false;
             try (InputStream in = c.getInputStream(); OutputStream o = new FileOutputStream(dest)) {
                 byte[] b = new byte[65536]; int n;
-                while ((n = in.read(b)) > 0) o.write(b, 0, n);
-            } finally { c.disconnect(); }
-            return;
+                long t = 0, avisado = 0;
+                while ((n = in.read(b)) > 0) {
+                    o.write(b, 0, n);
+                    t += n;
+                    if (av != null && t - avisado >= 262144) { avisado = t; av.bytes(t); }
+                }
+                if (av != null) av.bytes(t);
+                ok = true;
+            } finally { if (!ok) c.disconnect(); }
+            return url;
         }
         throw new IOException("Demasiadas redirecciones");
     }
@@ -783,19 +814,43 @@ public class MotorPlugin extends Plugin {
     private void installNow(String pkg, boolean avisar) throws Exception {
         Long sz = sizes.get(pkg);
         if (avisar) progress("Descargando el paquete «" + pkg + "»" + (sz != null && sz > 0 ? String.format(Locale.ROOT, " (%.1f MB)", sz / 1e6).replace('.', ',') : "") + "… (solo la primera vez)");
-        File tmp = new File(getContext().getCacheDir(), pkg + ".tar.xz");
+        File tmp = File.createTempFile(pkg + "-", ".tar.xz", getContext().getCacheDir());
         try {
             bajarDeCtan(pkg + ".tar.xz", tmp);
-            List<File> maps;
-            try (InputStream in = new org.tukaani.xz.XZInputStream(new BufferedInputStream(new FileInputStream(tmp), 65536))) {
-                maps = untar(in, home());
-            }
-            if (!maps.isEmpty()) appendMaps(maps);
-            try (OutputStream o = new FileOutputStream(installedFile(), true)) { o.write((pkg + "\n").getBytes(StandardCharsets.UTF_8)); }
+            desempacar(pkg, tmp);
         } finally {
             tmp.delete();
         }
     }
+
+    /** Descomprime un paquete ya bajado y lo anota como instalado (con el candado «instalando» tomado). */
+    private void desempacar(String pkg, File tmp) throws Exception {
+        List<File> maps;
+        try (InputStream in = new org.tukaani.xz.XZInputStream(new BufferedInputStream(new FileInputStream(tmp), 65536))) {
+            maps = untar(in, home());
+        }
+        if (!maps.isEmpty()) appendMaps(maps);
+        try (OutputStream o = new FileOutputStream(installedFile(), true)) { o.write((pkg + "\n").getBytes(StandardCharsets.UTF_8)); }
+    }
+
+    /** Como install, pero la descarga va FUERA del candado: así se bajan varios paquetes a la vez
+     *  y solo el descomprimir (rápido) va de uno en uno. */
+    private void instalarEnParalelo(String pkg, Avance av) throws Exception {
+        if (installedPkgs().contains(pkg)) return;
+        File tmp = File.createTempFile(pkg + "-", ".tar.xz", getContext().getCacheDir());
+        try {
+            bajarDeCtan(pkg + ".tar.xz", tmp, av);
+            synchronized (instalando) {
+                if (installedPkgs().contains(pkg)) return;  // lo bajó una compilación mientras tanto
+                desempacar(pkg, tmp);
+            }
+        } finally {
+            tmp.delete();
+        }
+    }
+
+    /** Cuántos paquetes se bajan a la vez (más no acelera: se reparte el mismo ancho de banda). */
+    private static final int A_LA_VEZ = 4;
 
     private static final Pattern BIBLATEX_OPC = Pattern.compile("\\\\usepackage\\s*\\[([^\\]]*)\\]\\s*\\{biblatex\\}");
     private static final Pattern USES = Pattern.compile("\\\\(documentclass|usepackage|RequirePackage)\\s*(?:\\[[^\\]]*\\])?\\s*\\{([^}]*)\\}");
@@ -843,9 +898,23 @@ public class MotorPlugin extends Plugin {
         Set<String> have = installedPkgs();
         List<String> pkgs = new ArrayList<>();
         for (String w : want) for (String p : withDeps(index.get(w), have, pkgs)) pkgs.add(p);
-        for (String p : pkgs) {
-            try { install(p); installedNow.add(p); } catch (Exception e) { /* se reintenta al compilar */ }
+        if (pkgs.size() == 1) {
+            try { install(pkgs.get(0)); installedNow.add(pkgs.get(0)); } catch (Exception e) { /* se reintenta al compilar */ }
+            return pkgs;
         }
+        if (pkgs.isEmpty()) return pkgs;
+        long total = 0;
+        for (String p : pkgs) { Long z = sizes.get(p); if (z != null) total += z; }
+        progress("Descargando " + pkgs.size() + " paquetes" + (total > 0 ? String.format(Locale.ROOT, " (%.1f MB)", total / 1e6).replace('.', ',') : "") + "… (solo la primera vez)");
+        ExecutorService pool = Executors.newFixedThreadPool(Math.min(A_LA_VEZ, pkgs.size()), r -> new Thread(r, "texsting-paquetes"));
+        try {
+            List<Future<?>> fs = new ArrayList<>();
+            for (String p : pkgs) fs.add(pool.submit(() -> {
+                try { instalarEnParalelo(p, null); synchronized (installedNow) { installedNow.add(p); } }
+                catch (Exception e) { /* se reintenta al compilar */ }
+            }));
+            for (Future<?> f : fs) try { f.get(); } catch (Exception ignored) { }
+        } finally { pool.shutdown(); }
         return pkgs;
     }
 
@@ -973,14 +1042,45 @@ public class MotorPlugin extends Plugin {
                     pend.add(x.getString(0)); peso.put(x.getString(0), x.getLong(1)); bytesTotal += x.getLong(1);
                 }
                 total = pend.size();
+                // Los grandes primero (cm-super, fuentes): así no queda uno pesado bajando solo al final.
+                pend.sort((x, y) -> Long.compare(peso.getOrDefault(y, 0L), peso.getOrDefault(x, 0L)));
                 avisoDescarga(nivel, 0, total, "", 0, bytesTotal, false, 0, false);
-                for (String pkg : pend) {
-                    if (dlCancelar) break;
-                    try { install(pkg, false); } catch (Exception e) { fallos++; }
-                    hechos++;
-                    bytes += peso.getOrDefault(pkg, 0L);
-                    avisoDescarga(nivel, hechos, total, pkg, bytes, bytesTotal, false, fallos, false);
-                }
+                final int tot = total;
+                final long bTot = bytesTotal;
+                final java.util.concurrent.atomic.AtomicInteger cHechos = new java.util.concurrent.atomic.AtomicInteger();
+                final java.util.concurrent.atomic.AtomicInteger cFallos = new java.util.concurrent.atomic.AtomicInteger();
+                final java.util.concurrent.atomic.AtomicLong cBytes = new java.util.concurrent.atomic.AtomicLong();  // de los terminados
+                final Map<String, Long> enCurso = new ConcurrentHashMap<>();  // lo que llevan los que se están bajando
+                final long[] ultimoAviso = { 0 };
+                final Runnable avisar = () -> {
+                    synchronized (ultimoAviso) {
+                        long ahora = System.currentTimeMillis();
+                        if (ahora - ultimoAviso[0] < 300) return;
+                        ultimoAviso[0] = ahora;
+                    }
+                    long b = cBytes.get();
+                    for (long x : enCurso.values()) b += x;
+                    String actual = "";
+                    for (String k : enCurso.keySet()) { actual = k; break; }
+                    avisoDescarga(nivel, cHechos.get(), tot, actual, Math.min(b, bTot), bTot, false, cFallos.get(), false);
+                };
+                ExecutorService pool = Executors.newFixedThreadPool(A_LA_VEZ, r -> new Thread(r, "texsting-descargas-" + nivel));
+                try {
+                    List<Future<?>> fs = new ArrayList<>();
+                    for (String pkg : pend) fs.add(pool.submit(() -> {
+                        if (dlCancelar) return;
+                        long w = peso.getOrDefault(pkg, 0L);
+                        enCurso.put(pkg, 0L);
+                        try { instalarEnParalelo(pkg, n -> { enCurso.put(pkg, Math.min(n, w)); avisar.run(); }); }
+                        catch (Exception e) { cFallos.incrementAndGet(); }
+                        enCurso.remove(pkg);
+                        cHechos.incrementAndGet();
+                        cBytes.addAndGet(w);
+                        avisar.run();
+                    }));
+                    for (Future<?> f : fs) try { f.get(); } catch (Exception ignored) { }
+                } finally { pool.shutdown(); }
+                hechos = cHechos.get(); fallos = cFallos.get(); bytes = cBytes.get();
             } catch (Exception e) { fallos++; }
             finally {
                 dlActiva = false;

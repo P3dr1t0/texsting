@@ -17,6 +17,18 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.13] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 100
+
+### «Usar sin internet» más rápido
+- **Los paquetes se bajan de 4 en 4** en lugar de uno por uno. Los más pesados (como las fuentes cm-super) empiezan primero, para que ninguno quede bajando solo al final.
+- **Una sola conexión por espejo.** Antes, cada paquete pasaba por mirror.ctan.org, que redirige a un espejo cercano: eran dos conexiones nuevas por paquete. Ahora TeXsting recuerda a qué espejo lo mandaron y reutiliza la conexión. Esa espera se notaba sobre todo en los avanzados, que son unos 3850 paquetes.
+- **La barra avanza mientras baja un paquete grande**, en lugar de quedarse quieta hasta que termina.
+- Al compilar, si un documento necesita varios paquetes nuevos, también se bajan a la vez («Descargando N paquetes…»).
+
+### Papelera a la vista
+- **Botón de papelera en la pantalla principal**, en el lado opuesto a Ajustes (el logo queda al centro). Siempre está, aunque la papelera esté vacía, y un globito muestra cuántas cosas tiene.
+- Antes solo aparecía un botón al final de la lista de proyectos cuando había algo eliminado, y era fácil no verlo.
+
 ## [0.9.12] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 98
 
 ### Preparación para Google Play

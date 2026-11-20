@@ -89,7 +89,8 @@ a { color: inherit; }
 .screen { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
 .home, .settings, .termux { overflow-y: auto; }
 .home { padding: 16px max(16px, calc(50% - 360px)) calc(24px + var(--safe-bottom)); gap: 14px; }
-.home-head { display: flex; align-items: center; justify-content: space-between; }
+.home-head { display: grid; grid-template-columns: 42px 1fr 42px; align-items: center; gap: 8px; }
+.home-head .brand { justify-self: center; }
 @font-face { font-family: 'LM Roman Marca'; src: url('fonts/lmroman10-bold-marca.woff') format('woff'); font-weight: 700; font-display: block; }
 .brand { display: flex; align-items: center; gap: 12px; }
 .brand-name { font-family: 'LM Roman Marca', 'Latin Modern Roman', 'CMU Serif', Georgia, serif; font-weight: 700; font-size: 30px; letter-spacing: 0; line-height: 1; }
@@ -546,7 +547,9 @@ span.lic-chip { border-color: var(--border); color: var(--muted); cursor: defaul
 /* Papelera */
 .papelera-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 .topbar.simple h1 { flex: 1; }
-.home-papelera { align-self: center; display: inline-flex; align-items: center; gap: 6px; }
+.home-papelera { position: relative; }
+.home-papelera .badge { position: absolute; top: 2px; right: 0; min-width: 17px; height: 17px; border-radius: 9px; background: var(--muted); color: var(--bg); font-style: normal; font-size: 10px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; line-height: 1; }
+.home-papelera .badge[hidden] { display: none; }
 .btn.danger.ghost { background: transparent; border-color: transparent; color: var(--danger); }
 /* Usar sin internet */
 .sin-internet { display: flex; flex-direction: column; gap: 10px; }

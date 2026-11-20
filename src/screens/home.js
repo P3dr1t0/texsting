@@ -138,9 +138,12 @@ export async function renderHome(root, _params, navigate) {
     return v.externa ? `(su carpeta «${v.ruta || v.nombre}» queda intacta)` : `y su carpeta pasa a ${raiz() ? raiz().ruta + '/Papelera de TeXsting' : 'la papelera'}`;
   };
 
-  const papeleraBtn = el('button', { class: 'btn small ghost home-papelera', hidden: true, onclick: () => navigate('papelera') });
+  // Papelera: siempre a la vista, al otro lado de Ajustes (con cuántas cosas tiene).
+  const papeleraCuenta = el('i', { class: 'badge', hidden: true });
+  const papeleraBtn = el('button', { class: 'icon-btn home-papelera', title: 'Papelera', 'aria-label': 'Papelera', html: icon('trash'), onclick: () => navigate('papelera') }, papeleraCuenta);
   const screen = el('div', { class: 'screen home' },
     el('header', { class: 'home-head' },
+      papeleraBtn,
       el('div', { class: 'brand', html: logoSvg(36) + brandName() }),
       el('button', { class: 'icon-btn', title: 'Ajustes', 'aria-label': 'Ajustes', html: icon('settings'), onclick: () => navigate('settings') })),
     status,
@@ -152,7 +155,6 @@ export async function renderHome(root, _params, navigate) {
     tabsRow,
     selBar,
     list,
-    papeleraBtn,
     el('p', { class: 'home-foot' }, `TeXsting ${__VERSION__} · Fase 2: Beta · software libre (GPL-3.0)`));
   root.append(screen);
 
@@ -192,8 +194,9 @@ export async function renderHome(root, _params, navigate) {
     draw();
     const t = await listTrash().catch(() => ({ proyectos: [], archivos: [] }));
     const n = t.proyectos.length + t.archivos.length;
-    papeleraBtn.hidden = !n;
-    papeleraBtn.innerHTML = `${icon('trash')}<span>Papelera · ${n}</span>`;
+    papeleraCuenta.hidden = !n;
+    papeleraCuenta.textContent = n > 99 ? '99+' : String(n);
+    papeleraBtn.setAttribute('aria-label', n ? `Papelera (${n})` : 'Papelera');
   }
 
   function card(p) {
