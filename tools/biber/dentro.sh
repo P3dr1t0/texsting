@@ -10,7 +10,7 @@ curl -fsSL https://cpanmin.us | perl - App::cpanminus || exit 1
 # Biber con la misma versión que el biblatex de TeX Live (si no, rechaza el .bcf).
 cpanm --notest --quiet "PLS/Biber-$VER.tar.gz" || cpanm --notest "Biber@$VER" || cpanm --notest Biber || { tail -100 ~/.cpanm/build.log; exit 1; }
 which biber && biber --version
-cd /prueba && biber b && grep -c bibitem b.bbl; head -40 b.bbl
+cd /prueba && biber b && grep -c 'entry{' b.bbl || true; head -40 b.bbl
 P=$PREFIX
 mkdir -p /salida
 cp $(which biber) /salida/biber

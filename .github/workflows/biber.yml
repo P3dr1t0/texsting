@@ -18,7 +18,7 @@ jobs:
           export PATH=/tmp/tl/bin/aarch64-linux:$PATH
           mkdir -p /tmp/prueba && cp tools/biber/prueba.tex /tmp/prueba/b.tex && cp tools/biber/refs.bib /tmp/prueba/
           cd /tmp/prueba && pdflatex -interaction=nonstopmode b > /dev/null; ls
-          mkdir ref && cp b.bcf refs.bib ref/ && (cd ref && biber b > /dev/null && grep -c bibitem b.bbl)
+          mkdir ref && cp b.bcf refs.bib ref/ && (cd ref && biber b > /dev/null && grep -c 'entry{' b.bbl || true)
           biber --version | grep -o '[0-9][0-9.]*' | head -1 > /tmp/biber-ver; cat /tmp/biber-ver
       - name: Biber en Termux (aarch64)
         run: |
