@@ -141,7 +141,7 @@ function mountLayer(node, onClose) {
 }
 
 /** Diálogo genérico. buttons: [{label, value, primary, danger}] */
-export function dialog({ title, body, buttons = [{ label: 'Aceptar', value: true, primary: true }], wide = false }) {
+export function dialog({ title, body, buttons = [{ label: 'Aceptar', value: true, primary: true }], wide = false, autofocus = true }) {
   return new Promise((resolve) => {
     const box = el('div', { class: 'dialog' + (wide ? ' wide' : ''), role: 'dialog', 'aria-modal': 'true' });
     if (title) box.append(el('h2', {}, title));
@@ -156,7 +156,7 @@ export function dialog({ title, body, buttons = [{ label: 'Aceptar', value: true
     box.append(row);
     close = mountLayer(box, resolve);
     const first = box.querySelector('input, textarea, select');
-    if (first) setTimeout(() => first.focus(), 60);
+    if (first && autofocus) setTimeout(() => first.focus(), 60);
     box.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && e.target.tagName === 'INPUT') { const p = buttons.find((b) => b.primary); if (p) close(typeof p.value === 'function' ? p.value(content) : p.value); }
       if (e.key === 'Escape') close(undefined);

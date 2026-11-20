@@ -120,7 +120,7 @@ const BIB = String.raw`@book{ejemplo,
   year    = {2023}
 }
 `;
-const bibFin = (o, estilo = 'plain') => (o.biblio ? `
+const bibFin = (o, estilo = 'plain') => (o.biblio ? String.raw`
 % Referencias: edita referencias.bib y cita con \cite{clave}.
 % \nocite{*} muestra todas las del archivo aunque no las cites.
 \nocite{*}

@@ -170,7 +170,7 @@ export async function renderEditor(root, { id }, navigate) {
     if (WIDE.matches) {
       if (name === 'messages') { screen.classList.toggle('show-messages'); return; }
       if (name === 'files' || name === 'outline' || name === 'symbols') { setSideTab(name); screen.classList.add('show-sidebar'); return; }
-      if (name === 'code') editor.focus();
+      // Sin poner el cursor en el código: en la tablet eso abría el teclado cada vez que se abría un archivo.
       return;
     }
     screen.dataset.tab = name;

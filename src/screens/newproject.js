@@ -2,6 +2,7 @@
 import { createProject, listTemplates, saveTemplate, deleteTemplate, listFiles, newId } from '../store.js';
 import { el, icon, toast, promptText, confirmDialog, sheet } from '../ui.js';
 import { TEMPLATES, BLANKS } from '../templates.js';
+import { personalizar } from './personalizar.js';
 import { sanitizeName, timeAgo } from '../util.js';
 
 function thumb(t) {
@@ -22,13 +23,23 @@ function card(t, onClick, extra) {
 
 export async function renderNewProject(root, _p, navigate) {
   async function createFrom(t, defaultName) {
-    const name = await promptText('Nombre del proyecto', { value: defaultName || t.name, ok: 'Crear' });
-    if (!name) return;
+    let name, files;
+    if (t.build) {
+      // Plantilla personalizable: ventana con datos básicos y formato avanzado.
+      const r = await personalizar(t);
+      if (!r) return;
+      name = r.nombre;
+      files = t.build(r.opciones);
+    } else {
+      name = await promptText('Nombre del proyecto', { value: defaultName || t.name, ok: 'Crear' });
+      if (!name) return;
+      files = t.files.map((f) => ({ ...f }));
+    }
     const p = await createProject({
       name: sanitizeName(name) || 'Proyecto',
       main: t.main || 'main.tex',
       engine: t.engine || undefined,
-      files: t.files.map((f) => ({ ...f })),
+      files,
     });
     navigate('editor', { id: p.id });
   }
@@ -63,8 +74,10 @@ export async function renderNewProject(root, _p, navigate) {
     el('div', { class: 'np-body' },
       el('h3', { class: 'section-title' }, 'En blanco'),
       el('div', { class: 'tpl-grid' }, ...BLANKS.map((t) => card(t, () => createFrom(t, t.id === 'blanco' ? 'Documento' : 'Presentación')))),
-      el('h3', { class: 'section-title' }, 'Plantillas'),
-      el('div', { class: 'tpl-grid' }, ...TEMPLATES.map((t) => card(t, () => createFrom(t)))),
+      // Plantillas por grupo (Universidad, Documentos, Presentaciones y otros)
+      ...[...new Set(TEMPLATES.map((t) => t.grupo))].flatMap((g) => [
+        el('h3', { class: 'section-title' }, g),
+        el('div', { class: 'tpl-grid' }, ...TEMPLATES.filter((t) => t.grupo === g).map((t) => card(t, () => createFrom(t))))]),
       el('h3', { class: 'section-title' }, 'Mis plantillas'),
       mine)));
   await renderMine();
