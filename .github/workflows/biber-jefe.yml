@@ -15,7 +15,7 @@ jobs:
           printf "selected_scheme scheme-medium\nTEXDIR /tmp/tl\nTEXMFLOCAL /tmp/tl/texmf-local\nTEXMFSYSVAR /tmp/tl/texmf-var\nTEXMFSYSCONFIG /tmp/tl/texmf-config\nTEXMFVAR /tmp/tl/texmf-var\nTEXMFHOME /tmp/tl/home\nbinary_aarch64-linux 1\ninstopt_adjustpath 0\ntlpdbopt_install_docfiles 0\ntlpdbopt_install_srcfiles 0\n" > p.txt
           ./install-tl -profile p.txt -no-interaction > /dev/null
           export PATH=/tmp/tl/bin/aarch64-linux:$PATH
-          tlmgr install biblatex biber imakeidx nomencl glossaries glossaries-spanish cleveref todonotes threeparttable siunitx pgfplots circuitikz csquotes mfirstuc xfor datatool tracklang listings > /dev/null 2>&1 || true
+          tlmgr install biblatex biber imakeidx nomencl glossaries glossaries-spanish cleveref todonotes threeparttable siunitx pgfplots circuitikz tikz-timing tikz-cd forest tcolorbox diagbox tabularray pdflscape makecell wrapfig lipsum qrcode appendixnumberbeamer beamer chemformula gnu-freefont babel-greek babel-russian babel-german hyphen-greek hyphen-russian hyphen-german luacode fontspec unicode-math lm-math csquotes mfirstuc xfor datatool tracklang glossaries-extra listings environ trimspaces pdfcol tikzfill multirow ninecolors > /dev/null 2>&1 || true
           cp -r $GITHUB_WORKSPACE/tools/diag/jefes/jefe1-tesis /tmp/j1 && cd /tmp/j1 && (pdflatex -interaction=nonstopmode main > /dev/null || true); ls main.*; grep -A2 "^!" main.log | head -20
           mkdir -p /tmp/ref && cp main.bcf referencias.bib /tmp/ref/ && (cd /tmp/ref && biber main | tail -5) || true
       - name: Biber de la app (termux-docker) con ese .bcf
