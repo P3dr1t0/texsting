@@ -4,6 +4,9 @@ on:
 jobs:
   prueba:
     runs-on: ubuntu-24.04-arm
+    defaults:
+      run:
+        shell: bash {0}
     steps:
       - uses: actions/checkout@v4
       - name: TeX Live 2026 y el .bcf del jefe 1
@@ -13,8 +16,8 @@ jobs:
           ./install-tl -profile p.txt -no-interaction > /dev/null
           export PATH=/tmp/tl/bin/aarch64-linux:$PATH
           tlmgr install biblatex biber imakeidx nomencl glossaries glossaries-spanish cleveref todonotes threeparttable siunitx pgfplots circuitikz csquotes mfirstuc xfor datatool tracklang listings > /dev/null 2>&1 || true
-          cp -r $GITHUB_WORKSPACE/tools/diag/jefes/jefe1-tesis /tmp/j1 && cd /tmp/j1 && pdflatex -interaction=nonstopmode main > /dev/null; ls main.*
-          mkdir -p /tmp/ref && cp main.bcf referencias.bib /tmp/ref/ && (cd /tmp/ref && biber main | tail -5)
+          cp -r $GITHUB_WORKSPACE/tools/diag/jefes/jefe1-tesis /tmp/j1 && cd /tmp/j1 && (pdflatex -interaction=nonstopmode main > /dev/null || true); ls main.*; grep -A2 "^!" main.log | head -20
+          mkdir -p /tmp/ref && cp main.bcf referencias.bib /tmp/ref/ && (cd /tmp/ref && biber main | tail -5) || true
       - name: Biber de la app (termux-docker) con ese .bcf
         env:
           GH_TOKEN: ${{ github.token }}
