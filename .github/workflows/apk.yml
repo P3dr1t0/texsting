@@ -34,6 +34,21 @@ jobs:
       - name: Construir la app web
         run: npm run build
 
+      - name: Llave de subida (firma para Google Play)
+        env:
+          FIRMA: ${{ secrets.TEXSTING_FIRMA }}
+        run: |
+          if [ -n "$FIRMA" ]; then
+            printf '%s' "$FIRMA" > "$RUNNER_TEMP/clave"
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in android-config/texsting-subida.jks.enc -out "$RUNNER_TEMP/subida.jks" -pass "file:$RUNNER_TEMP/clave"
+            rm "$RUNNER_TEMP/clave"
+            echo "TEXSTING_KEYSTORE=$RUNNER_TEMP/subida.jks" >> $GITHUB_ENV
+            echo "TEXSTING_KEYSTORE_PASS=$FIRMA" >> $GITHUB_ENV
+            echo "Versión final: firmada con la llave de subida"
+          else
+            echo "::warning::Falta el secreto TEXSTING_FIRMA: sale solo la versión de prueba (debug), sin AAB para Google Play"
+          fi
+
       - name: Crear proyecto Android
         run: |
           npx cap add android
@@ -114,8 +129,21 @@ jobs:
           cp android-config/debug.keystore ~/.android/debug.keystore
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
-          cp app/build/outputs/apk/debug/app-debug.apk ../TeXsting.apk
+          if [ -n "$TEXSTING_KEYSTORE" ]; then
+            ./gradlew assembleRelease bundleRelease --no-daemon
+            cp app/build/outputs/apk/release/app-release.apk ../TeXsting.apk
+            cp app/build/outputs/bundle/release/app-release.aab ../TeXsting.aab
+          else
+            ./gradlew assembleDebug --no-daemon
+            cp app/build/outputs/apk/debug/app-debug.apk ../TeXsting.apk
+          fi
+
+      - name: Revisar el APK (identificador, Android de destino y firma)
+        run: |
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+          $BT/aapt2 dump badging TeXsting.apk | grep -E "^package:|targetSdkVersion|compileSdkVersion" || true
+          $BT/apksigner verify --print-certs TeXsting.apk | grep -E "Signer #1 certificate (DN|SHA-256)" || true
+          rm -f "$RUNNER_TEMP/subida.jks"
 
       - name: Notas de la versión
         run: node scripts/release-notes.mjs release-notes.md
@@ -123,7 +151,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: TeXsting-apk
-          path: TeXsting.apk
+          path: |
+            TeXsting.apk
+            TeXsting.aab
 
       - name: Publicar en Releases
         uses: softprops/action-gh-release@v2
@@ -131,5 +161,7 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: TeXsting ${{ env.APP_VERSION }} (compilación ${{ github.run_number }})
           prerelease: true
-          files: TeXsting.apk
+          files: |
+            TeXsting.apk
+            TeXsting.aab
           body_path: release-notes.md

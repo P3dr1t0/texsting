@@ -1,4 +1,4 @@
-package io.github.texsting;
+package io.github.p3dr1t0.texsting;
 
 import android.util.Base64;
 import com.getcapacitor.JSArray;

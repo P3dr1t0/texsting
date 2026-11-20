@@ -1,4 +1,4 @@
-package io.github.texsting;
+package io.github.p3dr1t0.texsting;
 
 import android.app.Activity;
 import android.content.ContentResolver;

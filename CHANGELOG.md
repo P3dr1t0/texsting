@@ -17,6 +17,18 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.12] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 98
+
+### Preparación para Google Play
+- **Nuevo identificador de la app: `io.github.p3dr1t0.texsting`** (antes `io.github.texsting`). Es el que tendrá en Google Play y ya no cambiará.
+  - Android la ve como una app distinta. Al instalarla, empieza vacía.
+  - En Ajustes → Carpeta de proyectos, elige Documentos/Projects_LaTeX para recuperar tus proyectos.
+  - Después desinstala la versión anterior.
+- **Apunta a Android 16 (API 36)**, como exige Google Play desde el 31 de agosto de 2026.
+- **Versión final firmada:** cuando el repositorio tiene la llave de subida, cada compilación sale firmada para Google Play. Se publica como APK, para instalar a mano, y como AAB, para subir a Play Console.
+
+---
+
 ## [0.9.11] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 97
 
 ### Nuevo

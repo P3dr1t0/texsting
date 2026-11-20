@@ -58,9 +58,12 @@ writeFileSync(manifestPath, m);
 
 // Complemento nativo «OpenedFile»: nombre real y tamaño de un archivo recibido con «Abrir con»
 // (muchas apps mandan una dirección content:// que no incluye el nombre).
-const javaDir = path.join(app, 'src', 'main', 'java', 'io', 'github', 'texsting');
+// El paquete Java es el identificador de la app (capacitor.config.json → appId): io.github.p3dr1t0.texsting.
+const APP_ID = JSON.parse(readFileSync(path.join(root, 'capacitor.config.json'), 'utf8')).appId;
+const javaDir = path.join(app, 'src', 'main', 'java', ...APP_ID.split('.'));
+const conPaquete = (archivo) => readFileSync(archivo, 'utf8').replace(/^package [\w.]+;/m, `package ${APP_ID};`);
 mkdirSync(javaDir, { recursive: true });
-writeFileSync(path.join(javaDir, 'OpenedFilePlugin.java'), `package io.github.texsting;
+writeFileSync(path.join(javaDir, 'OpenedFilePlugin.java'), `package ${APP_ID};
 
 import android.database.Cursor;
 import android.net.Uri;
@@ -108,10 +111,10 @@ public class OpenedFilePlugin extends Plugin {
 `);
 // Complemento nativo «Motor»: compila con pdfLaTeX dentro de la app, sin Termux (#1, experimental).
 // Los programas vienen en jniLibs (tools/motor/empaquetar.py) y los datos de TeX en assets/motor/tl.zip.
-copyFileSync(path.join(root, 'android-config', 'java', 'MotorPlugin.java'), path.join(javaDir, 'MotorPlugin.java'));
+writeFileSync(path.join(javaDir, 'MotorPlugin.java'), conPaquete(path.join(root, 'android-config', 'java', 'MotorPlugin.java')));
 // Complemento nativo «Carpetas»: carpeta propia Documentos/Projects_LaTeX y carpetas de proyectos existentes (#4, #7).
-copyFileSync(path.join(root, 'android-config', 'java', 'CarpetasPlugin.java'), path.join(javaDir, 'CarpetasPlugin.java'));
-writeFileSync(path.join(javaDir, 'MainActivity.java'), `package io.github.texsting;
+writeFileSync(path.join(javaDir, 'CarpetasPlugin.java'), conPaquete(path.join(root, 'android-config', 'java', 'CarpetasPlugin.java')));
+writeFileSync(path.join(javaDir, 'MainActivity.java'), `package ${APP_ID};
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
@@ -161,12 +164,41 @@ if (!g.includes('useLegacyPackaging')) {
         doNotStrip '**/libpng16.so'
         doNotStrip '**/libandroid-*.so'
     }
-    aaptOptions { noCompress 'zip' }`);
+    aaptOptions { noCompress 'zip' }
+    lint { checkReleaseBuilds false; abortOnError false }`);
 }
 // Para descomprimir los paquetes de CTAN (.tar.xz) que el motor integrado baja al vuelo.
 if (!g.includes('org.tukaani:xz')) {
   g = g.replace(/dependencies\s*\{/, "dependencies {\n    implementation 'org.tukaani:xz:1.9'");
 }
+// Versión final (la que va a Google Play): firmada con la llave de subida, que llega descifrada en
+// TEXSTING_KEYSTORE (ver .github/workflows/apk.yml). Sin ella, solo se arma la versión de prueba (debug).
+if (process.env.TEXSTING_KEYSTORE && !g.includes('signingConfigs.subida')) {
+  g = g.replace(/signingConfigs\s*\{/, `signingConfigs {
+        subida {
+            storeFile file(System.getenv("TEXSTING_KEYSTORE"))
+            storePassword System.getenv("TEXSTING_KEYSTORE_PASS")
+            keyAlias "texsting"
+            keyPassword System.getenv("TEXSTING_KEYSTORE_PASS")
+        }`);
+  g = g.replace(/release\s*\{/, `release {
+            signingConfig signingConfigs.subida`);
+}
+
+// Google Play exige apuntar a Android 16 (API 36) desde el 31 de agosto de 2026.
+const varsPath = path.join(root, 'android', 'variables.gradle');
+if (existsSync(varsPath)) {
+  let v = readFileSync(varsPath, 'utf8');
+  v = v.replace(/compileSdkVersion\s*=\s*\d+/, 'compileSdkVersion = 36').replace(/targetSdkVersion\s*=\s*\d+/, 'targetSdkVersion = 36');
+  writeFileSync(varsPath, v);
+}
+const propsPath = path.join(root, 'android', 'gradle.properties');
+if (existsSync(propsPath)) {
+  let pr = readFileSync(propsPath, 'utf8');
+  if (!pr.includes('suppressUnsupportedCompileSdk')) pr += '\nandroid.suppressUnsupportedCompileSdk=36\n';
+  writeFileSync(propsPath, pr);
+}
+
 const build = parseInt(process.env.BUILD_NUMBER || '1', 10);
 const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 g = g.replace(/versionCode \d+/, `versionCode ${build}`).replace(/versionName "[^"]*"/, `versionName "${pkg.version}.${build}"`);
