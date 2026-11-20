@@ -17,6 +17,14 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.14] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 101
+
+### Descargas grandes en partes
+- **Los paquetes de más de 8 MB se bajan en 4 partes a la vez**, todas del mismo espejo. Por ejemplo cm-super (~60 MB), que es más de la mitad de los paquetes básicos.
+  - Motivo: con un espejo lejano, una sola conexión no pasaba de ~0,6 MB/s aunque el wifi diera más. En la 0.9.13 los básicos tardaban 165 s con wifi.
+  - Si un espejo no acepta descargas por partes, el paquete se baja de corrido como antes.
+- **La barra muestra el último paquete que empezó a bajar**, en lugar de quedarse en «cm-super» mientras se bajaban otros.
+
 ## [0.9.13] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 100
 
 ### «Usar sin internet» más rápido

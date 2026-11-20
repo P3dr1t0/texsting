@@ -460,13 +460,23 @@ public class MotorPlugin extends Plugin {
     /** Avisa cuántos bytes lleva el intento actual de una descarga (para la barra de «Usar sin internet»). */
     interface Avance { void bytes(long llevados); }
 
-    private static void bajarDeCtan(String archivo, File dest) throws Exception { bajarDeCtan(archivo, dest, null); }
+    private static void bajarDeCtan(String archivo, File dest) throws Exception { bajarDeCtan(archivo, dest, null, 0); }
 
-    /** Baja un archivo de tlnet probando los espejos; si no hay internet en ese momento, espera y reintenta una vez. */
-    private static void bajarDeCtan(String archivo, File dest, Avance av) throws Exception {
+    /** Una URL: los archivos grandes en partes (si el espejo lo permite); los demás, de corrido. */
+    private static String bajarUno(String url, File dest, Avance av, long tamano) throws Exception {
+        if (tamano >= POR_PARTES) {
+            String fin = downloadPorPartes(url, dest, av);
+            if (fin != null) return fin;
+        }
+        return download(url, dest, av);
+    }
+
+    /** Baja un archivo de tlnet probando los espejos; si no hay internet en ese momento, espera y reintenta una vez.
+     *  «tamano»: lo que pesa según el índice (0 si no se sabe). */
+    private static void bajarDeCtan(String archivo, File dest, Avance av, long tamano) throws Exception {
         String r = espejoResuelto;
         if (r != null) {
-            try { download(r + archivo, dest, av); return; }
+            try { bajarUno(r + archivo, dest, av, tamano); return; }
             catch (Exception e) { if (r.equals(espejoResuelto)) espejoResuelto = null; }
         }
         Exception last = null;
@@ -475,7 +485,7 @@ public class MotorPlugin extends Plugin {
             for (int k = 0; k < CTAN.length; k++) {
                 int i = (espejoBueno + k) % CTAN.length;
                 try {
-                    String fin = download(CTAN[i] + archivo, dest, av);
+                    String fin = bajarUno(CTAN[i] + archivo, dest, av, tamano);
                     espejoBueno = i;
                     if (fin.endsWith("/" + archivo)) espejoResuelto = fin.substring(0, fin.length() - archivo.length());
                     return;
@@ -721,6 +731,93 @@ public class MotorPlugin extends Plugin {
         throw new IOException("Demasiadas redirecciones");
     }
 
+    /** Desde este tamaño un archivo se baja en partes. Con un espejo lejano una sola conexión no pasa de ~0,5 MB/s
+     *  aunque el wifi dé más (cm-super, ~60 MB, tardaba más de un minuto él solo). */
+    private static final long POR_PARTES = 8_000_000L;
+    private static final int PARTES = 4;
+
+    private static HttpURLConnection abrir(String url) throws IOException {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setInstanceFollowRedirects(false);
+        c.setConnectTimeout(20000);
+        c.setReadTimeout(60000);
+        c.setRequestProperty("User-Agent", "TeXsting");
+        return c;
+    }
+
+    /** Baja un archivo grande en PARTES pedazos a la vez (pedidos «Range») desde UN mismo espejo: todas las partes
+     *  salen de la misma copia. Devuelve la URL final, o null si el espejo no acepta partes (se baja de corrido). */
+    private static String downloadPorPartes(String url, File dest, Avance av) throws Exception {
+        long total = -1;
+        for (int hop = 0; ; hop++) {
+            if (hop >= 8) throw new IOException("Demasiadas redirecciones");
+            HttpURLConnection c = abrir(url);
+            c.setRequestProperty("Range", "bytes=0-0");
+            int code = c.getResponseCode();
+            if (code >= 300 && code < 400) {
+                String loc = c.getHeaderField("Location");
+                c.disconnect();
+                if (loc == null) throw new IOException("Redirección sin destino");
+                url = new URL(new URL(url), loc).toString();
+                continue;
+            }
+            String cr = c.getHeaderField("Content-Range");
+            c.disconnect();
+            if (code != 206 || cr == null || cr.indexOf('/') < 0) return null;
+            try { total = Long.parseLong(cr.substring(cr.lastIndexOf('/') + 1).trim()); } catch (NumberFormatException e) { return null; }
+            break;
+        }
+        if (total < POR_PARTES) return null;
+        try (RandomAccessFile f = new RandomAccessFile(dest, "rw")) { f.setLength(total); }
+        final String fin = url;
+        final long[] llevado = new long[PARTES];
+        ExecutorService pool = Executors.newFixedThreadPool(PARTES, r -> new Thread(r, "texsting-partes"));
+        try {
+            List<Future<?>> fs = new ArrayList<>();
+            for (int i = 0; i < PARTES; i++) {
+                final int k = i;
+                final long desde = total * k / PARTES, hasta = total * (k + 1) / PARTES - 1;
+                fs.add(pool.submit(() -> {
+                    Avance mio = n -> {
+                        if (av == null) return;
+                        long suma;
+                        synchronized (llevado) { llevado[k] = n; suma = 0; for (long x : llevado) suma += x; }
+                        av.bytes(suma);
+                    };
+                    try { parte(fin, dest, desde, hasta, mio); }
+                    catch (Exception e) { mio.bytes(0); parte(fin, dest, desde, hasta, mio); }  // un segundo intento
+                    return null;
+                }));
+            }
+            for (Future<?> f : fs) {
+                try { f.get(); }
+                catch (ExecutionException e) { throw e.getCause() instanceof Exception ? (Exception) e.getCause() : e; }
+            }
+        } finally { pool.shutdownNow(); }
+        return fin;
+    }
+
+    private static void parte(String url, File dest, long desde, long hasta, Avance av) throws Exception {
+        HttpURLConnection c = abrir(url);
+        c.setRequestProperty("Range", "bytes=" + desde + "-" + hasta);
+        int code = c.getResponseCode();
+        if (code != 206) { c.disconnect(); throw new IOException("El espejo no mandó la parte pedida (" + code + ")"); }
+        long falta = hasta - desde + 1, t = 0, avisado = 0;
+        boolean ok = false;
+        try (InputStream in = c.getInputStream(); RandomAccessFile f = new RandomAccessFile(dest, "rw")) {
+            f.seek(desde);
+            byte[] b = new byte[65536]; int n;
+            while (falta > 0 && (n = in.read(b, 0, (int) Math.min(b.length, falta))) > 0) {
+                f.write(b, 0, n);
+                t += n; falta -= n;
+                if (av != null && t - avisado >= 262144) { avisado = t; av.bytes(t); }
+            }
+            if (falta > 0) throw new EOFException("La descarga se cortó");
+            if (av != null) av.bytes(t);
+            ok = true;
+        } finally { if (!ok) c.disconnect(); }
+    }
+
     private static boolean readFully(InputStream in, byte[] b, int len) throws IOException {
         int off = 0;
         while (off < len) { int n = in.read(b, off, len - off); if (n < 0) return off == 0 ? false : fail(); off += n; }
@@ -816,7 +913,7 @@ public class MotorPlugin extends Plugin {
         if (avisar) progress("Descargando el paquete «" + pkg + "»" + (sz != null && sz > 0 ? String.format(Locale.ROOT, " (%.1f MB)", sz / 1e6).replace('.', ',') : "") + "… (solo la primera vez)");
         File tmp = File.createTempFile(pkg + "-", ".tar.xz", getContext().getCacheDir());
         try {
-            bajarDeCtan(pkg + ".tar.xz", tmp);
+            bajarDeCtan(pkg + ".tar.xz", tmp, null, sz != null ? sz : 0);
             desempacar(pkg, tmp);
         } finally {
             tmp.delete();
@@ -839,7 +936,8 @@ public class MotorPlugin extends Plugin {
         if (installedPkgs().contains(pkg)) return;
         File tmp = File.createTempFile(pkg + "-", ".tar.xz", getContext().getCacheDir());
         try {
-            bajarDeCtan(pkg + ".tar.xz", tmp, av);
+            Long z = sizes != null ? sizes.get(pkg) : null;
+            bajarDeCtan(pkg + ".tar.xz", tmp, av, z != null ? z : 0);
             synchronized (instalando) {
                 if (installedPkgs().contains(pkg)) return;  // lo bajó una compilación mientras tanto
                 desempacar(pkg, tmp);
@@ -1052,6 +1150,7 @@ public class MotorPlugin extends Plugin {
                 final java.util.concurrent.atomic.AtomicLong cBytes = new java.util.concurrent.atomic.AtomicLong();  // de los terminados
                 final Map<String, Long> enCurso = new ConcurrentHashMap<>();  // lo que llevan los que se están bajando
                 final long[] ultimoAviso = { 0 };
+                final String[] ultimoIniciado = { "" };  // el que se muestra en la barra
                 final Runnable avisar = () -> {
                     synchronized (ultimoAviso) {
                         long ahora = System.currentTimeMillis();
@@ -1060,8 +1159,8 @@ public class MotorPlugin extends Plugin {
                     }
                     long b = cBytes.get();
                     for (long x : enCurso.values()) b += x;
-                    String actual = "";
-                    for (String k : enCurso.keySet()) { actual = k; break; }
+                    String actual = enCurso.containsKey(ultimoIniciado[0]) || enCurso.isEmpty() ? ultimoIniciado[0] : "";
+                    if (actual.isEmpty()) for (String k : enCurso.keySet()) { actual = k; break; }
                     avisoDescarga(nivel, cHechos.get(), tot, actual, Math.min(b, bTot), bTot, false, cFallos.get(), false);
                 };
                 ExecutorService pool = Executors.newFixedThreadPool(A_LA_VEZ, r -> new Thread(r, "texsting-descargas-" + nivel));
@@ -1071,6 +1170,7 @@ public class MotorPlugin extends Plugin {
                         if (dlCancelar) return;
                         long w = peso.getOrDefault(pkg, 0L);
                         enCurso.put(pkg, 0L);
+                        ultimoIniciado[0] = pkg;
                         try { instalarEnParalelo(pkg, n -> { enCurso.put(pkg, Math.min(n, w)); avisar.run(); }); }
                         catch (Exception e) { cFallos.incrementAndGet(); }
                         enCurso.remove(pkg);
