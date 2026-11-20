@@ -81,8 +81,8 @@ export async function renderSettings(root, _p, navigate) {
       : 'Por ahora tus proyectos están solo dentro de la app. Elige una carpeta (por ejemplo Documentos) y TeXsting creará <strong>Projects_LaTeX</strong> con un proyecto por carpeta, visible desde Archivos o la PC.';
   };
   pintarCarpeta();
-  async function cambiarCarpeta() {
-    try { await elegirRaiz(); } catch (e) { if (e.code !== 'CANCELADO' && !/cancelado/.test(e.message)) toast('No se pudo usar esa carpeta: ' + e.message, { kind: 'error' }); return; }
+  async function cambiarCarpeta(modo) {
+    try { await elegirRaiz(modo); } catch (e) { if (e.code !== 'CANCELADO' && !/cancelado/.test(e.message)) toast('No se pudo usar esa carpeta: ' + e.message, { kind: 'error' }); return; }
     pintarCarpeta();
     carpetaTxt.innerHTML += '<br>Copiando tus proyectos…';
     const n = await exportarTodos();
@@ -151,7 +151,8 @@ export async function renderSettings(root, _p, navigate) {
       ...(hayCarpetas() ? [
         el('h3', { class: 'section-title' }, 'Carpeta de proyectos'),
         carpetaTxt,
-        el('button', { class: 'btn', html: icon('files') + `<span>${raiz() ? 'Cambiar carpeta' : 'Elegir carpeta'}</span>`, onclick: cambiarCarpeta }),
+        raiz() ? null : el('button', { class: 'btn primary', html: icon('files') + '<span>Crear Documentos/Projects_LaTeX</span>', onclick: () => cambiarCarpeta('crear') }),
+        el('button', { class: 'btn', html: icon('files') + `<span>${raiz() ? 'Cambiar carpeta' : 'Elegir otra carpeta'}</span>`, onclick: () => cambiarCarpeta('otra') }),
       ] : []),
       el('h3', { class: 'section-title' }, 'Apariencia'),
       appearance(),

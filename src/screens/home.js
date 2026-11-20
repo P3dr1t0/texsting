@@ -56,13 +56,14 @@ export async function renderHome(root, _params, navigate) {
 
   // Carpeta propia (#4): mientras no se elija, una tarjeta lo propone (se puede cerrar).
   const avisoCarpeta = el('div', { class: 'home-aviso', hidden: !(hayCarpetas() && !raiz() && !getSettings().carpetaAvisoCerrado) },
-    el('div', { html: `${icon('files')}<span><strong>Guarda tus proyectos en una carpeta del teléfono</strong><small>En Documentos/Projects_LaTeX: los ves desde Archivos o la PC y no se pierden si desinstalas la app.</small></span>` }),
+    el('div', { html: `${icon('files')}<span><strong>Guarda tus proyectos en una carpeta del teléfono</strong><small>En Documentos/Projects_LaTeX: los ves desde Archivos o la PC y no se pierden si desinstalas la app. Android te pedirá confirmar: toca «Usar esta carpeta» y «Permitir».</small></span>` }),
     el('div', { class: 'home-aviso-btns' },
       el('button', { class: 'btn small ghost', onclick: () => { setSettings({ carpetaAvisoCerrado: true }); avisoCarpeta.hidden = true; } }, 'Ahora no'),
-      el('button', { class: 'btn small primary', onclick: () => usarCarpeta() }, 'Elegir carpeta')));
+      el('button', { class: 'btn small', onclick: () => usarCarpeta('otra') }, 'Otra carpeta'),
+      el('button', { class: 'btn small primary', onclick: () => usarCarpeta('crear') }, 'Crear la carpeta Projects_LaTeX')));
 
-  async function usarCarpeta() {
-    try { await elegirRaiz(); } catch (e) { if (e.code !== 'CANCELADO' && !/cancelado/.test(e.message)) toast('No se pudo usar esa carpeta: ' + e.message, { kind: 'error' }); return; }
+  async function usarCarpeta(modo) {
+    try { await elegirRaiz(modo); } catch (e) { if (e.code !== 'CANCELADO' && !/cancelado/.test(e.message)) toast('No se pudo usar esa carpeta: ' + e.message, { kind: 'error' }); return; }
     avisoCarpeta.hidden = true;
     const n = await exportarTodos((i, total) => { status.innerHTML = `${icon('files')}<span>Copiando proyectos a la carpeta… ${i} de ${total}</span>`; });
     toast(n ? `Listo: ${n} proyecto${n === 1 ? '' : 's'} en ${raiz().ruta}` : `Tus proyectos nuevos se guardarán en ${raiz().ruta}`, { kind: 'ok', ms: 5000 });

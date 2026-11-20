@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.UriPermission;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.DocumentsContract.Document;
 import android.util.Base64;
@@ -18,6 +19,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 
@@ -51,6 +53,22 @@ public class CarpetasPlugin extends Plugin {
             } catch (Exception ignored) { }
         }
         startActivityForResult(call, i, "alElegir");
+    }
+
+    /**
+     * Crea Documentos/Projects_LaTeX directamente (sin pasar por el selector), para que el selector se abra ya ahí
+     * y al usuario solo le quede tocar «Usar esta carpeta» y «Permitir». Android no deja saltarse ese permiso.
+     */
+    @PluginMethod
+    public void crearEnDocumentos(PluginCall call) {
+        boolean ok = false;
+        try {
+            File d = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), call.getString("nombre", "Projects_LaTeX"));
+            ok = d.isDirectory() || d.mkdirs();
+        } catch (Exception ignored) { }
+        JSObject r = new JSObject();
+        r.put("ok", ok);
+        call.resolve(r);
     }
 
     @ActivityCallback

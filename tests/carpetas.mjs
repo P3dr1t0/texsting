@@ -31,6 +31,7 @@ await ctx.addInitScript(() => {
     },
     async borrar({ doc, path }) { const fs = load(); const id = path ? doc + '/' + path : doc; for (const k of Object.keys(fs)) if (k === id || k.startsWith(id + '/')) delete fs[k]; save(fs); },
     async renombrar({ doc, path, nombre }) { const fs = load(); const id = path ? doc + '/' + path : doc; const nid = id.replace(/[^/]*$/, nombre); for (const k of Object.keys(fs)) if (k === id || k.startsWith(id + '/')) { fs[nid + k.slice(id.length)] = fs[k]; delete fs[k]; } save(fs); return { doc: nid }; },
+    async crearEnDocumentos({ nombre }) { const fs = load(); fs['primary:Documents/' + nombre] = { dir: true, mtime: ++t }; save(fs); window.__elegir = 'primary:Documents/' + nombre; return { ok: true }; },
     async acceso({ doc }) { return { permiso: true, existe: !!load()[doc] }; },
   };
 });
@@ -51,7 +52,8 @@ await page.waitForSelector('.editor-screen');
 await page.goto('http://127.0.0.1:8080/index.html');
 await page.waitForSelector('.home-aviso:not([hidden])');
 // 2) Elegir carpeta: crea Projects_LaTeX y copia el proyecto
-await page.click('.home-aviso >> text=Elegir carpeta');
+await page.screenshot({ path: `${OUT}/carpetas-01b-botones.png` });
+await page.click('.home-aviso >> text=Crear la carpeta');
 await page.waitForTimeout(1500);
 console.log('tras elegir carpeta:', (await fsKeys()).filter((k) => k.includes('Projects_LaTeX')));
 await page.screenshot({ path: `${OUT}/carpetas-02-elegida.png` });

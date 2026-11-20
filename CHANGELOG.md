@@ -17,6 +17,17 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.7.2] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 82
+
+### Cambiado
+- **Elegir la carpeta de proyectos es más directo.** La tarjeta del inicio ofrece tres opciones:
+  - **Crear la carpeta Projects_LaTeX:** TeXsting crea `Documentos/Projects_LaTeX` y abre el selector de Android ya ahí. Solo queda tocar «Usar esta carpeta» y «Permitir»: ya no hace falta crearla a mano.
+  - **Otra carpeta:** se usa la que elijas. Si eliges Documentos o la raíz del teléfono, adentro se crea `Projects_LaTeX`, para no tomar como proyectos tus otras carpetas.
+  - **Ahora no.**
+  - Lo mismo está en Ajustes → Carpeta de proyectos.
+
+---
+
 ## [0.7.1] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 81
 
 ### Corregido

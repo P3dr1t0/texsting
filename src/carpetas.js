@@ -206,12 +206,24 @@ export function guardarPdf(id, main, pdf) {
 }
 
 // ───────── Elegir carpetas ─────────
-/** La carpeta propia: el usuario elige Documentos (o donde quiera) y adentro se crea Projects_LaTeX. */
-export async function elegirRaiz() {
-  const r = await Carpetas.elegir({ inicial: 'Documents' });
+/**
+ * La carpeta propia.
+ * - modo «crear»: TeXsting crea Documentos/Projects_LaTeX y abre el selector ya ahí (solo queda «Usar esta carpeta»
+ *   y «Permitir»: Android no deja saltarse ese permiso).
+ * - modo «otra»: el usuario elige cualquier carpeta y se usa tal cual; si elige Documentos o la raíz del teléfono,
+ *   adentro se crea Projects_LaTeX (para no tomar como proyectos sus otras carpetas).
+ */
+export async function elegirRaiz(modo = 'crear') {
+  let inicial = 'Documents';
+  if (modo === 'crear') {
+    const c = await Carpetas.crearEnDocumentos({ nombre: RAIZ }).catch(() => ({}));
+    if (c && c.ok) inicial = 'Documents/' + RAIZ;
+  }
+  const r = await Carpetas.elegir({ inicial });
   let doc = r.doc;
   let ruta = r.ruta;
-  if (r.nombre !== RAIZ) {
+  const general = /:(Documents|Download|)$/i.test(r.doc) || !r.ruta;
+  if (r.nombre !== RAIZ && (modo === 'crear' || general)) {
     ({ doc } = await Carpetas.carpeta({ tree: r.tree, doc: r.doc, nombre: RAIZ }));
     ruta = (r.ruta ? r.ruta + '/' : '') + RAIZ;
   }
