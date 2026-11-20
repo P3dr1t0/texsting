@@ -509,6 +509,16 @@ public class MotorPlugin extends Plugin {
         return s;
     }
 
+    /** Un paquete anotado como instalado cuyos archivos no están (descarga cortada, carpeta borrada): se olvida para bajarlo de nuevo. */
+    private void olvidarPaquete(String pkg) {
+        synchronized (instalando) {
+            StringBuilder b = new StringBuilder();
+            for (String p : installedPkgs()) if (!p.equals(pkg)) b.append(p).append('\n');
+            try (OutputStream o = new FileOutputStream(installedFile())) { o.write(b.toString().getBytes(StandardCharsets.UTF_8)); }
+            catch (IOException ignored) { }
+        }
+    }
+
     private synchronized void loadIndex() throws IOException {
         if (index != null) return;
         Map<String, String> idx = new HashMap<>();
@@ -1686,6 +1696,9 @@ public class MotorPlugin extends Plugin {
                 boolean timedOut = false;
                 boolean autoinstall = call.getBoolean("autoinstall", true);
                 List<String> installedNow = new ArrayList<>(), failed = new ArrayList<>(), skipped = new ArrayList<>();
+                // Paquetes que no se pudieron bajar y por qué (para el resumen del «Log completo»).
+                List<String> noBajados = new ArrayList<>();
+                Set<String> reinstalados = new HashSet<>();
                 if (autoinstall) prefetch(dir, files, installedNow);
                 // Preámbulo ya armado para este proyecto: se salta la carga de los paquetes.
                 // El preámbulo guardado (mylatexformat) es solo para pdfLaTeX.
@@ -1782,10 +1795,23 @@ public class MotorPlugin extends Plugin {
                             if (downloadSingle(pkg, m)) progressed = true; else failed.add(m);
                             continue;
                         }
-                        if (pkg == null || have.contains(pkg) || installedNow.contains(pkg)) { if (!skipped.contains(m)) failed.add(m); continue; }
+                        // Anotado como instalado, pero LaTeX no encuentra su archivo: la instalación quedó incompleta. Se baja de nuevo (una vez).
+                        if (pkg != null && have.contains(pkg) && !installedNow.contains(pkg) && reinstalados.add(pkg)) {
+                            olvidarPaquete(pkg);
+                            have.remove(pkg);
+                        }
+                        if (pkg == null || have.contains(pkg) || installedNow.contains(pkg)) {
+                            if (!skipped.contains(m)) failed.add(m);
+                            if (pkg == null && !noBajados.contains(m)) noBajados.add(m + " (no está en TeX Live)");
+                            continue;
+                        }
                         for (String q : withDeps(pkg, have, installedNow)) {
                             try { install(q); installedNow.add(q); progressed = true; }
-                            catch (Exception e) { if (q.equals(pkg)) failed.add(m); output.append("\n[TeXsting] No se pudo descargar ").append(q).append(": ").append(e.getMessage()).append('\n'); }
+                            catch (Exception e) {
+                                if (q.equals(pkg)) failed.add(m);
+                                output.append("\n[TeXsting] No se pudo descargar ").append(q).append(": ").append(e.getMessage()).append('\n');
+                                noBajados.add(q + " (" + e.getMessage() + ")");
+                            }
                         }
                     }
                     if (!progressed) break;
@@ -1909,6 +1935,7 @@ public class MotorPlugin extends Plugin {
                 if (t1 - t0 >= 500) rs.append("  preparar el motor: ").append(secs(t1 - t0)).append('\n');
                 if (formatoMs >= 500) rs.append("  preparar ").append(eng.equals("xelatex") ? "XeLaTeX" : "LuaLaTeX").append(" (solo la primera vez): ").append(secs(formatoMs)).append('\n');
                 if (!installedNow.isEmpty()) rs.append("  paquetes descargados: ").append(String.join(", ", installedNow)).append('\n');
+                if (!noBajados.isEmpty()) rs.append("  no se pudieron descargar: ").append(String.join(", ", noBajados)).append('\n');
                 if (biblatex) rs.append("  biblatex: ").append(hayBiber() ? "con biber · " + (biberEstado.isEmpty() ? "biber no se corrió en esta compilación" : biberEstado) : "con BibTeX (este APK no trae biber)").append('\n');
                 if (biblatex && !biberSalida.isEmpty()) rs.append("  mensajes de biber (las últimas líneas):\n").append(biberSalida);
                 for (String ps : pasos) rs.append("  ").append(ps).append('\n');

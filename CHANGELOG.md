@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.9] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 95
+
+### Corregido
+- **Un paquete que faltaba podía quedarse sin bajar.** Le pasó al Jefe 3 con `xstring` (lo pide `circuitikz`): la compilación se detenía con «File `xstring.sty' not found» y no se veía por qué.
+  - Si un paquete figura como descargado pero LaTeX no encuentra sus archivos, ahora se vuelve a bajar (una vez).
+  - Si la descarga falla, el panel de Mensajes muestra «No se pudo descargar el paquete …» con el motivo.
+  - El resumen del «Log completo» lista los paquetes que no se pudieron bajar.
+
+---
+
 ## [0.9.8] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 94
 
 ### Corregido

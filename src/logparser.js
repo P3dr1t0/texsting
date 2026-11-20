@@ -1138,6 +1138,11 @@ export function parseBibOutput(output, sources = null, main = 'main.tex', existi
         ...(bb ? { fix: { file: main, line: ln, find: bb[0], replace: 'backend=bibtex', label: 'Usar backend=bibtex' } } : {}) });
     }
   }
+  // Paquetes que TeXsting intentó bajar de CTAN y no pudo (sin conexión, espejo caído…).
+  for (const d of output.matchAll(/\[TeXsting\] No se pudo descargar (\S+): ([^\n]*)/g)) {
+    push({ type: 'error', file: null, line: null, message: `No se pudo descargar el paquete «${d[1]}»`,
+      hint: 'TeXsting intentó bajarlo de CTAN y falló (' + d[2].slice(0, 120) + '). Revisa tu conexión a internet y vuelve a compilar: se baja solo.' });
+  }
   // biber falló sin un «ERROR - …» reconocible (p. ej. Perl se detuvo): igual se avisa, con su mensaje.
   const bf = output.match(/\[TeXsting\] biber falló[^\n]*/);
   if (bf && !out.some((e) => e.type === 'error' && /^biber/.test(e.message))) {
