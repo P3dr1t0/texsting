@@ -6,7 +6,7 @@
   --bg: #f7f5ef; --surface: #ffffff; --surface-2: #efece3; --border: #ddd8cb;
   --text: #1d1f24; --muted: #6a6e77; --accent: #e5a01a; --accent-strong: #c98700; --on-accent: #1d1f24;
   --ink: #1f2a44; --danger: #c8372d; --danger-soft: rgba(200,55,45,.10); --warn: #b7791f; --ok: #2f8f5b;
-  --logo-bg: #1f2a44; --logo-fg: #f7f5ef;
+  --logo-bg: #1f2a44; --logo-fg: #f7f5ef; --logo-raya: var(--accent);
   --editor-bg: #fffdf8; --editor-gutter: #f4f1e8;
   --editor-sel: rgba(47,91,211,.20);
   --syn-cmd: #2f5bd3; --syn-env: #0f7f71; --syn-math: #b5530f; --syn-comment: #8a8f98; --syn-bracket: #9a6a00; --syn-number: #b0306a;
@@ -18,7 +18,7 @@
   --bg: #12141a; --surface: #1b1e26; --surface-2: #242833; --border: #2f3441;
   --text: #e9e6de; --muted: #9399a5; --accent: #f2b52e; --accent-strong: #ffc84d; --on-accent: #16181d;
   --ink: #e9e6de; --danger: #ff6b5e; --danger-soft: rgba(255,107,94,.12); --warn: #f0b44c; --ok: #5fc98b;
-  --logo-bg: var(--accent); --logo-fg: #16181d;
+  --logo-bg: var(--accent); --logo-fg: #16181d; --logo-raya: var(--logo-fg);
   --editor-bg: #15171d; --editor-gutter: #181b22;
   --editor-sel: rgba(120,160,255,.25);
   --syn-cmd: #8fb3ff; --syn-env: #5fd3c2; --syn-math: #f2a36b; --syn-comment: #6f7682; --syn-bracket: #e0b04a; --syn-number: #ff8fb8;
@@ -28,7 +28,7 @@
 [data-theme="gray"] {
   --bg: #2a2c31; --surface: #34373d; --surface-2: #3e4148; --border: #4a4e56;
   --text: #ecebe7; --muted: #a7abb3; --ink: #ecebe7; --danger: #ff7a6e; --danger-soft: rgba(255,122,110,.14); --warn: #f0b44c; --ok: #6bd096;
-  --logo-bg: var(--accent); --logo-fg: #1d1f24;
+  --logo-bg: var(--accent); --logo-fg: #1d1f24; --logo-raya: var(--logo-fg);
   --editor-bg: #2e3035; --editor-gutter: #2a2c31; --editor-sel: rgba(140,170,255,.28);
   --syn-cmd: #9cbcff; --syn-env: #6ad8c8; --syn-math: #f3ac78; --syn-comment: #8a8f98; --syn-bracket: #e6bb5c; --syn-number: #ff9cc4;
   --pdf-bg: #1f2125; --shadow: 0 8px 30px rgba(0,0,0,.45);
@@ -36,7 +36,7 @@
 [data-theme="midnight"] {
   --bg: #0d1526; --surface: #15203a; --surface-2: #1d2a48; --border: #263659;
   --text: #e3e9f6; --muted: #8e9bb8; --ink: #e3e9f6; --danger: #ff6f7d; --danger-soft: rgba(255,111,125,.14); --warn: #f2bd5c; --ok: #5fd39a;
-  --logo-bg: var(--accent); --logo-fg: #0d1526;
+  --logo-bg: var(--accent); --logo-fg: #0d1526; --logo-raya: var(--logo-fg);
   --editor-bg: #0f182c; --editor-gutter: #0d1526; --editor-sel: rgba(110,160,255,.30);
   --syn-cmd: #82aaff; --syn-env: #7fdbca; --syn-math: #f7a86e; --syn-comment: #637599; --syn-bracket: #ffcb6b; --syn-number: #f78cc4;
   --pdf-bg: #080e1a; --shadow: 0 8px 30px rgba(0,0,0,.55);
@@ -44,7 +44,7 @@
 [data-theme="sepia"] {
   --bg: #f1e7d3; --surface: #fbf4e6; --surface-2: #eadfc8; --border: #d8c9ab;
   --text: #3b2f22; --muted: #7d6c57; --ink: #3b2f22; --danger: #b8392c; --danger-soft: rgba(184,57,44,.10); --warn: #9a6512; --ok: #3d7f4f;
-  --logo-bg: #3b2f22; --logo-fg: #fbf4e6;
+  --logo-bg: #3b2f22; --logo-fg: #fbf4e6; --logo-raya: var(--logo-fg);
   --editor-bg: #fbf4e6; --editor-gutter: #f3e9d5; --editor-sel: rgba(120,90,40,.20);
   --syn-cmd: #8a3b12; --syn-env: #2f6f5e; --syn-math: #9b4d00; --syn-comment: #9a8a72; --syn-bracket: #7a5a00; --syn-number: #a0306a;
   --pdf-bg: #d9ccb2; --shadow: 0 6px 24px rgba(60,40,10,.18);
@@ -606,3 +606,11 @@ span.lic-chip { border-color: var(--border); color: var(--muted); cursor: defaul
 .sug-gracias-icono svg { width: 30px; height: 30px; }
 .sug-gracias h2 { margin: 4px 0 0; }
 .sug-gracias p { margin: 0; max-width: 420px; line-height: 1.5; }
+/* Ajustes · Apoyar TeXsting */
+.apoyo { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+.apoyo-texto { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 12px; line-height: 1.45; }
+.apoyo-texto svg { width: 22px; height: 22px; flex: none; color: var(--accent-strong); margin-top: 1px; }
+.apoyo.ya-apoyo .apoyo-texto svg { fill: var(--accent); }
+.apoyo-fila { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.apoyo-btn { justify-content: center; font-weight: 600; white-space: nowrap; padding-left: 6px; padding-right: 6px; font-variant-numeric: tabular-nums; }
+.apoyo-nota { margin: 10px 0 0 !important; }

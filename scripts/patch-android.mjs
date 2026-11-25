@@ -114,6 +114,8 @@ public class OpenedFilePlugin extends Plugin {
 writeFileSync(path.join(javaDir, 'MotorPlugin.java'), conPaquete(path.join(root, 'android-config', 'java', 'MotorPlugin.java')));
 // Complemento nativo «Carpetas»: carpeta propia Documentos/Projects_LaTeX y carpetas de proyectos existentes (#4, #7).
 writeFileSync(path.join(javaDir, 'CarpetasPlugin.java'), conPaquete(path.join(root, 'android-config', 'java', 'CarpetasPlugin.java')));
+// Complemento nativo «Donaciones»: 1, 3 y 5 USD con Google Play (no desbloquean nada).
+writeFileSync(path.join(javaDir, 'DonacionesPlugin.java'), conPaquete(path.join(root, 'android-config', 'java', 'DonacionesPlugin.java')));
 writeFileSync(path.join(javaDir, 'MainActivity.java'), `package ${APP_ID};
 
 import android.content.res.Configuration;
@@ -133,6 +135,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(OpenedFilePlugin.class);
         registerPlugin(MotorPlugin.class);
         registerPlugin(CarpetasPlugin.class);
+        registerPlugin(DonacionesPlugin.class);
         super.onCreate(savedInstanceState);
         // Desde Android 15 (targetSdk 35+) la app va de borde a borde y «adjustResize» ya no achica la pantalla
         // cuando sale el teclado: el teclado tapaba la barra de teclas LaTeX. Aquí la vista web deja como margen
@@ -217,6 +220,10 @@ if (!g.includes('useLegacyPackaging')) {
 // Para descomprimir los paquetes de CTAN (.tar.xz) que el motor integrado baja al vuelo.
 if (!g.includes('org.tukaani:xz')) {
   g = g.replace(/dependencies\s*\{/, "dependencies {\n    implementation 'org.tukaani:xz:1.9'");
+}
+// Google Play Billing (donaciones).
+if (!g.includes('com.android.billingclient:billing')) {
+  g = g.replace(/dependencies\s*\{/, "dependencies {\n    implementation 'com.android.billingclient:billing:8.3.0'");
 }
 // Versión final (la que va a Google Play): firmada con la llave de subida, que llega descifrada en
 // TEXSTING_KEYSTORE (ver .github/workflows/apk.yml). Sin ella, solo se arma la versión de prueba (debug).

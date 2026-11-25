@@ -17,6 +17,23 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.19] — 25 nov. 2026 · Fase 2: Beta con motor integrado · compilación 106
+
+### Logo nuevo (#5)
+- **El logo de TeXsting es ahora «TeX» con la E bajada**, como el logo clásico de Donald Knuth: Latin Modern Bold en color crema sobre azul marino, con una raya naranja debajo. Pedro eligió esta propuesta entre tres.
+  - Reemplaza al «TeX's» en 3D, que se leía mal cuando el ícono es chico.
+  - Ícono adaptable (con el dibujo dentro de la zona segura), ícono monocromático para los íconos temáticos de Android 13+, íconos para Android 7 o anterior y pantalla de arranque.
+  - Las letras salen de la tipografía como trazos, así que el logo se ve igual en todas partes.
+- **Dentro de la app**, el cuadrito de la cabecera usa la misma marca y se adapta a cada tema.
+- **Imágenes de Google Play** renovadas: ícono de 512×512 e imagen destacada de 1024×500.
+
+### Apoyar TeXsting (donaciones)
+- **Nuevo apartado en Ajustes:** donaciones únicas de 1, 3 o 5 dólares, con el precio en la moneda de cada país.
+  - No desbloquean nada: la app es completa y gratis para todos, y no hay avisos ni ventanas que interrumpan.
+  - El pago lo hace Google Play; TeXsting no ve los datos de pago.
+  - Se puede donar más de una vez, y las donaciones pagadas después (por ejemplo en efectivo) se confirman solas la próxima vez que abres Ajustes.
+- Funciona solo cuando TeXsting está instalado desde Google Play. Instalada desde el APK, la sección lo indica.
+
 ## [0.9.18] — 20 nov. 2026 · Fase 2: Beta con motor integrado · compilación 105
 
 ### Plantillas: personalización y 10 nuevas

@@ -40,6 +40,7 @@ const ICONS = {
   pin: '<path d="M9 4h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 15v5"/>',
   sort: '<path d="M7 5v14M4 16l3 3 3-3M14 7h6M14 12h4.5M14 17h3"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.5v.5"/>',
+  heart: '<path d="M12 20s-7-4.4-9.2-8.6C1.4 8.6 3 5 6.4 5c2 0 3.4 1.2 4.1 2.4h3C14.2 6.2 15.6 5 17.6 5 21 5 22.6 8.6 21.2 11.4 19 15.6 12 20 12 20z"/>',
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   left: '<path d="M14 6l-6 6 6 6"/>',
   up: '<path d="M6 14l6-6 6 6"/>',
@@ -54,10 +55,11 @@ export function icon(name, cls = '') {
 }
 
 export function logoSvg(size = 28) {
-  // «T» de Latin Modern Bold (la tipografía de TeX) en un cuadrito redondeado
+  // Marca de TeXsting: «TeX» de Latin Modern Bold con la E bajada (como el logo de Knuth) y una raya, en un cuadrito redondeado
   return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true">
     <rect width="64" height="64" rx="16" fill="var(--logo-bg)"/>
-    <path transform="translate(10.768 49.937) scale(0.05315 -0.05315)" fill="var(--logo-fg)" d="M757 434 736 675H63L42 434H89C98 547 108 628 252 628H329V47H176V0C230 3 341 3 400 3C459 3 570 3 624 0V47H471V628H547C690 628 700 548 710 434Z"/>
+    <g transform="translate(9.00 19.51) scale(0.02236)" fill="var(--logo-fg)"><path transform="translate(-42.0 686.0) scale(1 -1)" d="M757 434 736 675H63L42 434H89C98 547 108 628 252 628H329V47H176V0C230 3 341 3 400 3C459 3 570 3 624 0V47H471V628H547C690 628 700 548 710 434Z"/><path transform="translate(591.3 908.0) scale(1 -1)" d="M723 274H676C654 136 626 47 441 47H289V329H344C440 329 450 286 450 212H497V493H450C450 419 441 376 344 376H289V633H441C602 633 628 560 644 439H691L660 680H39V633H147V47H39V0H677Z"/><path transform="translate(1222.3 686.0) scale(1 -1)" d="M835 0V47H737L484 397L652 618C663 632 664 633 699 636C723 639 729 639 757 639H786V686C744 683 695 683 652 683C613 683 536 683 500 686V639C518 639 557 639 592 628C591 626 586 620 584 617L452 442L309 639H392V686C351 683 256 683 211 683C171 683 84 683 49 686V639H147L369 332L167 67C158 55 156 53 124 50C104 48 83 47 63 47H34V0C76 3 125 3 168 3C207 3 284 3 320 0V47C302 47 263 47 228 58C229 60 234 66 236 69L401 288L575 47H492V0C533 3 628 3 673 3C713 3 800 3 835 0Z"/></g>
+    <rect x="17.74" y="43.06" width="28.52" height="1.42" rx="0.71" fill="var(--logo-raya)"/>
   </svg>`;
 }
 

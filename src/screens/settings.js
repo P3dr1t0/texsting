@@ -8,6 +8,7 @@ import { bootstrapCommand, openTermux, TERMUX_FDROID, TERMUX_GITHUB } from '../t
 import { ENGINES } from '../latex-data.js';
 import { disponible as hayCarpetas, raiz, elegirRaiz, exportarTodos } from '../carpetas.js';
 import { applyTheme, THEMES, ACCENTS, resolvedTheme } from '../theme.js';
+import { MONTOS, productos as productosDonacion, donar } from '../donaciones.js';
 
 function header(title, navigate, back = 'home') {
   return el('header', { class: 'topbar simple' },
@@ -224,12 +225,55 @@ export async function renderSettings(root, _p, navigate) {
       row('Ajuste de línea', toggle('lineWrap')),
       row('Números de línea', toggle('lineNumbers')),
       row('Autocompletado', toggle('autocomplete')),
+      el('h3', { class: 'section-title' }, 'Apoyar TeXsting'),
+      apoyo(),
       el('h3', { class: 'section-title' }, 'Acerca de'),
       el('p', { class: 'muted', html: `TeXsting ${__VERSION__} (Fase 2: Beta con motor integrado) — editor LaTeX libre para Android (GPL-3.0), creado por Pedro de la Cruz Castillo.<br><a href="https://github.com/P3dr1t0/texsting/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Ver novedades de cada versión</a>` }),
       el('button', { class: 'btn', html: icon('edit') + '<span>Enviar una sugerencia</span>', onclick: () => navigate('sugerencias') }),
       el('button', { class: 'btn', html: icon('info') + '<span>Licencias y créditos</span>', onclick: () => navigate('licencias') }),
       el('p', { class: 'muted small', html: 'Contacto: <a href="mailto:texsting.app@gmail.com">texsting.app@gmail.com</a> · <a href="https://p3dr1t0.github.io/texsting/privacidad" target="_blank" rel="noopener">Política de privacidad</a>' }))));
   return { cleanup: () => dejarDeEscuchar() };
+}
+
+/** Donaciones: un apartado tranquilo en Ajustes, sin avisos ni ventanas que interrumpan. */
+function apoyo() {
+  const gracias = () => (getSettings().donaciones || 0) > 0;
+  const nota = el('p', { class: 'muted small apoyo-nota' });
+  const botones = MONTOS.map((m) => el('button', { class: 'btn apoyo-btn', disabled: true }, `${m.usd} US$`));
+  const fila = el('div', { class: 'apoyo-fila' }, ...botones);
+  const caja = el('div', { class: 'apoyo' },
+    el('p', { class: 'apoyo-texto', html: `${icon('heart')}<span>TeXsting es gratis y completo para todos, sin anuncios. Si te sirve, puedes apoyar su desarrollo con una donación única. No desbloquea nada: es solo un gracias.</span>` }),
+    fila, nota);
+  const ponerGracias = () => { if (gracias()) caja.classList.add('ya-apoyo'); nota.textContent = gracias() ? '¡Gracias por tu apoyo! Puedes volver a donar cuando quieras.' : 'El pago lo hace Google Play; TeXsting no ve tus datos de pago.'; };
+  ponerGracias();
+  productosDonacion().then((lista) => {
+    MONTOS.forEach((m, i) => {
+      const p = lista.find((x) => x.id === m.id);
+      if (!p) return;
+      botones[i].textContent = p.precio;
+      botones[i].disabled = false;
+      botones[i].onclick = async () => {
+        botones.forEach((b) => { b.disabled = true; });
+        try {
+          const estado = await donar(m.id);
+          if (estado === 'gracias') {
+            setSettings({ donaciones: (getSettings().donaciones || 0) + 1 });
+            toast('¡Muchas gracias por apoyar TeXsting!');
+          } else if (estado === 'pendiente') {
+            toast('Tu pago quedó pendiente. Cuando se confirme, Google te avisará. ¡Gracias!');
+          }
+        } catch (e) {
+          toast(e.message || 'No se pudo completar la donación', { kind: 'error' });
+        }
+        botones.forEach((b, j) => { b.disabled = !lista.find((x) => x.id === MONTOS[j].id); });
+        ponerGracias();
+      };
+    });
+    if (!lista.length) nota.textContent = 'Las donaciones aún no están disponibles. Vuelve a intentarlo más tarde.';
+  }).catch(() => {
+    nota.textContent = 'Las donaciones funcionan cuando TeXsting está instalado desde Google Play.';
+  });
+  return caja;
 }
 
 export async function renderTermuxSetup(root, _p, navigate) {
