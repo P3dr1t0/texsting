@@ -120,6 +120,164 @@ public class MotorPlugin extends Plugin {
         }
     }
 
+    // ───────────── XeLaTeX: solo las fuentes que pide el documento ─────────────
+    // Cuando XeLaTeX busca una fuente por nombre y no la encuentra en la lista rápida de fontconfig, abre UNA POR UNA
+    // todas las fuentes que conoce para leer sus nombres («potencialmente lento», dice su código), en cada pasada.
+    // Con los paquetes avanzados son miles de archivos: ~50 s por compilación. Por eso cada compilación le muestra solo
+    // las fuentes de la app, las del sistema y las carpetas de las fuentes que el documento pide (según un índice
+    // de nombres que se arma una vez). Si aun así falta una, se repite viendo todas, como antes.
+
+    /** fonts.conf de esta compilación (null = el completo). */
+    private volatile String fontsConfActual = null;
+    /** nombre normalizado → carpetas que tienen una fuente con ese nombre (familia, nombre completo o PostScript). */
+    private Map<String, Set<String>> indiceFuentes;
+    private String firmaIndiceFuentes;
+
+    private static String normFuente(String s) { return s.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", ""); }
+
+    /** Lee los nombres de una fuente OpenType/TrueType (también colecciones .ttc). */
+    private static void nombresDeFuente(File f, Set<String> out) {
+        try (RandomAccessFile r = new RandomAccessFile(f, "r")) {
+            long[] offs;
+            if (r.readInt() == 0x74746366) {  // «ttcf»
+                r.readInt();
+                int n = Math.min(r.readInt(), 64);
+                offs = new long[Math.max(n, 0)];
+                for (int i = 0; i < offs.length; i++) offs[i] = r.readInt() & 0xffffffffL;
+            } else offs = new long[] { 0 };
+            for (long off : offs) {
+                r.seek(off + 4);
+                int numTables = r.readUnsignedShort();
+                r.skipBytes(6);
+                long nameOff = -1;
+                for (int t = 0; t < numTables && t < 200; t++) {
+                    int tg = r.readInt(); r.readInt();
+                    long o = r.readInt() & 0xffffffffL; r.readInt();
+                    if (tg == 0x6e616d65) nameOff = o;  // «name»
+                }
+                if (nameOff < 0) continue;
+                r.seek(nameOff);
+                r.readUnsignedShort();
+                int count = r.readUnsignedShort(), strOff = r.readUnsignedShort();
+                for (int i = 0; i < count && i < 3000; i++) {
+                    int plat = r.readUnsignedShort(); r.readUnsignedShort(); r.readUnsignedShort();
+                    int id = r.readUnsignedShort(), len = r.readUnsignedShort(), so = r.readUnsignedShort();
+                    if (id != 1 && id != 4 && id != 6 && id != 16 && id != 21) continue;
+                    long pos = r.getFilePointer();
+                    byte[] b = new byte[Math.min(len, 512)];
+                    r.seek(nameOff + strOff + so);
+                    r.readFully(b);
+                    String txt = plat == 0 || plat == 3 ? new String(b, StandardCharsets.UTF_16BE) : plat == 1 ? new String(b, StandardCharsets.ISO_8859_1) : null;
+                    if (txt != null) { String k = normFuente(txt); if (k.length() >= 2) out.add(k); }
+                    r.seek(pos);
+                }
+            }
+        } catch (Exception ignored) { }
+    }
+
+    /** Índice de las fuentes descargadas (se rehace solo cuando cambian los paquetes instalados). */
+    private synchronized Map<String, Set<String>> indiceFuentes() {
+        File inst = installedFile();
+        String firma = inst.length() + ":" + inst.lastModified() + ":" + assetVersion();
+        if (indiceFuentes != null && firma.equals(firmaIndiceFuentes)) return indiceFuentes;
+        File guardado = new File(var(), "indice-fuentes.txt");
+        Map<String, Set<String>> idx = new HashMap<>();
+        String txt = readText(guardado);
+        if (txt != null && txt.startsWith(firma + "\n")) {
+            for (String l : txt.substring(firma.length() + 1).split("\n")) {
+                String[] c = l.split("\t");
+                for (int i = 1; i < c.length; i++) idx.computeIfAbsent(c[i], k -> new HashSet<>()).add(c[0]);
+            }
+        } else {
+            StringBuilder sb = new StringBuilder(firma).append('\n');
+            for (String sub : new String[] { "fonts/opentype", "fonts/truetype" }) {
+                List<File> pila = new ArrayList<>();
+                pila.add(new File(home(), sub));
+                while (!pila.isEmpty()) {
+                    File d = pila.remove(pila.size() - 1);
+                    File[] hs = d.listFiles();
+                    if (hs == null) continue;
+                    Set<String> nombres = new HashSet<>();
+                    for (File h : hs) {
+                        if (h.isDirectory()) { pila.add(h); continue; }
+                        String n = h.getName().toLowerCase(Locale.ROOT);
+                        if (n.endsWith(".otf") || n.endsWith(".ttf") || n.endsWith(".ttc") || n.endsWith(".otc")) nombresDeFuente(h, nombres);
+                    }
+                    if (nombres.isEmpty()) continue;
+                    String dir = d.getAbsolutePath();
+                    sb.append(dir);
+                    for (String k : nombres) { sb.append('\t').append(k); idx.computeIfAbsent(k, x -> new HashSet<>()).add(dir); }
+                    sb.append('\n');
+                }
+            }
+            try (OutputStream o = new FileOutputStream(guardado)) { o.write(sb.toString().getBytes(StandardCharsets.UTF_8)); } catch (IOException ignored) { }
+        }
+        indiceFuentes = idx;
+        firmaIndiceFuentes = firma;
+        return idx;
+    }
+
+    private static final Pattern FUENTE_CMD = Pattern.compile(
+        "\\\\(?:setmainfont|setsansfont|setmonofont|setmathfont|setromanfont|fontspec|setCJK(?:main|sans|mono)font|"
+        + "(?:re)?newfontfamily\\s*\\\\?[A-Za-z@]*|newfontface\\s*\\\\?[A-Za-z@]*|babelfont\\s*(?:\\[[^\\]]*\\])?\\s*\\{[^}]*\\})"
+        + "\\s*(?:\\[([^\\]]*)\\])?\\s*\\{([^}]+)\\}\\s*(?:\\[([^\\]]*)\\])?");
+    private static final Pattern FUENTE_OPC = Pattern.compile("(?:Upright|Bold|Italic|BoldItalic|Slanted|BoldSlanted|SmallCaps|BoldSmallCaps)Font\\s*=\\s*\\{?([^,\\]}]+)");
+
+    /** Nombres de fuente que pide el documento (sin los que son nombres de archivo: esos los encuentra kpathsea). */
+    static List<String> fuentesPedidas(JSArray files) {
+        List<String> out = new ArrayList<>();
+        for (int i = 0; files != null && i < files.length(); i++) {
+            JSONObject f;
+            try { f = files.getJSONObject(i); } catch (Exception e) { continue; }
+            if (f == null || !f.has("text")) continue;
+            String path = f.optString("path", "");
+            if (!path.endsWith(".tex") && !path.endsWith(".sty") && !path.endsWith(".cls")) continue;
+            StringBuilder code = new StringBuilder();
+            for (String l : f.optString("text", "").split("\n")) {
+                int c = -1;
+                for (int k = 0; k < l.length(); k++) { if (l.charAt(k) == '\\') { k++; continue; } if (l.charAt(k) == '%') { c = k; break; } }
+                code.append(c >= 0 ? l.substring(0, c) : l).append('\n');
+            }
+            Matcher m = FUENTE_CMD.matcher(code);
+            while (m.find()) {
+                List<String> cand = new ArrayList<>();
+                cand.add(m.group(2));
+                for (String opc : new String[] { m.group(1), m.group(3) }) {
+                    if (opc == null) continue;
+                    Matcher o = FUENTE_OPC.matcher(opc);
+                    while (o.find()) cand.add(o.group(1));
+                }
+                for (String c : cand) {
+                    String n = c.trim();
+                    if (n.isEmpty() || n.contains("\\") || n.contains("*") || n.matches("(?i).*\\.(otf|ttf|ttc|otc)$")) continue;
+                    if (!out.contains(n)) out.add(n);
+                }
+            }
+        }
+        return out;
+    }
+
+    /** Arma el fonts.conf de esta compilación. Devuelve una línea para el resumen. */
+    private String fuentesDelDocumento(JSArray files) {
+        fontsConfActual = null;
+        List<String> pedidas = fuentesPedidas(files);
+        Map<String, Set<String>> idx = indiceFuentes();
+        Set<String> dirs = new LinkedHashSet<>();
+        for (String n : pedidas) { Set<String> d = idx.get(normFuente(n)); if (d != null) dirs.addAll(d); }
+        try {
+            StringBuilder t = new StringBuilder("<?xml version=\"1.0\"?>\n<fontconfig>\n");
+            t.append("  <dir>").append(new File(tl(), "texmf-dist/fonts/opentype").getAbsolutePath()).append("</dir>\n");
+            t.append("  <dir>").append(new File(tl(), "texmf-dist/fonts/truetype").getAbsolutePath()).append("</dir>\n");
+            for (String d : dirs) t.append("  <dir>").append(d).append("</dir>\n");
+            t.append("  <dir>/system/fonts</dir>\n");
+            t.append("  <cachedir>").append(new File(var(), "fontconfig").getAbsolutePath()).append("</cachedir>\n</fontconfig>\n");
+            File fc = new File(var(), "fonts-documento.conf");
+            if (!t.toString().equals(readText(fc))) try (OutputStream o = new FileOutputStream(fc)) { o.write(t.toString().getBytes(StandardCharsets.UTF_8)); }
+            fontsConfActual = fc.getAbsolutePath();
+        } catch (IOException e) { return "todas (no se pudo armar la lista: " + e.getMessage() + ")"; }
+        return "solo las que pide el documento (" + (pedidas.isEmpty() ? "ninguna por nombre" : String.join(", ", pedidas)) + "; " + dirs.size() + (dirs.size() == 1 ? " carpeta" : " carpetas") + " de las descargadas)";
+    }
+
     /** Tamaños de papel para libpaper (formato de paperspecs: nombre,ancho,alto,unidad). */
     private void writePaperSpecs() throws IOException {
         File dir = new File(var(), "config");
@@ -291,7 +449,7 @@ public class MotorPlugin extends Plugin {
         // LuaTeX solo deja escribir ahí (en otra carpeta responde «no writeable cache path»).
         e.put("TEXMFHOME", v + "/texmf"); e.put("TEXMFCACHE", v + "/texmf-var");
         new File(v, "texmf-var").mkdirs();
-        e.put("FONTCONFIG_FILE", v + "/fonts.conf");
+        e.put("FONTCONFIG_FILE", fontsConfActual != null ? fontsConfActual : v + "/fonts.conf");
         // xdvipdfmx (XeLaTeX) usa libpaper de Termux, que busca los tamaños de papel en la carpeta de Termux:
         // se le da una lista propia (config/paperspecs, ver writePaperSpecs) y A4 por defecto.
         e.put("XDG_CONFIG_HOME", v + "/config");
@@ -445,6 +603,8 @@ public class MotorPlugin extends Plugin {
             try { loadIndex(); } catch (Exception ignored) { }
             bundledNames();
             installedPkgs();
+            // El índice de nombres de fuentes (para XeLaTeX) se arma aquí, no en la primera compilación.
+            try { indiceFuentes(); } catch (Exception ignored) { }
             try {
                 File d = new File(getContext().getCacheDir(), "calentar");
                 d.mkdirs();
@@ -2132,6 +2292,13 @@ public class MotorPlugin extends Plugin {
                 if (eng.equals("lualatex")) prepareLua();
                 if (eng.equals("xelatex")) prepareXe();
                 long formatoMs = System.currentTimeMillis() - tf;
+                fontsConfActual = null;
+                String fuentesTxt = null;
+                long tIdx = System.currentTimeMillis();
+                if (eng.equals("xelatex")) {
+                    try { fuentesTxt = fuentesDelDocumento(files); } catch (Exception e) { fontsConfActual = null; fuentesTxt = "todas (" + e.getMessage() + ")"; }
+                }
+                long indiceMs = System.currentTimeMillis() - tIdx;
                 final int fcAntes = cuentaCacheFuentes();
                 try (OutputStream o = new FileOutputStream(new File(mainDir, "texsting-motor.txt"))) { o.write(eng.getBytes(StandardCharsets.UTF_8)); }
                 // biblatex usa biber por defecto, y biber no viene en el motor: se le pide BibTeX, que sí viene.
@@ -2207,6 +2374,15 @@ public class MotorPlugin extends Plugin {
                         output.append(r.out);
                         if (r.timedOut) { timedOut = true; break; }
                         String lg = readText(new File(dir, stem + ".log"));
+                        // XeLaTeX con solo las fuentes del documento y una no aparece (p. ej. la carga un paquete por dentro):
+                        // se repite la pasada viendo todas, como antes.
+                        List<String> faltan = fontsConfActual != null && lg != null ? fontRequests(lg) : Collections.<String>emptyList();
+                        if (!faltan.isEmpty()) {
+                            fontsConfActual = null;
+                            fuentesTxt = "todas (no estaba entre las del documento: " + String.join(", ", faltan) + ")";
+                            p--;
+                            continue;
+                        }
                         // Se corta para buscar paquetes solo si de verdad falta algo: fontspec/polyglossia escriben
                         // «not found» en mensajes informativos, y eso dejaba a XeLaTeX con una sola pasada.
                         // Y solo si hay algo NUEVO que intentar: si lo que falta ya se intentó (no existe en CTAN, o es un aviso
@@ -2408,6 +2584,8 @@ public class MotorPlugin extends Plugin {
                 rs.append("  aviso «Compilando…»: ").append(CompilacionService.estado).append('\n');
                 if (eng.equals("pdflatex")) rs.append("  preámbulo guardado: ").append(usedPre ? "sí" : bgPre ? "se está armando para la próxima compilación" : "no").append('\n');
                 if (eng.equals("xelatex")) {
+                    if (fuentesTxt != null) rs.append("  fuentes que ve XeLaTeX: ").append(fuentesTxt).append('\n');
+                    if (indiceMs >= 300) rs.append("  índice de fuentes: ").append(secs(indiceMs)).append(" (solo cuando cambian los paquetes)").append('\n');
                     int fcDespues = cuentaCacheFuentes();
                     rs.append("  caché de fuentes: ").append(fcDespues).append(" archivos");
                     if (fcDespues != fcAntes) rs.append(" (").append(fcDespues > fcAntes ? "+" : "").append(fcDespues - fcAntes).append(" en esta compilación: se rehízo)");

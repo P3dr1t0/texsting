@@ -17,6 +17,19 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.29] — 28 nov. 2026 · Fase 2: Beta con motor integrado · compilación 116
+
+### XeLaTeX: de ~65 s a unos pocos segundos con «Usar sin internet»
+- **Arreglado: con los paquetes de «Usar sin internet» descargados, cada compilación con XeLaTeX tardaba alrededor de un minuto.** El diagnóstico de la 0.9.28 mostró la causa: en la tablet, un documento con `unicode-math` tardaba 13 s; en el celular, 0.7 s.
+  - Causa: cuando XeLaTeX no encuentra un nombre de fuente en su lista rápida, abre una por una todas las fuentes que conoce para leer sus nombres, y lo repite en cada pasada. Con los paquetes avanzados son miles de archivos.
+  - Ahora TeXsting arma una vez un índice con los nombres de las fuentes descargadas y la carpeta de cada una. Lo arma al abrir la app y lo rehace solo cuando cambian los paquetes instalados. En cada compilación, XeLaTeX ve solo:
+    - las fuentes que trae la app;
+    - las fuentes del sistema;
+    - las carpetas de las fuentes que pide el documento (`\setmainfont`, `\setmathfont`, `\newfontfamily`, `\babelfont`, `BoldFont=`…).
+  - Si aun así falta una fuente (por ejemplo, la pide un paquete por dentro), esa pasada se repite viendo todas las fuentes, así que ningún documento deja de compilar.
+  - Prueba con 3096 fuentes visibles: cada pasada bajó de 2.6 s a 0.7 s, con el mismo resultado.
+- **El resumen de «Log completo»** dice qué fuentes vio XeLaTeX en esa compilación.
+
 ## [0.9.28] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 115
 
 ### Diagnóstico de XeLaTeX
