@@ -32,6 +32,13 @@ public class MotorPlugin extends Plugin {
     private void cancelBackground() {
         gen++;
         for (Process p : bgProcs) p.destroyForcibly();
+        CompilacionService.terminarFondo();
+    }
+
+    @Override
+    public void load() {
+        // «Cancelar» en la notificación «Guardando figuras…»: corta el trabajo de fondo y lo avisa al editor.
+        CompilacionService.alCancelarFondo = () -> { cancelBackground(); fondoEstado(false, ""); };
     }
 
     private void background(Runnable task) {
@@ -704,6 +711,8 @@ public class MotorPlugin extends Plugin {
     }
     /** Si hay trabajo en segundo plano (figuras, preámbulo): el editor muestra un indicador mientras dure. */
     private void fondoEstado(boolean activo, String texto) {
+        // Notificación aparte, con Cancelar; sigue a toda velocidad aunque estés en otra app.
+        if (activo) CompilacionService.fondo(getContext(), texto); else CompilacionService.terminarFondo();
         JSObject d = new JSObject();
         d.put("activo", activo);
         d.put("texto", texto);
@@ -714,6 +723,7 @@ public class MotorPlugin extends Plugin {
      * «segundos». El editor avanza la barra solo dentro del tramo; al llegar el siguiente salta a su inicio.
      */
     private void fondoPaso(String texto, int desde, int hasta, double segundos) {
+        CompilacionService.fondoTramo(texto, desde, hasta, Math.max(2, segundos));
         JSObject d = new JSObject();
         d.put("activo", true);
         d.put("texto", texto);

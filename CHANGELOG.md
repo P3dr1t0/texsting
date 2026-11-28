@@ -17,6 +17,17 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.26] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 113
+
+### «Guardando figuras…» con su propia notificación
+- **Lo que el motor guarda después de compilar tiene ahora una notificación aparte:** «Guardando figuras… 30 %» o «Guardando el preámbulo…», con barra, porcentaje y botón **Cancelar**.
+  - El motor guarda las figuras y el preámbulo para que la próxima compilación sea más rápida ⚡.
+  - Al terminar la compilación se cierra «Compilando…». Si después hay que guardar figuras, se abre esta otra.
+  - «Cancelar» corta ese trabajo. La próxima compilación sale bien igual, solo sin el atajo.
+- **Arreglado: guardar figuras con la app en segundo plano tardaba demasiado.**
+  - Ese trabajo se quedaba sin la protección de la notificación: Android lo mandaba a los núcleos lentos y no deja volver a protegerlo mientras estás en otra app.
+  - Ahora se pasa de «Compilando…» a «Guardando figuras…» sin soltar esa protección, y todo sigue a toda velocidad.
+
 ## [0.9.25] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 112
 
 ### Notificaciones de compilación
