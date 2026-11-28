@@ -1924,6 +1924,37 @@ public class MotorPlugin extends Plugin {
         return true;
     }
 
+    /** ¿Puede mostrar la notificación «Compilando…»? (Android 13+ pide permiso). */
+    @PluginMethod
+    public void notificaciones(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("activas", androidx.core.app.NotificationManagerCompat.from(getContext()).areNotificationsEnabled());
+        r.put("sePuedePedir", android.os.Build.VERSION.SDK_INT >= 33);
+        call.resolve(r);
+    }
+
+    /** Muestra el aviso de Android para permitir notificaciones (una vez; la app recuerda que ya lo pidió). */
+    @PluginMethod
+    public void pedirNotificaciones(PluginCall call) {
+        if (android.os.Build.VERSION.SDK_INT >= 33 && getActivity() != null) {
+            getActivity().runOnUiThread(() -> androidx.core.app.ActivityCompat.requestPermissions(getActivity(),
+                new String[] { "android.permission.POST_NOTIFICATIONS" }, 7302));
+        }
+        call.resolve();
+    }
+
+    /** Abre los ajustes de notificaciones de TeXsting (si se negó el permiso). */
+    @PluginMethod
+    public void ajustesNotificaciones(PluginCall call) {
+        try {
+            android.content.Intent i = new android.content.Intent("android.settings.APP_NOTIFICATION_SETTINGS")
+                .putExtra("android.provider.extra.APP_PACKAGE", getContext().getPackageName())
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            call.resolve();
+        } catch (Exception e) { call.reject(String.valueOf(e.getMessage())); }
+    }
+
     @PluginMethod
     public void compilar(PluginCall call) {
         cancelBackground();

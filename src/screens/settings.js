@@ -3,7 +3,7 @@ import { Clipboard } from '@capacitor/clipboard';
 import { getSettings, setSettings, ensureToken } from '../store.js';
 import { el, icon, toast, esc, confirmDialog } from '../ui.js';
 import { ping, serverOutdated } from '../compiler.js';
-import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA, MOTOR_PRUEBA_LUA, motorSinInternet, motorDescargarSinInternet, motorCancelarDescarga, motorBorrarDescargados, motorAlDescargar } from '../motor.js';
+import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA, MOTOR_PRUEBA_LUA, motorSinInternet, motorDescargarSinInternet, motorCancelarDescarga, motorBorrarDescargados, motorAlDescargar, motorNotificaciones, motorPedirNotificaciones, motorAjustesNotificaciones } from '../motor.js';
 import { bootstrapCommand, openTermux, TERMUX_FDROID, TERMUX_GITHUB } from '../termux.js';
 import { ENGINES } from '../latex-data.js';
 import { disponible as hayCarpetas, raiz, elegirRaiz, exportarTodos } from '../carpetas.js';
@@ -208,6 +208,7 @@ export async function renderSettings(root, _p, navigate) {
       row('Motor para proyectos nuevos', engine, 'Cada proyecto puede cambiarlo en ⋮ → Motor'),
       row('Instalar paquetes faltantes', toggle('autoinstall'), 'Si falta un paquete, se descarga solo al compilar (necesita internet esa vez)'),
       row('Compilar al guardar (Ctrl+S)', toggle('compileOnSave')),
+      avisoCompilando(),
       el('p', { class: 'muted' }, 'El motor integrado compila dentro de TeXsting, sin instalar nada más: pdfLaTeX, XeLaTeX y LuaLaTeX (fuentes OpenType con fontspec, incluso las del teléfono como Roboto o Noto), BibTeX y makeindex. Los paquetes que falten (TikZ, pgfplots, circuitikz…) se descargan solos de CTAN la primera vez que los uses.'),
       el('button', { class: 'btn', onclick: probarMotor }, 'Probar motor integrado'),
       motorResult,
@@ -233,6 +234,31 @@ export async function renderSettings(root, _p, navigate) {
       el('button', { class: 'btn', html: icon('info') + '<span>Licencias y créditos</span>', onclick: () => navigate('licencias') }),
       el('p', { class: 'muted small', html: 'Contacto: <a href="mailto:texsting.app@gmail.com">texsting.app@gmail.com</a> · <a href="https://p3dr1t0.github.io/texsting/privacidad" target="_blank" rel="noopener">Política de privacidad</a>' }))));
   return { cleanup: () => dejarDeEscuchar() };
+}
+
+/** Notificación «Compilando…»: hace que la compilación siga rápida si sales de la app (Android 13+ pide permiso). */
+function avisoCompilando() {
+  const boton = el('button', { class: 'btn small' }, '…');
+  const fila = el('div', { class: 'set-row', hidden: true },
+    el('span', { class: 'set-label' }, 'Notificación «Compilando…»',
+      el('small', {}, 'Mientras compila, sigue a toda velocidad aunque cambies de app o apagues la pantalla')),
+    boton);
+  const pintar = async () => {
+    const n = await motorNotificaciones();
+    if (!n) return;
+    fila.hidden = false;
+    boton.textContent = n.activas ? 'Activada' : 'Activar';
+    boton.disabled = n.activas;
+    boton.onclick = async () => {
+      // La primera vez, el aviso de Android; si ya se negó, Android ya no lo muestra: se abren sus ajustes.
+      if (n.sePuedePedir && !getSettings().notifPedidas) { setSettings({ notifPedidas: true }); await motorPedirNotificaciones(); }
+      else await motorAjustesNotificaciones();
+    };
+  };
+  pintar();
+  const alVolver = () => { if (!document.hidden) pintar(); };
+  document.addEventListener('visibilitychange', alVolver);
+  return fila;
 }
 
 /** Donaciones: un apartado tranquilo en Ajustes, sin avisos ni ventanas que interrumpan. */

@@ -83,6 +83,14 @@ export async function motorAlTerminarFondo(cb) {
   } catch { /* sin motor integrado */ }
 }
 
+/** Estado del permiso de notificaciones: { activas, sePuedePedir } o null fuera de Android. */
+export async function motorNotificaciones() {
+  if (!Capacitor.isNativePlatform()) return null;
+  try { return await Motor.notificaciones(); } catch { return null; }
+}
+export function motorPedirNotificaciones() { return Capacitor.isNativePlatform() ? Motor.pedirNotificaciones().catch(() => {}) : Promise.resolve(); }
+export function motorAjustesNotificaciones() { return Capacitor.isNativePlatform() ? Motor.ajustesNotificaciones().catch(() => {}) : Promise.resolve(); }
+
 export async function motorCompilar(project, files, { autoinstall = true, engine = 'pdflatex' } = {}) {
   const data = await Motor.compilar({
     project: project.id,

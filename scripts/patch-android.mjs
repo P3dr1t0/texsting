@@ -39,6 +39,7 @@ if (!m.includes('hasFragileUserData')) {
 if (!m.includes('CompilacionService')) {
   m = m.replace('<application', `<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application`);
   m = m.replace('</application>', `    <service
             android:name=".CompilacionService"

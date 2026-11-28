@@ -17,6 +17,15 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.23] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 110
+
+### Notificación «Compilando…»
+- **Arreglado: la notificación de la 0.9.22 no se veía.**
+  - Desde Android 13 hace falta que el usuario permita las notificaciones, y TeXsting nunca lo pedía. Sin ese permiso, Android oculta la notificación, aunque el servicio funcione por detrás.
+  - Ahora, **la primera vez que compilas**, Android pregunta si permites las notificaciones, con un aviso que explica para qué sirven. Se pregunta una sola vez.
+- **Nuevo en Ajustes → Compilación: «Notificación "Compilando…"»** muestra si está activada.
+  - Si no lo está, el botón «Activar» muestra el aviso de Android. Si ya lo negaste antes, abre los ajustes de notificaciones de TeXsting.
+
 ## [0.9.22] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 109
 
 ### Compilar mientras usas otra app

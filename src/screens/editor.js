@@ -7,7 +7,7 @@ import { fileToTrash, restoreFile, DIAS_PAPELERA, getProject, saveProject, touch
 import { el, icon, toast, sheet, panel, promptText, confirmDialog, dialog, pickFiles, esc } from '../ui.js';
 import { createPdfViewer } from '../pdfview.js';
 import { parseSynctex, forward, inverse } from '../synctex.js';
-import { motorAlProgresar, motorAlPaso, motorAlFondo } from '../motor.js';
+import { motorAlProgresar, motorAlPaso, motorAlFondo, motorNotificaciones, motorPedirNotificaciones } from '../motor.js';
 import { compileProject, CompileError, chooseEngine, engineExplanation, engineNeeds, ENGINE_LABEL } from '../compiler.js';
 import { parseLog, parseBibOutput, summarize } from '../logparser.js';
 import { analyzeProject } from '../structure.js';
@@ -699,6 +699,16 @@ export async function renderEditor(root, { id }, navigate) {
 
   async function compile() {
     if (compiling) return;
+    // La primera vez que se compila: Android 13+ pide permiso para mostrar «Compilando…» (sin él, la notificación
+    // queda oculta). Se pide una sola vez; después se puede activar en Ajustes → Compilación.
+    if (!getSettings().notifPedidas) {
+      motorNotificaciones().then((n) => {
+        if (!n || n.activas || !n.sePuedePedir) return;
+        setSettings({ notifPedidas: true });
+        toast('Permite las notificaciones para que la compilación siga rápida aunque cambies de app («Compilando…»).', { ms: 7000 });
+        motorPedirNotificaciones();
+      });
+    }
     fondoTexto = '';
     tramo = null;
     clearInterval(fondoTick);
