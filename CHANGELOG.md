@@ -17,6 +17,16 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.30] — 28 nov. 2026 · Fase 2: Beta con motor integrado · compilación 117
+
+### Paquetes descargados con índice: TeX ya no los busca recorriendo el disco
+- **Arreglado (ahora sí la causa): con «Usar sin internet» avanzado, cada compilación tardaba alrededor de un minuto más.** La 0.9.29 limitó las fuentes de XeLaTeX y el Cuaderno de Trigonometría siguió en 62 s, así que esa no era la causa principal.
+  - Causa: los paquetes descargados van en una carpeta (TEXMFHOME) que no tenía índice de archivos (`ls-R`). TeX la revisa antes que la suya propia, y sin índice busca cada archivo recorriendo todas sus subcarpetas en el disco, en cada `\usepackage`, fuente o figura. Con los paquetes avanzados son miles de carpetas. El celular no los tiene, por eso allí seguía rápido.
+  - Ahora TeXsting mantiene ese índice: lo rehace la primera vez que se compila después de bajar un paquete, y también al abrir la app. TeX busca solo en el índice, como hace con el resto de TeX Live. Si el índice no se puede armar, busca en el disco como antes.
+  - Prueba con 12 000 carpetas de paquetes: cada pasada de XeLaTeX bajó de 7 s a 0.7 s, igual que sin paquetes descargados. Armar el índice tomó 0.2 s.
+  - Afecta a todos los motores (pdfLaTeX, XeLaTeX, LuaLaTeX), BibTeX y los demás programas.
+- **El resumen de «Log completo»** dice si los paquetes descargados se buscaron con índice y cuánto tardó rehacerlo.
+
 ## [0.9.29] — 28 nov. 2026 · Fase 2: Beta con motor integrado · compilación 116
 
 ### XeLaTeX: de ~65 s a unos pocos segundos con «Usar sin internet»

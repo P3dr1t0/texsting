@@ -447,7 +447,14 @@ public class MotorPlugin extends Plugin {
         e.put("TEXMFVAR", v + "/texmf-var"); e.put("TEXMFCONFIG", v + "/texmf-config");
         // La caché de LuaLaTeX (lista de fuentes de luaotfload) va dentro de TEXMFVAR, como en TeX Live:
         // LuaTeX solo deja escribir ahí (en otra carpeta responde «no writeable cache path»).
-        e.put("TEXMFHOME", v + "/texmf"); e.put("TEXMFCACHE", v + "/texmf-var");
+        e.put("TEXMFCACHE", v + "/texmf-var");
+        // Los paquetes descargados van en TEXMFHOME. Sin un índice (ls-R), TeX busca CADA archivo recorriendo el disco
+        // por todas sus subcarpetas (con «Usar sin internet» avanzado, miles): XeLaTeX tardaba ~60 s en vez de ~15.
+        // Con el índice al día se busca solo en él («!!»), como en el resto de TeX Live.
+        if (lsRAlDia()) {
+            e.put("TEXMFHOME", "!!" + v + "/texmf");
+            e.put("TEXMFDBS", "{!!" + v + "/texmf,!!$TEXMFLOCAL,!!$TEXMFSYSVAR,!!$TEXMFDIST}");
+        } else e.put("TEXMFHOME", v + "/texmf");
         new File(v, "texmf-var").mkdirs();
         e.put("FONTCONFIG_FILE", fontsConfActual != null ? fontsConfActual : v + "/fonts.conf");
         // xdvipdfmx (XeLaTeX) usa libpaper de Termux, que busca los tamaños de papel en la carpeta de Termux:
@@ -457,6 +464,49 @@ public class MotorPlugin extends Plugin {
         e.put("MKTEXTFM", "0"); e.put("MKTEXPK", "0"); e.put("MKTEXMF", "0"); e.put("MKTEXFMT", "0");
         if (perlDir().exists()) { String p5 = perl5lib(); if (p5 != null) e.put("PERL5LIB", p5); }
         return e;
+    }
+
+    // ───────────── Índice (ls-R) de los paquetes descargados ─────────────
+    // Cada vez que se escribe algo en TEXMFHOME se borra el ls-R; la siguiente ejecución de TeX lo vuelve a armar
+    // (con el candado «instalando», así no se arma a medio descomprimir). Si no se puede, TeX busca en el disco como antes.
+    private File lsR() { return new File(home(), "ls-R"); }
+    private volatile long lsRMs = -1;
+
+    private void lsRViejo() { lsR().delete(); }
+
+    private boolean lsRAlDia() {
+        if (lsR().exists()) return true;
+        if (!home().isDirectory()) return false;
+        synchronized (instalando) {
+            if (lsR().exists()) return true;
+            long t0 = System.currentTimeMillis();
+            try {
+                StringBuilder sb = new StringBuilder("% ls-R -- filename database for kpathsea; do not change this line.\n");
+                Deque<String> pila = new ArrayDeque<>();
+                pila.push("");
+                File raiz = home();
+                while (!pila.isEmpty()) {
+                    String rel = pila.pop();
+                    String[] hs = (rel.isEmpty() ? raiz : new File(raiz, rel)).list();
+                    if (hs == null) continue;
+                    Arrays.sort(hs);
+                    sb.append('\n').append(rel.isEmpty() ? "./" : "./" + rel).append(":\n");
+                    List<String> subs = new ArrayList<>();
+                    for (String h : hs) {
+                        if (h.startsWith(".") || (rel.isEmpty() && h.startsWith("ls-R"))) continue;
+                        sb.append(h).append('\n');
+                        String r2 = rel.isEmpty() ? h : rel + "/" + h;
+                        if (new File(raiz, r2).isDirectory()) subs.add(r2);
+                    }
+                    for (int i = subs.size() - 1; i >= 0; i--) pila.push(subs.get(i));
+                }
+                File tmp = new File(raiz, "ls-R.tmp");
+                try (OutputStream o = new FileOutputStream(tmp)) { o.write(sb.toString().getBytes(StandardCharsets.UTF_8)); }
+                if (!tmp.renameTo(lsR())) { tmp.delete(); return false; }
+                lsRMs = System.currentTimeMillis() - t0;
+                return true;
+            } catch (Exception e) { return false; }
+        }
     }
 
     private static class Run { int code = -1; String out = ""; boolean timedOut; }
@@ -605,6 +655,7 @@ public class MotorPlugin extends Plugin {
             installedPkgs();
             // El índice de nombres de fuentes (para XeLaTeX) se arma aquí, no en la primera compilación.
             try { indiceFuentes(); } catch (Exception ignored) { }
+            lsRAlDia();
             try {
                 File d = new File(getContext().getCacheDir(), "calentar");
                 d.mkdirs();
@@ -1141,8 +1192,10 @@ public class MotorPlugin extends Plugin {
     private void desempacar(String pkg, File tmp) throws Exception {
         List<File> maps;
         try (InputStream in = new org.tukaani.xz.XZInputStream(new BufferedInputStream(new FileInputStream(tmp), 65536))) {
+            lsRViejo();
             maps = untar(in, home());
         }
+        lsRViejo();
         if (!maps.isEmpty()) appendMaps(maps);
         try (OutputStream o = new FileOutputStream(installedFile(), true)) { o.write((pkg + "\n").getBytes(StandardCharsets.UTF_8)); }
     }
@@ -1276,7 +1329,7 @@ public class MotorPlugin extends Plugin {
         out.getParentFile().mkdirs();
         progress("Descargando la letra «" + file.replaceAll("\\.pf[ab]$", "") + "»…");
         for (String base : new String[] { "https://mirror.ctan.org/", "https://mirrors.mit.edu/CTAN/" }) {
-            try { download(base + dirOnCtan + file, out); if (out.length() > 0) return true; } catch (Exception ignored) { }
+            try { download(base + dirOnCtan + file, out); if (out.length() > 0) { lsRViejo(); return true; } } catch (Exception ignored) { }
         }
         out.delete();
         return false;
@@ -2584,6 +2637,9 @@ public class MotorPlugin extends Plugin {
                 rs.append("  aviso «Compilando…»: ").append(CompilacionService.estado).append('\n');
                 if (eng.equals("pdflatex")) rs.append("  preámbulo guardado: ").append(usedPre ? "sí" : bgPre ? "se está armando para la próxima compilación" : "no").append('\n');
                 if (eng.equals("xelatex")) {
+                    rs.append("  paquetes descargados: ").append(lsR().exists() ? "con índice (ls-R)" : "sin índice: TeX los busca en el disco (lento)");
+                    if (lsRMs >= 0) { rs.append(", rehecho en ").append(secs(lsRMs)); lsRMs = -1; }
+                    rs.append('\n');
                     if (fuentesTxt != null) rs.append("  fuentes que ve XeLaTeX: ").append(fuentesTxt).append('\n');
                     if (indiceMs >= 300) rs.append("  índice de fuentes: ").append(secs(indiceMs)).append(" (solo cuando cambian los paquetes)").append('\n');
                     int fcDespues = cuentaCacheFuentes();
