@@ -30,16 +30,20 @@ public class CompilacionService extends Service {
     /** Si sigue habiendo una compilación (puede terminar antes de que el servicio llegue a arrancar). */
     private static volatile boolean activo = false;
     private static volatile CompilacionService instancia;
+    /** Qué pasó con el último aviso (para «Probar» en Ajustes y el resumen del log). */
+    static volatile String estado = "sin usar";
     private PowerManager.WakeLock wl;
 
     /** Al empezar una compilación (llamar con la app a la vista). */
     static void empezar(Context c, String texto) {
         activo = true;
+        estado = "pedido a Android (aún no arranca)";
         try {
             Intent i = new Intent(c, CompilacionService.class).putExtra("texto", texto);
             if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i); else c.startService(i);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
             // P. ej., si Android no deja empezarlo en ese momento: se compila igual, como antes.
+            estado = "Android no dejó empezarlo: " + e.getClass().getSimpleName() + " " + e.getMessage();
         }
     }
 
@@ -60,11 +64,13 @@ public class CompilacionService extends Service {
             if (Build.VERSION.SDK_INT >= 34) startForeground(ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE);
             else if (Build.VERSION.SDK_INT >= 29) startForeground(ID, n, 0);
             else startForeground(ID, n);
+            estado = "mostrado";
         } catch (Exception e) {
+            estado = "error al mostrarlo: " + e.getClass().getSimpleName() + " " + e.getMessage();
             stopSelf();
             return START_NOT_STICKY;
         }
-        if (!activo) { parar(); return START_NOT_STICKY; }
+        if (!activo) { estado = "la compilación terminó antes de que arrancara"; parar(); return START_NOT_STICKY; }
         try {
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (wl == null && pm != null) {

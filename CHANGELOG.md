@@ -17,6 +17,13 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.24] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 111
+
+### Diagnóstico de la notificación «Compilando…»
+- En la tablet la notificación seguía sin verse, aun con el permiso dado. Para encontrar la causa sin adivinar:
+  - **Ajustes → Compilación → «Notificación "Compilando…"» → Probar:** muestra la notificación durante 8 segundos y dice qué respondió Android. Puede decir que la aceptó, que dio un error (y cuál) o que el servicio no llegó a arrancar.
+  - **El resumen de «Log completo»** incluye ahora la línea «aviso «Compilando…»: …» con lo mismo para cada compilación.
+
 ## [0.9.23] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 110
 
 ### Notificación «Compilando…»

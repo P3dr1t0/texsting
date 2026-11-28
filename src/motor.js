@@ -89,6 +89,7 @@ export async function motorNotificaciones() {
   try { return await Motor.notificaciones(); } catch { return null; }
 }
 export function motorPedirNotificaciones() { return Capacitor.isNativePlatform() ? Motor.pedirNotificaciones().catch(() => {}) : Promise.resolve(); }
+export function motorProbarAviso() { return Motor.probarAviso(); }
 export function motorAjustesNotificaciones() { return Capacitor.isNativePlatform() ? Motor.ajustesNotificaciones().catch(() => {}) : Promise.resolve(); }
 
 export async function motorCompilar(project, files, { autoinstall = true, engine = 'pdflatex' } = {}) {

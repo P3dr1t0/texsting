@@ -615,3 +615,4 @@ span.lic-chip { border-color: var(--border); color: var(--muted); cursor: defaul
 .apoyo-fila { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .apoyo-btn { justify-content: center; font-weight: 600; white-space: nowrap; padding-left: 6px; padding-right: 6px; font-variant-numeric: tabular-nums; }
 .apoyo-nota { margin: 10px 0 0 !important; }
+.set-botones { display: flex; gap: 6px; flex: none; }

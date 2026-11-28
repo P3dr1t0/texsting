@@ -1943,6 +1943,19 @@ public class MotorPlugin extends Plugin {
         call.resolve();
     }
 
+    /** Prueba el aviso «Compilando…» durante 8 s y dice qué respondió Android. */
+    @PluginMethod
+    public void probarAviso(PluginCall call) {
+        CompilacionService.empezar(getContext(), "Prueba de la notificación");
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            JSObject r = new JSObject();
+            r.put("estado", CompilacionService.estado);
+            r.put("activas", androidx.core.app.NotificationManagerCompat.from(getContext()).areNotificationsEnabled());
+            call.resolve(r);
+        }, 2500);
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(CompilacionService::terminar, 8000);
+    }
+
     /** Abre los ajustes de notificaciones de TeXsting (si se negó el permiso). */
     @PluginMethod
     public void ajustesNotificaciones(PluginCall call) {
@@ -2286,6 +2299,7 @@ public class MotorPlugin extends Plugin {
                             : bgFigs ? "se están guardando en segundo plano para la próxima compilación"
                             : "se dibujan en cada compilación").append('\n');
                 }
+                rs.append("  aviso «Compilando…»: ").append(CompilacionService.estado).append('\n');
                 if (eng.equals("pdflatex")) rs.append("  preámbulo guardado: ").append(usedPre ? "sí" : bgPre ? "se está armando para la próxima compilación" : "no").append('\n');
                 if (eng.equals("xelatex")) {
                     File[] fc = new File(var(), "fontconfig").listFiles();

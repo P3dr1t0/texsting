@@ -3,7 +3,7 @@ import { Clipboard } from '@capacitor/clipboard';
 import { getSettings, setSettings, ensureToken } from '../store.js';
 import { el, icon, toast, esc, confirmDialog } from '../ui.js';
 import { ping, serverOutdated } from '../compiler.js';
-import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA, MOTOR_PRUEBA_LUA, motorSinInternet, motorDescargarSinInternet, motorCancelarDescarga, motorBorrarDescargados, motorAlDescargar, motorNotificaciones, motorPedirNotificaciones, motorAjustesNotificaciones } from '../motor.js';
+import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA, MOTOR_PRUEBA_LUA, motorSinInternet, motorDescargarSinInternet, motorCancelarDescarga, motorBorrarDescargados, motorAlDescargar, motorNotificaciones, motorPedirNotificaciones, motorAjustesNotificaciones, motorProbarAviso } from '../motor.js';
 import { bootstrapCommand, openTermux, TERMUX_FDROID, TERMUX_GITHUB } from '../termux.js';
 import { ENGINES } from '../latex-data.js';
 import { disponible as hayCarpetas, raiz, elegirRaiz, exportarTodos } from '../carpetas.js';
@@ -239,10 +239,27 @@ export async function renderSettings(root, _p, navigate) {
 /** Notificación «Compilando…»: hace que la compilación siga rápida si sales de la app (Android 13+ pide permiso). */
 function avisoCompilando() {
   const boton = el('button', { class: 'btn small' }, '…');
-  const fila = el('div', { class: 'set-row', hidden: true },
-    el('span', { class: 'set-label' }, 'Notificación «Compilando…»',
-      el('small', {}, 'Mientras compila, sigue a toda velocidad aunque cambies de app o apagues la pantalla')),
-    boton);
+  const probar = el('button', { class: 'btn small ghost' }, 'Probar');
+  const resultado = el('p', { class: 'muted small', hidden: true });
+  probar.onclick = async () => {
+    probar.disabled = true;
+    resultado.hidden = false;
+    resultado.textContent = 'Mostrando la notificación por 8 segundos: baja la cortina para verla…';
+    try {
+      const r = await motorProbarAviso();
+      resultado.textContent = r.estado === 'mostrado'
+        ? 'Android aceptó la notificación.' + (r.activas ? ' Si no la ves en la cortina, tu sistema la está ocultando: revisa en Ajustes de Android → Notificaciones → TeXsting.' : ' Pero las notificaciones de TeXsting están desactivadas.')
+        : 'No se mostró: ' + r.estado + (r.activas ? '' : ' (las notificaciones de TeXsting están desactivadas)');
+    } catch (e) { resultado.textContent = 'No se pudo probar: ' + (e.message || e); }
+    setTimeout(() => { probar.disabled = false; }, 8000);
+  };
+  const fila = el('div', {},
+    el('div', { class: 'set-row' },
+      el('span', { class: 'set-label' }, 'Notificación «Compilando…»',
+        el('small', {}, 'Mientras compila, sigue a toda velocidad aunque cambies de app o apagues la pantalla')),
+      el('div', { class: 'set-botones' }, probar, boton)),
+    resultado);
+  fila.hidden = true;
   const pintar = async () => {
     const n = await motorNotificaciones();
     if (!n) return;
