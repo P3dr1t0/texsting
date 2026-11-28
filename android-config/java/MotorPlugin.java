@@ -765,7 +765,8 @@ public class MotorPlugin extends Plugin {
     }
     private static final Pattern[] MISSING = {
         Pattern.compile("LaTeX Error: File `([^']+)' not found"),
-        Pattern.compile("! I can't find file `([^']+)'"),
+        // Con -file-line-error llega como «chemfig.tex:85: I can't find file `simplekv.tex'.» (sin «!»).
+        Pattern.compile("I can't find file `([^']+)'"),
         Pattern.compile("Font \\\\?[^=\\s]+=([A-Za-z0-9_\\-]+)(?: at [^ ]+| scaled \\d+)? not loadable: Metric \\(TFM\\) file not found"),
         Pattern.compile("I did not find the tikz library '([^']+)'"),
         Pattern.compile("\\(file ([^)\\s]+\\.pf[ab])\\): cannot open Type 1 font file"),
@@ -2635,11 +2636,13 @@ public class MotorPlugin extends Plugin {
                             : "se dibujan en cada compilación").append('\n');
                 }
                 rs.append("  aviso «Compilando…»: ").append(CompilacionService.estado).append('\n');
-                if (eng.equals("pdflatex")) rs.append("  preámbulo guardado: ").append(usedPre ? "sí" : bgPre ? "se está armando para la próxima compilación" : "no").append('\n');
-                if (eng.equals("xelatex")) {
-                    rs.append("  paquetes descargados: ").append(lsR().exists() ? "con índice (ls-R)" : "sin índice: TeX los busca en el disco (lento)");
+                if (home().isDirectory()) {
+                    rs.append("  índice de paquetes descargados: ").append(lsR().exists() ? "al día (ls-R)" : "no hay: TeX los busca en el disco (lento)");
                     if (lsRMs >= 0) { rs.append(", rehecho en ").append(secs(lsRMs)); lsRMs = -1; }
                     rs.append('\n');
+                }
+                if (eng.equals("pdflatex")) rs.append("  preámbulo guardado: ").append(usedPre ? "sí" : bgPre ? "se está armando para la próxima compilación" : "no").append('\n');
+                if (eng.equals("xelatex")) {
                     if (fuentesTxt != null) rs.append("  fuentes que ve XeLaTeX: ").append(fuentesTxt).append('\n');
                     if (indiceMs >= 300) rs.append("  índice de fuentes: ").append(secs(indiceMs)).append(" (solo cuando cambian los paquetes)").append('\n');
                     int fcDespues = cuentaCacheFuentes();

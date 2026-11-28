@@ -17,6 +17,15 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.31] — 28 nov. 2026 · Fase 2: Beta con motor integrado · compilación 118
+
+### Archivos que faltan dentro de un paquete
+- **Arreglado: si a un paquete le faltaba un archivo que carga con `\input`, TeXsting no lo descargaba.** La compilación terminaba con «Parada de emergencia».
+  - Ejemplo: `chemfig` carga `simplekv.tex`, que viene en otro paquete.
+  - Causa: TeX avisa de ese caso como `chemfig.tex:85: I can't find file 'simplekv.tex'`. TeXsting solo reconocía la forma con `!` al inicio, así que no se enteraba de que faltaba algo.
+  - Ahora reconoce las dos formas y descarga el paquete que lo trae (`simplekv`).
+- **El resumen de «Log completo»** muestra en todos los motores si el índice de los paquetes descargados está al día y cuánto tardó rehacerlo. Antes solo salía con XeLaTeX.
+
 ## [0.9.30] — 28 nov. 2026 · Fase 2: Beta con motor integrado · compilación 117
 
 ### Paquetes descargados con índice: TeX ya no los busca recorriendo el disco
