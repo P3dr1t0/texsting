@@ -17,6 +17,14 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.33] — 28 nov. 2026 · Fase 2: Beta con motor integrado · compilación 120
+
+### Log limpio con paquetes descargados (ahora sí)
+- **Arreglado: los avisos «ambiguous entry … font file present but not included» seguían saliendo** en la 0.9.32.
+  - Causa real: al descargar paquetes, TeXsting sumaba al mapa de fuentes de pdfLaTeX todos sus archivos `.map`. Los de `fontname` (`special.map`, `texfonts.map`) no son mapas de fuentes: son listas de nombres (por ejemplo, `wnr  public  wncyr`), y pdfTeX avisaba por cada línea. Se comprobó compilando una línea con ese formato.
+  - Ahora solo se suman los mapas de `fonts/map/pdftex` y `fonts/map/dvips`, los mismos que usa updmap en TeX Live.
+  - El mapa que ya estaba armado se rehace una vez al abrir la app. Se arma aparte y se cambia de golpe, así que una compilación en curso no lo ve a medias.
+
 ## [0.9.32] — 28 nov. 2026 · Fase 2: Beta con motor integrado · compilación 119
 
 ### Log más limpio con paquetes descargados

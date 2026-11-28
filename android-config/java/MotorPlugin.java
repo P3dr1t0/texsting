@@ -583,8 +583,19 @@ public class MotorPlugin extends Plugin {
 
     /** Como updmap: las fuentes nuevas se agregan a una copia propia de pdftex.map (tiene prioridad). */
     private void appendMaps(List<File> maps) throws IOException {
+        appendMaps(maps, new File(var(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map"));
+    }
+
+    /** Solo los mapas que usaría updmap (fonts/map/pdftex y fonts/map/dvips). Los de fonts/map/fontname
+     *  (special.map, texfonts.map) son listas de nombres, no mapas de pdfTeX: metidos en pdftex.map daban decenas
+     *  de avisos «ambiguous entry … font file present but not included». */
+    static boolean esMapaDeFuentes(String ruta) {
+        String r = ruta.replace('\\', '/');
+        return r.endsWith(".map") && (r.contains("/fonts/map/pdftex/") || r.contains("/fonts/map/dvips/"));
+    }
+
+    private void appendMaps(List<File> maps, File vmap) throws IOException {
                 // Como updmap: las fuentes nuevas se agregan a una copia propia de pdftex.map (tiene prioridad).
-                File vmap = new File(var(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map");
                 if (!vmap.exists()) {
                     vmap.getParentFile().mkdirs();
                     byte[] base = readBytes(new File(tl(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map"));
@@ -617,28 +628,28 @@ public class MotorPlugin extends Plugin {
         return ARCHIVO_SIN_INCLUIR.matcher(x).replaceAll("").replaceAll("\\s+$", "");
     }
 
-    /** Quita esos archivos sin «<» del mapa ya armado (una vez; los mapas nuevos ya llegan limpios). */
+    /** Una vez: rehace el mapa de pdfTeX solo con los mapas de verdad (antes entraban también los de fontname).
+     *  Se arma aparte y se cambia de golpe, para que una compilación en curso nunca lo encuentre a medias. */
     private void limpiarMapa() {
+        File marca = new File(var(), "mapa-fuentes-2.txt");
+        if (marca.exists()) return;
         File vmap = new File(var(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map");
-        String cur = readText(vmap);
-        if (cur == null) return;
-        StringBuilder sb = new StringBuilder(cur.length());
-        boolean cambio = false;
-        for (String l : cur.split("\n", -1)) {
-            String n = lineaDeMapa(l);
-            if (!n.equals(l)) cambio = true;
-            sb.append(n).append('\n');
+        if (vmap.exists()) {
+            File nuevo = new File(vmap.getPath() + ".nuevo");
+            nuevo.delete();
+            try { appendMaps(mapasDescargados(), nuevo); } catch (IOException e) { nuevo.delete(); return; }
+            if (!nuevo.renameTo(vmap)) { nuevo.delete(); return; }
         }
-        if (!cambio) return;
-        sb.setLength(sb.length() - 1);
-        File tmp = new File(vmap.getPath() + ".tmp");
-        try (OutputStream o = new FileOutputStream(tmp)) { o.write(sb.toString().getBytes(StandardCharsets.UTF_8)); }
-        catch (IOException e) { tmp.delete(); return; }
-        if (!tmp.renameTo(vmap)) tmp.delete();
+        try (OutputStream o = new FileOutputStream(marca)) { o.write("ok\n".getBytes(StandardCharsets.UTF_8)); } catch (IOException ignored) { }
     }
 
     /** Tras actualizar: vuelve a sumar al mapa de fuentes las de los paquetes ya descargados. */
     private void rebuildMap() {
+        List<File> maps = mapasDescargados();
+        if (!maps.isEmpty()) try { appendMaps(maps); } catch (IOException ignored) { }
+    }
+
+    private List<File> mapasDescargados() {
         List<File> maps = new ArrayList<>();
         Deque<File> todo = new ArrayDeque<>();
         todo.add(new File(home(), "fonts/map"));
@@ -646,9 +657,9 @@ public class MotorPlugin extends Plugin {
             File d = todo.pop();
             File[] l = d.listFiles();
             if (l == null) continue;
-            for (File f : l) { if (f.isDirectory()) todo.add(f); else if (f.getName().endsWith(".map")) maps.add(f); }
+            for (File f : l) { if (f.isDirectory()) todo.add(f); else if (esMapaDeFuentes(f.getPath())) maps.add(f); }
         }
-        if (!maps.isEmpty()) try { appendMaps(maps); } catch (IOException ignored) { }
+        return maps;
     }
 
     @PluginMethod
@@ -1175,7 +1186,7 @@ public class MotorPlugin extends Plugin {
                         byte[] b = new byte[65536]; long left = size;
                         while (left > 0) { int r = in.read(b, 0, (int) Math.min(b.length, left)); if (r < 0) throw new EOFException(); o.write(b, 0, r); left -= r; }
                     }
-                    if (name.endsWith(".map") && ("/" + name).contains("/fonts/map/")) maps.add(out);
+                    if (esMapaDeFuentes("/" + name)) maps.add(out);
                     skip(in, pad);
                     continue;
                 }
