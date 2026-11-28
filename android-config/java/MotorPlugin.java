@@ -412,11 +412,48 @@ public class MotorPlugin extends Plugin {
         call.resolve(r);
     }
 
+    /**
+     * Deja el motor «caliente» para que la primera compilación no parta en frío:
+     *  - carga en memoria el índice de paquetes, la lista de lo que trae la app y lo instalado
+     *    (cientos de miles de líneas: antes se leían recién al compilar, cada vez que se abría la app);
+     *  - hace una compilación mínima, para que Android tenga a mano el formato, las fuentes y los ls-R.
+     * Va en segundo plano: si llega una compilación de verdad, se corta. Como mucho una vez por minuto.
+     */
+    private volatile long calentadoEn = 0;
+    private void calentar() {
+        long ahora = System.currentTimeMillis();
+        if (ahora - calentadoEn < 60_000 || !fmt().exists()) return;
+        calentadoEn = ahora;
+        background(() -> {
+            try { loadIndex(); } catch (Exception ignored) { }
+            bundledNames();
+            installedPkgs();
+            try {
+                File d = new File(getContext().getCacheDir(), "calentar");
+                d.mkdirs();
+                try (OutputStream o = new FileOutputStream(new File(d, "c.tex"))) {
+                    o.write("\\documentclass{article}\\begin{document}Hola $x^2$\\end{document}\n".getBytes(StandardCharsets.UTF_8));
+                }
+                run(tex("pdflatex", null, "-interaction=batchmode", "-halt-on-error", "c.tex"), d, 30_000);
+            } catch (Exception ignored) { }
+        });
+    }
+
+    /** Lo llama la app al abrirse y al volver de otra app. */
+    @PluginMethod
+    public void calentar(PluginCall call) {
+        exec.execute(() -> {
+            try { if (fmt().exists()) calentar(); } catch (Exception ignored) { }
+            call.resolve();
+        });
+    }
+
     @PluginMethod
     public void preparar(PluginCall call) {
         exec.execute(() -> {
             try {
                 call.resolve(prepare());
+                calentar();
                 // Al abrir la app: también los formatos de XeLaTeX y LuaLaTeX, en segundo plano (si se compila
                 // mientras tanto, esto se corta y se retoma la próxima vez).
                 if (call.getBoolean("todos", false)) background(() -> {

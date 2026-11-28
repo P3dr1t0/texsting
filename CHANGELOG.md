@@ -17,6 +17,18 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.21] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 108
+
+### Rendimiento
+- **Arreglado: TeXsting se ponía muy lento al volver de otra app.**
+  - Causa: el visor guardaba en memoria todas las páginas del PDF que se habían visto, cada una como una imagen de ~10 MB. En un documento largo eran cientos de MB, y Android le recortaba recursos a la app al cambiar de aplicación.
+  - Ahora las páginas lejanas sueltan su imagen y se vuelven a dibujar al regresar a ellas. Al irte a otra app solo quedan las que estás viendo.
+  - En un PDF de 28 páginas recorrido completo: antes 28 imágenes en memoria, ahora 5 (y 2 al salir de la app).
+- **La primera compilación después de abrir la app ya no parte en frío.**
+  - Antes, la primera compilación tenía que leer de cero el índice de paquetes de TeX Live y la lista de archivos que trae la app (cientos de miles de líneas). Además, Android ya había sacado de su memoria el formato y las fuentes.
+  - Ahora, al abrir TeXsting y al volver después de un rato en otra app, el motor carga todo eso en segundo plano con una compilación mínima.
+  - Si compilas mientras tanto, eso se corta y tu compilación va primero.
+
 ## [0.9.20] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 107
 
 ### Pantalla principal

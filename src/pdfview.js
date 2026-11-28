@@ -42,6 +42,25 @@ export function createPdfViewer(root) {
     updatePageLabel();
   }, { root: scroller, rootMargin: '600px 0px' });
 
+  // Memoria: cada página dibujada es una imagen de ~10 MB (pantallas de alta densidad). Antes se guardaban todas
+  // las que se habían visto, y en documentos largos eran cientos de MB: Android recortaba a TeXsting y, al volver
+  // de otra app, todo iba lento. Ahora las páginas lejanas sueltan su imagen y se vuelven a dibujar al regresar.
+  function soltar(p) {
+    const c = p.el.querySelector('canvas');
+    if (c) { c.width = 0; c.height = 0; c.remove(); }
+    if (p.task && p.rendering) { try { p.task.cancel(); } catch { /* ya terminó */ } }
+    p.rendered = false;
+  }
+  const lejos = new IntersectionObserver((entries) => {
+    for (const en of entries) {
+      const p = pages[+en.target.dataset.index];
+      if (p && !en.isIntersecting) soltar(p);
+    }
+  }, { root: scroller, rootMargin: '2500px 0px' });
+  // Al irse a otra app: solo se quedan dibujadas las páginas a la vista.
+  const alOcultar = () => { if (document.hidden) for (const p of pages) if (!p.visible) soltar(p); };
+  document.addEventListener('visibilitychange', alOcultar);
+
   function fitScale() {
     if (!pages.length) return 1;
     const w = scroller.clientWidth - 24;
@@ -205,6 +224,8 @@ export function createPdfViewer(root) {
     }
     if (token !== loadToken) { destroyDoc(newDoc); return; }
     io.disconnect();
+    lejos.disconnect();
+    for (const p of pages) soltar(p);  // las imágenes del PDF anterior, de una vez (sin esperar a que se limpien solas)
     const old = doc;
     doc = newDoc;
     pages = newPages;
@@ -212,7 +233,7 @@ export function createPdfViewer(root) {
     emptyEl.hidden = true;
     backStack.length = 0; showBack();
     layout();
-    pages.forEach((p) => io.observe(p.el));
+    pages.forEach((p) => { io.observe(p.el); lejos.observe(p.el); });
     requestAnimationFrame(() => {
       scroller.scrollTop = rel * scroller.scrollHeight;
       scroller.scrollLeft = left;
@@ -430,7 +451,7 @@ export function createPdfViewer(root) {
 
   return {
     load,
-    clear() { io.disconnect(); pages = []; pagesEl.replaceChildren(); emptyEl.hidden = false; if (doc) destroyDoc(doc); doc = null; updatePageLabel(); },
+    clear() { io.disconnect(); lejos.disconnect(); for (const p of pages) soltar(p); pages = []; pagesEl.replaceChildren(); emptyEl.hidden = false; if (doc) destroyDoc(doc); doc = null; updatePageLabel(); },
     get pageCount() { return pages.length; },
     scrollToPage(n) { const p = pages[n - 1]; if (p) scroller.scrollTop = p.el.offsetTop - 8; },
     highlight,

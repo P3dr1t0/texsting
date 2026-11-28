@@ -26,6 +26,12 @@ let calentando = null;
  * Prepara el motor en segundo plano apenas abre la app (tras instalar o actualizar: descomprimir TeX y
  * armar el formato). Así la primera compilación no carga con esos segundos. Devuelve siempre la misma promesa.
  */
+/** Al volver de otra app: el motor recarga lo que Android haya sacado de la memoria (como mucho una vez por minuto). */
+export function motorCalentarRapido() {
+  if (!Capacitor.isNativePlatform()) return Promise.resolve();
+  return Motor.calentar().catch(() => {});
+}
+
 export function motorCalentar() {
   if (!calentando) {
     calentando = (async () => {

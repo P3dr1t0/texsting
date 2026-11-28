@@ -11,7 +11,7 @@ import { renderSugerencias } from './screens/sugerencias.js';
 import { purgeTrash } from './store.js';
 import { renderNewProject } from './screens/newproject.js';
 import { initOpenWith } from './openwith.js';
-import { motorCalentar, motorAlTerminarFondo, motorAlDescargar } from './motor.js';
+import { motorCalentar, motorCalentarRapido, motorAlTerminarFondo, motorAlDescargar } from './motor.js';
 import { getSettings } from './store.js';
 
 const root = document.getElementById('app');
@@ -44,6 +44,13 @@ applyTheme();
 navigate('home').then(() => initOpenWith(navigate));
 // El motor integrado se prepara solo al abrir la app (solo trabaja la primera vez tras instalar o actualizar).
 motorCalentar().catch(() => {});
+// Al volver a TeXsting después de un rato en otra app, Android pudo sacar el motor de la memoria: se recarga
+// en segundo plano para que la siguiente compilación no parta en frío.
+let ocultaDesde = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { ocultaDesde = Date.now(); return; }
+  if (ocultaDesde && Date.now() - ocultaDesde > 20000) motorCalentarRapido();
+});
 // Lo que lleva más de 15 días en la papelera se borra de verdad.
 purgeTrash().catch(() => {});
 // Cuando termina de guardar figuras o el preámbulo en segundo plano, se avisa: ya conviene volver a compilar.
