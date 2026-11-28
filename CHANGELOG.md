@@ -17,6 +17,15 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.27] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 114
+
+### XeLaTeX: unos 60 s más rápido después de «Usar sin internet»
+- **Arreglado: con los paquetes de «Usar sin internet» descargados, cada compilación con XeLaTeX tardaba alrededor de un minuto más.**
+  - Ejemplo: el Cuaderno de Trigonometría pasó de 17 s a 65 s.
+  - Causa: el buscador de fuentes de XeLaTeX (fontconfig) revisaba toda la carpeta de fuentes descargadas. Con los paquetes eran miles de subcarpetas de métricas y mapas que no son fuentes que XeLaTeX pueda usar. Guardaba un archivo de caché por cada una (7589) y cada pasada los abría todos antes de empezar.
+  - Ahora solo mira las carpetas OpenType y TrueType, que es lo que usa `fontspec`, además de las fuentes del sistema. La caché inflada se borra una vez.
+- La primera compilación con XeLaTeX después de actualizar rehace la caché, que ahora es pequeña. De ahí en adelante vuelve a los tiempos de antes.
+
 ## [0.9.26] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 113
 
 ### «Guardando figuras…» con su propia notificación

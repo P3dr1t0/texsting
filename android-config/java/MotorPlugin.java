@@ -97,17 +97,27 @@ public class MotorPlugin extends Plugin {
         return p.exists();
     }
 
-    /** XeLaTeX: fontconfig busca las fuentes por nombre en TeX, en las descargadas y en las del sistema (Roboto, Noto…). */
+    /**
+     * XeLaTeX: fontconfig busca las fuentes por nombre en TeX, en las descargadas y en las del sistema (Roboto, Noto…).
+     * Solo las carpetas OpenType y TrueType: antes miraba toda la carpeta de fuentes descargadas, y con los paquetes de
+     * «Usar sin internet» eran miles de subcarpetas de métricas y mapas (tfm, afm, vf, enc…). fontconfig guardaba un
+     * caché por cada una (7589 archivos) y cada pasada de XeLaTeX los revisaba todos: ~60 s más por compilación.
+     */
     private void writeFontsConf() throws IOException {
         File fc = new File(var(), "fonts.conf");
         String t = "<?xml version=\"1.0\"?>\n<fontconfig>\n"
                 + "  <dir>" + new File(tl(), "texmf-dist/fonts/opentype").getAbsolutePath() + "</dir>\n"
                 + "  <dir>" + new File(tl(), "texmf-dist/fonts/truetype").getAbsolutePath() + "</dir>\n"
-                + "  <dir>" + new File(home(), "fonts").getAbsolutePath() + "</dir>\n"
+                + "  <dir>" + new File(home(), "fonts/opentype").getAbsolutePath() + "</dir>\n"
+                + "  <dir>" + new File(home(), "fonts/truetype").getAbsolutePath() + "</dir>\n"
                 + "  <dir>/system/fonts</dir>\n"
                 + "  <cachedir>" + new File(var(), "fontconfig").getAbsolutePath() + "</cachedir>\n"
                 + "</fontconfig>\n";
-        if (!t.equals(readText(fc))) try (OutputStream o = new FileOutputStream(fc)) { o.write(t.getBytes(StandardCharsets.UTF_8)); }
+        if (!t.equals(readText(fc))) {
+            // Cambió dónde se buscan las fuentes: el caché viejo (con lo que ya no se mira) se borra una vez.
+            delete(new File(var(), "fontconfig"));
+            try (OutputStream o = new FileOutputStream(fc)) { o.write(t.getBytes(StandardCharsets.UTF_8)); }
+        }
     }
 
     /** Tamaños de papel para libpaper (formato de paperspecs: nombre,ancho,alto,unidad). */
