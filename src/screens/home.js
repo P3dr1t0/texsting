@@ -13,7 +13,9 @@ const dec = new TextDecoder();
 const enc = new TextEncoder();
 
 export async function renderHome(root, _params, navigate) {
-  const status = el('button', { class: 'server-chip checking', onclick: () => navigate('settings') }, 'Comprobando el motor…');
+  // Aviso del motor: solo aparece cuando hace falta (preparándose tras instalar o actualizar, o con un problema).
+  // Si el motor está listo no se muestra: es lo normal.
+  const status = el('button', { class: 'server-chip checking', hidden: true, onclick: () => navigate('settings') }, 'Comprobando el motor…');
   const list = el('div', { class: 'project-list' });
   const RECENT_MAX = 8;
   let tab = getSettings().homeTab === 'all' ? 'all' : 'recent';
@@ -413,6 +415,7 @@ export async function renderHome(root, _params, navigate) {
     // Con el motor integrado no hace falta Termux: el aviso dice que está listo y lleva a Ajustes.
     const mst = await motorEstado();
     if (mst && !mst.listo) {
+      status.hidden = false;
       status.className = 'server-chip';
       status.onclick = () => navigate('settings');
       status.innerHTML = `${icon('chip')}<span>Preparando el motor integrado (solo tras instalar o actualizar)…</span>`;
@@ -424,11 +427,10 @@ export async function renderHome(root, _params, navigate) {
       return checkServer();
     }
     if (mst) {
-      status.className = 'server-chip ok';
-      status.onclick = () => navigate('settings');
-      status.innerHTML = `${icon('check')}<span>Motor integrado listo · ${(mst.motores || ['pdflatex']).map((m) => ({ pdflatex: 'pdfLaTeX', lualatex: 'LuaLaTeX', xelatex: 'XeLaTeX' })[m] || m).join(', ')}${getSettings().autoinstall ? ' · paquetes al vuelo' : ''}</span>`;
+      status.hidden = true;
       return;
     }
+    status.hidden = false;
     status.onclick = () => navigate('termux');
     try {
       const info = await ping();

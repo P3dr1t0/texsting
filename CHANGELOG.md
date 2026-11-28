@@ -17,6 +17,13 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.20] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 107
+
+### Pantalla principal
+- **Se quitó el aviso «Motor integrado listo».** El motor viene dentro de la app, así que decir que está listo sobraba.
+  - El aviso solo aparece cuando hace falta: mientras el motor se prepara (después de instalar o actualizar) o si hubo un problema.
+  - Se toca para ir a Ajustes, como antes.
+
 ## [0.9.19] — 25 nov. 2026 · Fase 2: Beta con motor integrado · compilación 106
 
 ### Logo nuevo (#5)

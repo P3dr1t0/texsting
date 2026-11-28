@@ -99,6 +99,7 @@ a { color: inherit; }
 .brand-name .tex-e { display: inline-block; vertical-align: -0.5ex; margin: 0 -0.125em 0 -0.1667em; }
 .home-actions { display: flex; gap: 10px; }
 .section-title { margin: 12px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+.server-chip[hidden] { display: none; }
 .server-chip { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); text-align: left; font-size: 14px; width: 100%; }
 .server-chip.ok { background: rgba(47,143,91,.12); color: var(--ok); }
 .server-chip.off { background: var(--danger-soft); color: var(--danger); }
