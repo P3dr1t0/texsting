@@ -17,6 +17,13 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.28] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 115
+
+### Diagnóstico de XeLaTeX
+- El Cuaderno de Trigonometría sigue tardando ~65 s en cada compilación con XeLaTeX, aun después de la 0.9.27. Para encontrar la causa con datos en lugar de suposiciones:
+  - **Ajustes → Compilación → «Diagnóstico de XeLaTeX»:** compila tres documentos mínimos, dos veces cada uno, y muestra lo que tardó cada uno. Los documentos son uno sin fuentes por nombre, uno con `\setmainfont{Latin Modern Roman}` y uno con `unicode-math`. También muestra cuánto creció el caché de fuentes. El botón «Copiar resultado» copia el texto para enviarlo.
+  - **El resumen de «Log completo»** muestra cuántos archivos tenía el caché de fuentes antes y después de compilar. Si aumenta en cada compilación, el caché no se está reutilizando.
+
 ## [0.9.27] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 114
 
 ### XeLaTeX: unos 60 s más rápido después de «Usar sin internet»

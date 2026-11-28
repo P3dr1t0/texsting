@@ -616,3 +616,5 @@ span.lic-chip { border-color: var(--border); color: var(--muted); cursor: defaul
 .apoyo-btn { justify-content: center; font-weight: 600; white-space: nowrap; padding-left: 6px; padding-right: 6px; font-variant-numeric: tabular-nums; }
 .apoyo-nota { margin: 10px 0 0 !important; }
 .set-botones { display: flex; gap: 6px; flex: none; }
+.diag-xe { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; align-items: flex-start; }
+.diag-salida { white-space: pre-wrap; font-size: 12.5px; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; margin: 0; width: 100%; box-sizing: border-box; }

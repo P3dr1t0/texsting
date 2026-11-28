@@ -91,6 +91,8 @@ export async function motorNotificaciones() {
 export function motorPedirNotificaciones() { return Capacitor.isNativePlatform() ? Motor.pedirNotificaciones().catch(() => {}) : Promise.resolve(); }
 /** Avance para la notificación «Compilando…» (segundos esperados, cuándo empezó y el paso actual). */
 export function motorAvanceAviso(d) { if (Capacitor.isNativePlatform()) Motor.avanceAviso(d).catch(() => {}); }
+/** Diagnóstico de XeLaTeX: tiempos de tres documentos mínimos y el caché de fuentes. */
+export async function motorDiagnosticoXe() { return (await Motor.diagnosticoXe()).texto; }
 export function motorProbarAviso() { return Motor.probarAviso(); }
 export function motorAjustesNotificaciones() { return Capacitor.isNativePlatform() ? Motor.ajustesNotificaciones().catch(() => {}) : Promise.resolve(); }
 

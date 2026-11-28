@@ -3,7 +3,7 @@ import { Clipboard } from '@capacitor/clipboard';
 import { getSettings, setSettings, ensureToken } from '../store.js';
 import { el, icon, toast, esc, confirmDialog } from '../ui.js';
 import { ping, serverOutdated } from '../compiler.js';
-import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA, MOTOR_PRUEBA_LUA, motorSinInternet, motorDescargarSinInternet, motorCancelarDescarga, motorBorrarDescargados, motorAlDescargar, motorNotificaciones, motorPedirNotificaciones, motorAjustesNotificaciones, motorProbarAviso } from '../motor.js';
+import { motorEstado, motorPreparar, motorCompilar, MOTOR_PRUEBA, MOTOR_PRUEBA_LUA, motorSinInternet, motorDescargarSinInternet, motorCancelarDescarga, motorBorrarDescargados, motorAlDescargar, motorNotificaciones, motorPedirNotificaciones, motorAjustesNotificaciones, motorProbarAviso, motorDiagnosticoXe } from '../motor.js';
 import { bootstrapCommand, openTermux, TERMUX_FDROID, TERMUX_GITHUB } from '../termux.js';
 import { ENGINES } from '../latex-data.js';
 import { disponible as hayCarpetas, raiz, elegirRaiz, exportarTodos } from '../carpetas.js';
@@ -212,6 +212,7 @@ export async function renderSettings(root, _p, navigate) {
       el('p', { class: 'muted' }, 'El motor integrado compila dentro de TeXsting, sin instalar nada más: pdfLaTeX, XeLaTeX y LuaLaTeX (fuentes OpenType con fontspec, incluso las del teléfono como Roboto o Noto), BibTeX y makeindex. Los paquetes que falten (TikZ, pgfplots, circuitikz…) se descargan solos de CTAN la primera vez que los uses.'),
       el('button', { class: 'btn', onclick: probarMotor }, 'Probar motor integrado'),
       motorResult,
+      diagnosticoXe(),
       sinInternet,
       servidorPruebas,
       ...(hayCarpetas() ? [
@@ -234,6 +235,27 @@ export async function renderSettings(root, _p, navigate) {
       el('button', { class: 'btn', html: icon('info') + '<span>Licencias y créditos</span>', onclick: () => navigate('licencias') }),
       el('p', { class: 'muted small', html: 'Contacto: <a href="mailto:texsting.app@gmail.com">texsting.app@gmail.com</a> · <a href="https://p3dr1t0.github.io/texsting/privacidad" target="_blank" rel="noopener">Política de privacidad</a>' }))));
   return { cleanup: () => dejarDeEscuchar() };
+}
+
+/** Diagnóstico de XeLaTeX: para saber si el tiempo se va en buscar fuentes. Muestra el texto para copiarlo. */
+function diagnosticoXe() {
+  const salida = el('pre', { class: 'diag-salida', hidden: true });
+  const copiar = el('button', { class: 'btn small', hidden: true }, 'Copiar resultado');
+  const boton = el('button', { class: 'btn' }, 'Diagnóstico de XeLaTeX');
+  boton.onclick = async () => {
+    boton.disabled = true;
+    salida.hidden = false; copiar.hidden = true;
+    salida.textContent = 'Compilando 3 documentos de prueba, dos veces cada uno (puede tardar unos minutos)…';
+    try { salida.textContent = await motorDiagnosticoXe(); copiar.hidden = false; }
+    catch (e) { salida.textContent = 'No se pudo: ' + (e.message || e); }
+    boton.disabled = false;
+  };
+  copiar.onclick = async () => {
+    try { await Clipboard.write({ string: salida.textContent }); toast('Copiado'); } catch { toast('No se pudo copiar', { kind: 'error' }); }
+  };
+  const caja = el('div', { class: 'diag-xe', hidden: true }, boton, salida, copiar);
+  motorEstado().then((st) => { caja.hidden = !(st && (st.motores || []).includes('xelatex')); });
+  return caja;
 }
 
 /** Notificación «Compilando…»: hace que la compilación siga rápida si sales de la app (Android 13+ pide permiso). */

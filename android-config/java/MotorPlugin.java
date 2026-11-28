@@ -1963,6 +1963,61 @@ public class MotorPlugin extends Plugin {
         call.resolve();
     }
 
+    private int cuentaCacheFuentes() {
+        File[] fc = new File(var(), "fontconfig").listFiles();
+        return fc == null ? 0 : fc.length;
+    }
+
+    /**
+     * Diagnóstico de XeLaTeX (Ajustes): cronometra tres documentos mínimos, dos veces cada uno, y cuenta el caché de
+     * fuentes. Sirve para ver si el tiempo se va en buscar fuentes (fontconfig) o en otra cosa.
+     */
+    @PluginMethod
+    public void diagnosticoXe(PluginCall call) {
+        cancelBackground();
+        exec.execute(() -> {
+            synchronized (work) {
+                StringBuilder out = new StringBuilder();
+                try {
+                    prepare();
+                    if (!xetex().exists()) { call.reject("Este APK no trae XeLaTeX"); return; }
+                    prepareXe();
+                    File d = new File(getContext().getCacheDir(), "diag-xe");
+                    delete(d); d.mkdirs();
+                    String[][] docs = {
+                        { "1-sin-fuentes", "\\documentclass{article}\\begin{document}Hola\\end{document}" },
+                        { "2-fuente-por-nombre", "\\documentclass{article}\\usepackage{fontspec}\\setmainfont{Latin Modern Roman}\\begin{document}Hola\\end{document}" },
+                        { "3-unicode-math", "\\documentclass{article}\\usepackage{fontspec}\\usepackage{unicode-math}\\setmainfont{Latin Modern Roman}\\setmathfont{Latin Modern Math}\\begin{document}Hola $x^2$\\end{document}" },
+                    };
+                    out.append("Caché de fuentes al empezar: ").append(cuentaCacheFuentes()).append(" archivos\n");
+                    for (String[] doc : docs) {
+                        try (OutputStream o = new FileOutputStream(new File(d, doc[0] + ".tex"))) { o.write(doc[1].getBytes(StandardCharsets.UTF_8)); }
+                        for (int vez = 1; vez <= 2; vez++) {
+                            int antes = cuentaCacheFuentes();
+                            long t = System.currentTimeMillis();
+                            Run r = run(tex("xelatex", null, "-no-pdf", "-interaction=nonstopmode", "-halt-on-error", doc[0] + ".tex"), d, 180_000);
+                            long ms = System.currentTimeMillis() - t;
+                            int desp = cuentaCacheFuentes();
+                            out.append(doc[0]).append(" (vez ").append(vez).append("): ").append(String.format(Locale.ROOT, "%.1f s", ms / 1000.0))
+                               .append(r.code == 0 ? "" : " ✗ código " + r.code)
+                               .append(desp != antes ? " · caché +" + (desp - antes) : "").append('\n');
+                        }
+                    }
+                    out.append("Caché de fuentes al terminar: ").append(cuentaCacheFuentes()).append(" archivos\n");
+                    File[] fs = new File(var(), "fontconfig").listFiles();
+                    if (fs != null) {
+                        Arrays.sort(fs, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+                        out.append("Los más nuevos:\n");
+                        for (int i = 0; i < Math.min(4, fs.length); i++) out.append("  ").append(fs[i].getName()).append('\n');
+                    }
+                    JSObject res = new JSObject();
+                    res.put("texto", out.toString());
+                    call.resolve(res);
+                } catch (Exception e) { call.reject(out + "\n" + e.getMessage()); }
+            }
+        });
+    }
+
     /** Prueba el aviso «Compilando…» durante 8 s y dice qué respondió Android. */
     @PluginMethod
     public void probarAviso(PluginCall call) {
@@ -2077,6 +2132,7 @@ public class MotorPlugin extends Plugin {
                 if (eng.equals("lualatex")) prepareLua();
                 if (eng.equals("xelatex")) prepareXe();
                 long formatoMs = System.currentTimeMillis() - tf;
+                final int fcAntes = cuentaCacheFuentes();
                 try (OutputStream o = new FileOutputStream(new File(mainDir, "texsting-motor.txt"))) { o.write(eng.getBytes(StandardCharsets.UTF_8)); }
                 // biblatex usa biber por defecto, y biber no viene en el motor: se le pide BibTeX, que sí viene.
                 boolean biblatex = false;
@@ -2352,8 +2408,10 @@ public class MotorPlugin extends Plugin {
                 rs.append("  aviso «Compilando…»: ").append(CompilacionService.estado).append('\n');
                 if (eng.equals("pdflatex")) rs.append("  preámbulo guardado: ").append(usedPre ? "sí" : bgPre ? "se está armando para la próxima compilación" : "no").append('\n');
                 if (eng.equals("xelatex")) {
-                    File[] fc = new File(var(), "fontconfig").listFiles();
-                    rs.append("  caché de fuentes del sistema: ").append(fc == null || fc.length == 0 ? "vacía" : fc.length + " archivos").append('\n');
+                    int fcDespues = cuentaCacheFuentes();
+                    rs.append("  caché de fuentes: ").append(fcDespues).append(" archivos");
+                    if (fcDespues != fcAntes) rs.append(" (").append(fcDespues > fcAntes ? "+" : "").append(fcDespues - fcAntes).append(" en esta compilación: se rehízo)");
+                    rs.append('\n');
                 }
                 res.put("resumen", rs.toString());
                 ultimoOk = pdfBytes != null;
