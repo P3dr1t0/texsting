@@ -17,6 +17,15 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.34] — 28 nov. 2026 · Fase 2: Beta con motor integrado · compilación 121
+
+### Mapa de fuentes sin entradas que pdfTeX rechaza
+- **Arreglado: el log mostraba decenas de avisos «invalid entry for `PTSans-…Slanted…': SlantFont/ExtendFont can be used only with embedded Type1 fonts».** Salían después de descargar el paquete `paratype`, entre otros.
+  - Causa: esos paquetes traen variantes inclinadas pensadas para letras TrueType/OpenType. pdfTeX solo sabe inclinar letras Type 1 incluidas en el PDF, así que rechazaba esas líneas y avisaba por cada una.
+  - Ahora TeXsting deja fuera del mapa las líneas que pdfTeX rechazaría igual: las inclinadas o estiradas sin una letra Type 1 incluida, y las TrueType recodificadas sin subconjunto. Los documentos no cambian, porque pdfTeX nunca las usaba.
+  - Se comprobó con pdfTeX: con las líneas originales da los avisos «invalid entry»; con las filtradas, ninguno.
+  - El mapa ya armado se rehace una vez al abrir la app.
+
 ## [0.9.33] — 28 nov. 2026 · Fase 2: Beta con motor integrado · compilación 120
 
 ### Log limpio con paquetes descargados (ahora sí)

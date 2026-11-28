@@ -613,6 +613,7 @@ public class MotorPlugin extends Plugin {
                         String x = l.trim();
                         if (x.isEmpty() || x.charAt(0) == '%') continue;
                         x = lineaDeMapa(x);
+                        if (x.isEmpty()) continue;
                         String name = x.split("\\s+")[0];
                         if (known.add(name)) add.append(x).append('\n');
                     }
@@ -625,13 +626,29 @@ public class MotorPlugin extends Plugin {
     private static final Pattern ARCHIVO_SIN_INCLUIR = Pattern.compile("(?<=\\s)[^<\\s\"\\[][^\\s\"]*\\.(?:pf[ab]|ttf|otf)(?=\\s|$)", Pattern.CASE_INSENSITIVE);
     static String lineaDeMapa(String x) {
         if (x.isEmpty() || x.charAt(0) == '%') return x;
-        return ARCHIVO_SIN_INCLUIR.matcher(x).replaceAll("").replaceAll("\\s+$", "");
+        x = ARCHIVO_SIN_INCLUIR.matcher(x).replaceAll("").replaceAll("\\s+$", "");
+        // Entradas que pdfTeX rechaza de todos modos («invalid entry for …»): se dejan fuera.
+        // SlantFont/ExtendFont solo valen con una letra Type 1 incluida (no con .ttf/.otf ni sin archivo).
+        if (x.contains("SlantFont") || x.contains("ExtendFont")) {
+            Matcher f = ARCHIVO_INCLUIDO.matcher(x);
+            boolean t1 = false;
+            while (f.find()) { String n = f.group(1).toLowerCase(Locale.ROOT); if (n.endsWith(".enc")) continue; if (!n.endsWith(".ttf") && !n.endsWith(".ttc") && !n.endsWith(".otf")) t1 = true; }
+            if (!t1) return "";
+        }
+        // Una TrueType con codificación tiene que ir como subconjunto («<», no «<<»).
+        if (x.contains(" <<") && (x.contains(".enc") || x.contains("ReEncodeFont"))) {
+            Matcher f = ARCHIVO_INCLUIDO.matcher(x);
+            while (f.find()) if (f.group(0).startsWith("<<") && f.group(1).toLowerCase(Locale.ROOT).matches(".*\\.tt[fc]$")) return "";
+        }
+        return x;
     }
+    /** «<letra.pfb» o «<<letra.ttf» (no «<[cod.enc» ni «<cod.enc»). */
+    private static final Pattern ARCHIVO_INCLUIDO = Pattern.compile("<<?(?!\\[)([^\\s\"<]+)");
 
     /** Una vez: rehace el mapa de pdfTeX solo con los mapas de verdad (antes entraban también los de fontname).
      *  Se arma aparte y se cambia de golpe, para que una compilación en curso nunca lo encuentre a medias. */
     private void limpiarMapa() {
-        File marca = new File(var(), "mapa-fuentes-2.txt");
+        File marca = new File(var(), "mapa-fuentes-3.txt");
         if (marca.exists()) return;
         File vmap = new File(var(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map");
         if (vmap.exists()) {
