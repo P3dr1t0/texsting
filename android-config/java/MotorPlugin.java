@@ -1927,7 +1927,14 @@ public class MotorPlugin extends Plugin {
     @PluginMethod
     public void compilar(PluginCall call) {
         cancelBackground();
-        exec.execute(() -> { synchronized (work) { compilarAhora(call); } });
+        // Mientras compila, Android trata a TeXsting como «trabajando» (notificación «Compilando…»): si sales de la
+        // app, el motor sigue a toda velocidad en vez de pasar a los núcleos lentos (ver CompilacionService).
+        String principal = call.getString("main", "main.tex");
+        CompilacionService.empezar(getContext(), new File(principal).getName());
+        exec.execute(() -> {
+            try { synchronized (work) { compilarAhora(call); } }
+            finally { CompilacionService.terminar(); }
+        });
     }
 
     private void compilarAhora(PluginCall call) {

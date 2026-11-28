@@ -17,6 +17,18 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.22] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 109
+
+### Compilar mientras usas otra app
+- **Arreglado: si salías de la app mientras compilaba, al volver el resto de la compilación iba muy lento.**
+  - Causa: al salir, Android pasa la app a los núcleos lentos del procesador y la puede congelar. Cada pasada del motor es un programa nuevo, y las que empezaban mientras estabas fuera nacían en esos núcleos lentos y se quedaban ahí aunque volvieras.
+- **Ahora, mientras compila, aparece una notificación «Compilando…».** Así Android trata a TeXsting como una app trabajando y la deja a toda velocidad aunque cambies de app o apagues la pantalla.
+  - La notificación desaparece sola al terminar. Al tocarla vuelves a TeXsting.
+  - Es silenciosa (no suena ni vibra). Se puede ocultar en los ajustes de notificaciones de Android, en el canal «Compilación».
+  - Usa el tipo de servicio «shortService» de Android 14+, pensado para terminar rápido un trabajo importante. No pide permisos nuevos.
+  - Si una compilación pasa de unos 3 minutos, Android quita el aviso y la compilación sigue como antes.
+- Ícono de notificación nuevo: la marca «TeX» en blanco.
+
 ## [0.9.21] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 108
 
 ### Rendimiento

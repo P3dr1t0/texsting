@@ -35,6 +35,17 @@ if (!m.includes('com.termux')) {
 if (!m.includes('hasFragileUserData')) {
   m = m.replace('<application', '<application\n        android:hasFragileUserData="true"');
 }
+// Servicio «Compilando…» (CompilacionService): mantiene el motor a toda velocidad si sales de la app mientras compila.
+if (!m.includes('CompilacionService')) {
+  m = m.replace('<application', `<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <application`);
+  m = m.replace('</application>', `    <service
+            android:name=".CompilacionService"
+            android:exported="false"
+            android:foregroundServiceType="shortService" />
+    </application>`);
+}
 if (!m.includes('windowSoftInputMode')) {
   m = m.replace(/<activity(\s)/, '<activity\n            android:windowSoftInputMode="adjustResize"$1');
 }
@@ -114,6 +125,8 @@ public class OpenedFilePlugin extends Plugin {
 writeFileSync(path.join(javaDir, 'MotorPlugin.java'), conPaquete(path.join(root, 'android-config', 'java', 'MotorPlugin.java')));
 // Complemento nativo «Carpetas»: carpeta propia Documentos/Projects_LaTeX y carpetas de proyectos existentes (#4, #7).
 writeFileSync(path.join(javaDir, 'CarpetasPlugin.java'), conPaquete(path.join(root, 'android-config', 'java', 'CarpetasPlugin.java')));
+// Servicio «Compilando…» (primer plano mientras compila).
+writeFileSync(path.join(javaDir, 'CompilacionService.java'), conPaquete(path.join(root, 'android-config', 'java', 'CompilacionService.java')));
 // Complemento nativo «Donaciones»: 1, 3 y 5 USD con Google Play (no desbloquean nada).
 writeFileSync(path.join(javaDir, 'DonacionesPlugin.java'), conPaquete(path.join(root, 'android-config', 'java', 'DonacionesPlugin.java')));
 writeFileSync(path.join(javaDir, 'MainActivity.java'), `package ${APP_ID};

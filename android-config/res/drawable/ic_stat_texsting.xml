@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícono de la notificación «Compilando…»: la marca de TeXsting en blanco (Android la tiñe). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <group android:translateX="2.000" android:translateY="6.571" android:scaleX="0.009721" android:scaleY="0.009721">
+        <group android:translateX="-42.0" android:translateY="686.0" android:scaleY="-1">
+            <path android:fillColor="#FFFFFFFF" android:pathData="M757 434 736 675H63L42 434H89C98 547 108 628 252 628H329V47H176V0C230 3 341 3 400 3C459 3 570 3 624 0V47H471V628H547C690 628 700 548 710 434Z"/>
+        </group>
+        <group android:translateX="591.3" android:translateY="908.0" android:scaleY="-1">
+            <path android:fillColor="#FFFFFFFF" android:pathData="M723 274H676C654 136 626 47 441 47H289V329H344C440 329 450 286 450 212H497V493H450C450 419 441 376 344 376H289V633H441C602 633 628 560 644 439H691L660 680H39V633H147V47H39V0H677Z"/>
+        </group>
+        <group android:translateX="1222.3" android:translateY="686.0" android:scaleY="-1">
+            <path android:fillColor="#FFFFFFFF" android:pathData="M835 0V47H737L484 397L652 618C663 632 664 633 699 636C723 639 729 639 757 639H786V686C744 683 695 683 652 683C613 683 536 683 500 686V639C518 639 557 639 592 628C591 626 586 620 584 617L452 442L309 639H392V686C351 683 256 683 211 683C171 683 84 683 49 686V639H147L369 332L167 67C158 55 156 53 124 50C104 48 83 47 63 47H34V0C76 3 125 3 168 3C207 3 284 3 320 0V47C302 47 263 47 228 58C229 60 234 66 236 69L401 288L575 47H492V0C533 3 628 3 673 3C713 3 800 3 835 0Z"/>
+        </group>
+    </group>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M6.109,16.811 h11.782 a0.309,0.309 0 0 1 0,0.618 h-11.782 a0.309,0.309 0 0 1 0,-0.618 z"/>
+</vector>
