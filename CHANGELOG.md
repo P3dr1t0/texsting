@@ -17,6 +17,13 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.32] — 28 nov. 2026 · Fase 2: Beta con motor integrado · compilación 119
+
+### Log más limpio con paquetes descargados
+- **Arreglado: con muchos paquetes descargados, el log de pdfLaTeX se llenaba de avisos** como «ambiguous entry for `wnr': font file present but not included».
+  - Causa: algunos paquetes traen mapas de fuentes pensados para dvips, que nombran el archivo de la letra sin `<`. pdfTeX ya ignoraba esas líneas, pero avisaba por cada una y podían tapar avisos que sí importan.
+  - Ahora TeXsting quita esos nombres al sumar los mapas. El mapa que ya estaba armado se limpia una vez al abrir la app. Los documentos se ven igual que antes.
+
 ## [0.9.31] — 28 nov. 2026 · Fase 2: Beta con motor integrado · compilación 118
 
 ### Archivos que faltan dentro de un paquete

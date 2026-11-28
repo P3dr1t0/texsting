@@ -601,12 +601,41 @@ public class MotorPlugin extends Plugin {
                     for (String l : t.split("\n")) {
                         String x = l.trim();
                         if (x.isEmpty() || x.charAt(0) == '%') continue;
+                        x = lineaDeMapa(x);
                         String name = x.split("\\s+")[0];
                         if (known.add(name)) add.append(x).append('\n');
                     }
                 }
                 try (OutputStream o = new FileOutputStream(vmap, true)) { o.write(("\n" + add).getBytes(StandardCharsets.UTF_8)); }
                 }
+
+    // Algunos mapas de los paquetes son para dvips: nombran el archivo de la letra sin «<». pdfTeX lo ignora igual,
+    // pero avisa «ambiguous entry … font file present but not included» por cada una (decenas de líneas en el log).
+    private static final Pattern ARCHIVO_SIN_INCLUIR = Pattern.compile("(?<=\\s)[^<\\s\"\\[][^\\s\"]*\\.(?:pf[ab]|ttf|otf)(?=\\s|$)", Pattern.CASE_INSENSITIVE);
+    static String lineaDeMapa(String x) {
+        if (x.isEmpty() || x.charAt(0) == '%') return x;
+        return ARCHIVO_SIN_INCLUIR.matcher(x).replaceAll("").replaceAll("\\s+$", "");
+    }
+
+    /** Quita esos archivos sin «<» del mapa ya armado (una vez; los mapas nuevos ya llegan limpios). */
+    private void limpiarMapa() {
+        File vmap = new File(var(), "texmf-var/fonts/map/pdftex/updmap/pdftex.map");
+        String cur = readText(vmap);
+        if (cur == null) return;
+        StringBuilder sb = new StringBuilder(cur.length());
+        boolean cambio = false;
+        for (String l : cur.split("\n", -1)) {
+            String n = lineaDeMapa(l);
+            if (!n.equals(l)) cambio = true;
+            sb.append(n).append('\n');
+        }
+        if (!cambio) return;
+        sb.setLength(sb.length() - 1);
+        File tmp = new File(vmap.getPath() + ".tmp");
+        try (OutputStream o = new FileOutputStream(tmp)) { o.write(sb.toString().getBytes(StandardCharsets.UTF_8)); }
+        catch (IOException e) { tmp.delete(); return; }
+        if (!tmp.renameTo(vmap)) tmp.delete();
+    }
 
     /** Tras actualizar: vuelve a sumar al mapa de fuentes las de los paquetes ya descargados. */
     private void rebuildMap() {
@@ -656,6 +685,7 @@ public class MotorPlugin extends Plugin {
             // El índice de nombres de fuentes (para XeLaTeX) se arma aquí, no en la primera compilación.
             try { indiceFuentes(); } catch (Exception ignored) { }
             lsRAlDia();
+            synchronized (instalando) { try { limpiarMapa(); } catch (Exception ignored) { } }
             try {
                 File d = new File(getContext().getCacheDir(), "calentar");
                 d.mkdirs();
