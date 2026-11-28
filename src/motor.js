@@ -89,6 +89,8 @@ export async function motorNotificaciones() {
   try { return await Motor.notificaciones(); } catch { return null; }
 }
 export function motorPedirNotificaciones() { return Capacitor.isNativePlatform() ? Motor.pedirNotificaciones().catch(() => {}) : Promise.resolve(); }
+/** Avance para la notificación «Compilando…» (segundos esperados, cuándo empezó y el paso actual). */
+export function motorAvanceAviso(d) { if (Capacitor.isNativePlatform()) Motor.avanceAviso(d).catch(() => {}); }
 export function motorProbarAviso() { return Motor.probarAviso(); }
 export function motorAjustesNotificaciones() { return Capacitor.isNativePlatform() ? Motor.ajustesNotificaciones().catch(() => {}) : Promise.resolve(); }
 

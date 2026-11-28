@@ -7,7 +7,7 @@ import { fileToTrash, restoreFile, DIAS_PAPELERA, getProject, saveProject, touch
 import { el, icon, toast, sheet, panel, promptText, confirmDialog, dialog, pickFiles, esc } from '../ui.js';
 import { createPdfViewer } from '../pdfview.js';
 import { parseSynctex, forward, inverse } from '../synctex.js';
-import { motorAlProgresar, motorAlPaso, motorAlFondo, motorNotificaciones, motorPedirNotificaciones } from '../motor.js';
+import { motorAlProgresar, motorAlPaso, motorAlFondo, motorNotificaciones, motorPedirNotificaciones, motorAvanceAviso } from '../motor.js';
 import { compileProject, CompileError, chooseEngine, engineExplanation, engineNeeds, ENGINE_LABEL } from '../compiler.js';
 import { parseLog, parseBibOutput, summarize } from '../logparser.js';
 import { analyzeProject } from '../structure.js';
@@ -735,7 +735,10 @@ export async function renderEditor(root, { id }, navigate) {
       progBar.style.width = est ? pct + '%' : '';
       setCompileState('busy', est ? pct + ' %' : 'Compilando');
       progTxt.textContent = est ? `${paso} · ${pct} %` : paso;
+      // La notificación «Compilando…» muestra el mismo porcentaje (lo calcula ella cada segundo con estos datos).
+      if (est !== aviso.est || paso !== aviso.paso) { aviso = { est, paso }; motorAvanceAviso({ esperado: est, inicio: t0, paso }); }
     };
+    let aviso = {};
     pintar();
     const tick = setInterval(pintar, 500);
     // Motor integrado: el paso actual y los avisos (p. ej. «Descargando el paquete…») van en el indicador.

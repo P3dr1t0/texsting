@@ -17,6 +17,17 @@ Las versiones 0.x son de beta; la 1.0 será el lanzamiento en Google Play.
 
 ---
 
+## [0.9.25] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 112
+
+### Notificaciones de compilación
+- **«Compilando…» muestra el porcentaje y la barra llenándose**, con el mismo cálculo que la barra de la app.
+  - Ejemplo: «Compilando… 45 %», con el paso actual (Pasada 2, Descargando el paquete…) y el archivo.
+  - Si el proyecto todavía no tiene un tiempo de referencia (primera compilación), la barra se mueve sin porcentaje, igual que en la app.
+  - El porcentaje se calcula en el sistema cada segundo, así avanza bien aunque la app esté en segundo plano.
+- **Aviso con sonido al terminar, solo si estás en otra app:** «PDF listo», «PDF listo, con N errores» o «No se generó el PDF». Al tocarlo vuelves a TeXsting.
+  - Si estás mirando la app no aparece, y al volver a la app se quita solo.
+  - Va en un canal aparte, «Compilación terminada», así se puede silenciar sin tocar el de «Compilando…».
+
 ## [0.9.24] — 27 nov. 2026 · Fase 2: Beta con motor integrado · compilación 111
 
 ### Diagnóstico de la notificación «Compilando…»

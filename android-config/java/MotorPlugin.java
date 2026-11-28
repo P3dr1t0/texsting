@@ -1975,10 +1975,40 @@ public class MotorPlugin extends Plugin {
         // app, el motor sigue a toda velocidad en vez de pasar a los núcleos lentos (ver CompilacionService).
         String principal = call.getString("main", "main.tex");
         CompilacionService.empezar(getContext(), new File(principal).getName());
+        ultimoOk = false; ultimosErrores = 0;
         exec.execute(() -> {
             try { synchronized (work) { compilarAhora(call); } }
-            finally { CompilacionService.terminar(); }
+            finally {
+                CompilacionService.terminar();
+                // Si estás en otra app: aviso con sonido de que terminó.
+                if (!appVisible) CompilacionService.avisarListo(getContext(), ultimoOk, ultimosErrores);
+            }
         });
+    }
+
+    // ¿Se ve la app? (para avisar al terminar solo si estás en otra app)
+    private volatile boolean appVisible = true;
+    private volatile boolean ultimoOk = false;
+    private volatile int ultimosErrores = 0;
+
+    @Override
+    protected void handleOnResume() {
+        super.handleOnResume();
+        appVisible = true;
+        CompilacionService.quitarListo(getContext());
+    }
+
+    @Override
+    protected void handleOnPause() {
+        super.handleOnPause();
+        appVisible = false;
+    }
+
+    /** La app manda el avance que estima (segundos esperados, cuándo empezó, paso) para la notificación. */
+    @PluginMethod
+    public void avanceAviso(PluginCall call) {
+        CompilacionService.progreso(call.getDouble("esperado", 0.0), (long) (double) call.getDouble("inicio", (double) System.currentTimeMillis()), call.getString("paso", ""));
+        call.resolve();
     }
 
     private void compilarAhora(PluginCall call) {
@@ -2306,6 +2336,10 @@ public class MotorPlugin extends Plugin {
                     rs.append("  caché de fuentes del sistema: ").append(fc == null || fc.length == 0 ? "vacía" : fc.length + " archivos").append('\n');
                 }
                 res.put("resumen", rs.toString());
+                ultimoOk = pdfBytes != null;
+                int errAviso = 0;
+                for (String l : log.split("\n")) if (l.startsWith("! ")) errAviso++;
+                ultimosErrores = errAviso;
                 call.resolve(res);
                 // Después de responder: si el preámbulo cambió, se arma el nuevo para la próxima compilación.
                 final File md = mainDir; final String mn = mainName; final String jb = job;
